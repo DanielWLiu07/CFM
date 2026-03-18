@@ -17,7 +17,7 @@ export default function Navbar() {
     <NavigationMenu.Root className="relative z-10">
       <NavigationMenu.List
         className="flex items-center gap-1 rounded-md px-1 py-1 m-0 list-none"
-        style={{ backgroundImage: "url('/images/nav_bg.png')", backgroundSize: 'cover', backgroundPosition: 'center' }}
+        style={{ backgroundImage: "url('/images/nav_bg.png')", backgroundSize: '300%', backgroundPosition: 'center' }}
       >
         {links.map(({ href, label }) => (
           <NavigationMenu.Item key={href}>

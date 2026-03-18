@@ -78,7 +78,7 @@ export default function Home() {
   return (
     <div className="bg-black">
 
-      <div className="fixed top-8 left-2 z-50">
+      <div className="fixed top-4 left-3 z-50">
         <Navbar />
       </div>
 
