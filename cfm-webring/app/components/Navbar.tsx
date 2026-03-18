@@ -15,13 +15,17 @@ export default function Navbar() {
 
   return (
     <NavigationMenu.Root className="relative z-10">
-      <NavigationMenu.List className="flex items-center gap-0 bg-white/90 backdrop-blur-sm rounded-md shadow-[0_2px_10px_rgba(0,0,0,0.15)] px-1 py-1 m-0 list-none">
+      <NavigationMenu.List
+        className="flex items-center gap-1 rounded-md px-1 py-1 m-0 list-none"
+        style={{ backgroundImage: "url('/images/nav_bg.png')", backgroundSize: 'cover', backgroundPosition: 'center' }}
+      >
         {links.map(({ href, label }) => (
           <NavigationMenu.Item key={href}>
             <NavigationMenu.Link asChild active={pathname === href}>
               <Link
                 href={href}
-                className="block px-3 py-2 rounded text-[15px] font-medium leading-none no-underline select-none outline-none text-violet-700 hover:bg-violet-50 focus:shadow-[0_0_0_2px] focus:shadow-violet-400 data-[active]:text-violet-900 data-[active]:bg-violet-100 transition-colors"
+                className="block px-3 py-1.5 rounded leading-none no-underline select-none outline-none text-white hover:text-white data-[active]:text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)] transition-colors"
+                style={{ fontFamily: 'var(--font-arcade)', fontSize: '13px', letterSpacing: '0.1em', textShadow: '-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000' }}
               >
                 {label}
               </Link>
