@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# plans
+/plan.md
+
+# raw animation source frames (compiled to video)
+/public/animation_frames/

@@ -1,65 +1,77 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useRef } from 'react';
+import Navbar from './components/Navbar';
+import PixelTrail from './components/PixelTrail';
 
 export default function Home() {
+  const [started, setStarted] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  const handleStart = () => {
+    audioRef.current?.play();
+    setStarted(true);
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="bg-black">
+
+      <div className="fixed top-4 left-4 z-10">
+          <Navbar />
+      </div>
+
+      <audio ref={audioRef} src="/music/thick_of_it_thomas_remix.mp3" loop />
+
+      {!started && (
+        <div
+          onClick={handleStart}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black cursor-pointer"
+        >
+          <div className="text-white text-center">
+            <p className="text-2xl tracking-[0.2em] uppercase">ready?</p>
+            <p className="text-sm tracking-[0.3em] uppercase opacity-50 mt-2">click to start</p>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      )}
+
+      <div className="relative h-screen overflow-hidden flex items-center justify-center">
+
+        <div className="relative h-full" style={{ aspectRatio: '3024 / 1964' }}>
+          <video
+            src="/videos/landing_page.mp4"
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="h-full w-full"
+          />
+
+          {/* left */}
+          <div className="absolute inset-y-0 left-0 w-24 pointer-events-none" style={{ background: "linear-gradient(to right, black, transparent)" }} />
+          {/* right */}
+          <div className="absolute inset-y-0 right-0 w-24 pointer-events-none" style={{ background: "linear-gradient(to left, black, transparent)" }} />
+          {/* top */}
+          <div className="absolute inset-x-0 top-0 pointer-events-none" style={{ height: '2.5%', background: "linear-gradient(to bottom, black, transparent)" }} />
+          {/* bottom */}
+          <div className="absolute inset-x-0 bottom-0 pointer-events-none" style={{ height: '2.5%', background: "linear-gradient(to top, black, transparent)" }} />
         </div>
-      </main>
+
+        {/* PixelTrail in its own absolute container filling the full screen */}
+        <div className="absolute inset-0">
+          <PixelTrail
+            gridSize={100}
+            trailSize={0.02}
+            maxAge={250}
+            interpolate={2}
+            color="#ffffff"
+          />
+        </div>
+      </div>
+
+      <section className="relative min-h-screen text-white flex items-center justify-center">
+        HELLO
+      </section>
+
     </div>
   );
 }
