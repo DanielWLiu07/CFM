@@ -23,7 +23,7 @@ function makeCandleShadow(elevation: number, color: string) {
 function Candle({ bull, totalH, bodyH, bodyTopPx, elevation }: CandleData) {
   const color = bull ? '#22c55e' : '#ef4444';
   return (
-    <div style={{ position: 'relative', width: 'clamp(44px, 4.8vw, 76px)', height: totalH, flexShrink: 0 }}>
+    <div style={{ position: 'relative', width: 68, height: totalH, flexShrink: 0 }}>
       <div style={{ position: 'absolute', left: '50%', top: 0, width: 2, height: '100%',
         background: color, opacity: 0.8, transform: 'translateX(-50%)' }} />
       <div style={{ position: 'absolute', left: 0, right: 0, top: bodyTopPx, height: bodyH,
@@ -38,22 +38,24 @@ function Candle({ bull, totalH, bodyH, bodyTopPx, elevation }: CandleData) {
 // aligns with the diagonal, computed as: totalH + marginBot = container_bottom - target_top.
 
 const LEFT_CANDLES: CandleData[] = [
-  { bull: false, totalH: 220, bodyH: 55,  bodyTopPx: 130, elevation: 3  },  // outer — bottom-left corner
-  { bull: false, totalH: 250, bodyH: 145, bodyTopPx: 28,  elevation: 18 },  // ascending
-  { bull: false, totalH: 230, bodyH: 30,  bodyTopPx: 90,  elevation: 4  },  // ascending
-  { bull: true,  totalH: 260, bodyH: 52,  bodyTopPx: 16,  elevation: 14 },  // ascending
-  { bull: true,  totalH: 280, bodyH: 100, bodyTopPx: 80,  elevation: 5  },  // inner — aligns with C
+  { bull: true,  totalH: 250, bodyH: 100, bodyTopPx: 90,  elevation: 10 },  // outermost — bottom-left
+  { bull: false, totalH: 280, bodyH: 70,  bodyTopPx: 160, elevation: 3  },  // outer — bottom-left corner
+  { bull: false, totalH: 330, bodyH: 180, bodyTopPx: 40,  elevation: 18 },  // ascending
+  { bull: false, totalH: 290, bodyH: 40,  bodyTopPx: 110, elevation: 4  },  // ascending
+  { bull: true,  totalH: 360, bodyH: 120, bodyTopPx: 20,  elevation: 14 },  // ascending
+  { bull: true,  totalH: 380, bodyH: 160, bodyTopPx: 90,  elevation: 5  },  // inner — aligns with C
 ];
-const LEFT_MARGINS = [0, 22, 92, 122, 162];
+const LEFT_MARGINS = [-70, 0, 5, 100, 85, 120];
 
 const RIGHT_CANDLES: CandleData[] = [
-  { bull: true,  totalH: 290, bodyH: 100, bodyTopPx: 90,  elevation: 5  },  // inner — aligns with M
-  { bull: true,  totalH: 280, bodyH: 115, bodyTopPx: 50,  elevation: 12 },  // ascending outward
-  { bull: false, totalH: 270, bodyH: 22,  bodyTopPx: 140, elevation: 21 },  // ascending
-  { bull: false, totalH: 260, bodyH: 55,  bodyTopPx: 20,  elevation: 8  },  // ascending
-  { bull: false, totalH: 250, bodyH: 160, bodyTopPx: 32,  elevation: 26 },  // outer — top-right corner
+  { bull: true,  totalH: 390, bodyH: 160, bodyTopPx: 100, elevation: 5  },  // inner — aligns with M
+  { bull: true,  totalH: 370, bodyH: 180, bodyTopPx: 60,  elevation: 12 },  // ascending outward
+  { bull: false, totalH: 340, bodyH: 30,  bodyTopPx: 170, elevation: 21 },  // ascending
+  { bull: false, totalH: 310, bodyH: 70,  bodyTopPx: 24,  elevation: 8  },  // ascending
+  { bull: false, totalH: 330, bodyH: 200, bodyTopPx: 40,  elevation: 26 },  // outer — top-right corner
+  { bull: true,  totalH: 270, bodyH: 90,  bodyTopPx: 30,  elevation: 15 },  // outermost — top-right
 ];
-const RIGHT_MARGINS = [207, 257, 307, 352, 397];
+const RIGHT_MARGINS = [165, 240, 325, 270, 445, 460];
 
 // Shadow goes primarily DOWNWARD — longer shadow = letter is higher off the surface
 // x offset is ~40% of y offset so it reads as depth, not just diagonal smear
@@ -93,11 +95,17 @@ export default function ReadyOverlay({ onStart }: { onStart: () => void }) {
   const leftCandlesRef   = useRef<HTMLDivElement>(null);
   const rightCandlesRef  = useRef<HTMLDivElement>(null);
   const baselineRef      = useRef<HTMLDivElement>(null);
+  const sealRef          = useRef<HTMLImageElement>(null);
+  const topBarRef        = useRef<HTMLDivElement>(null);
+  const botBarRef        = useRef<HTMLDivElement>(null);
+  const gooseRef         = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
     const tl = gsap.timeline();
 
     gsap.set([subRef.current, labelTopRef.current, labelBotRef.current], { opacity: 0 });
+    gsap.set(sealRef.current, { opacity: 0, scaleY: 0, transformOrigin: 'center bottom' });
+    gsap.set(gooseRef.current, { opacity: 0, scaleY: 0, transformOrigin: 'center bottom' });
     gsap.set([lineLeftRef.current, lineRightRef.current, lineBotLeftRef.current, lineBotRightRef.current],
       { scaleX: 0, opacity: 0 });
     gsap.set(lineLeftRef.current,     { transformOrigin: 'right center' });
@@ -136,17 +144,19 @@ export default function ReadyOverlay({ onStart }: { onStart: () => void }) {
       .to(labelBotRef.current,  { opacity: 0.4, duration: 0.5, ease: 'power2.out' }, afterAll)
       .to([lineBotLeftRef.current, lineBotRightRef.current],
         { scaleX: 1, opacity: 0.4, duration: 0.6, ease: 'power2.inOut' }, afterAll + 0.1)
-      .to(subRef.current, { opacity: 0.65, duration: 0.6 }, afterAll + 0.25);
+      .to(subRef.current, { opacity: 0.65, duration: 0.6 }, afterAll + 0.25)
+      .to(sealRef.current, { opacity: 0.55, scaleY: 1, duration: 0.45, ease: 'power2.out' }, 0.9 + 10 * 0.1)
+      .to(gooseRef.current, { opacity: 0.55, scaleY: 1, duration: 0.45, ease: 'power2.out' }, 0.9 + 5 * 0.1);
 
     const blinkTween = gsap.to(subRef.current, {
       opacity: 0, duration: 0, repeat: -1, yoyo: true, repeatDelay: 0.7, delay: afterAll + 1.0,
     });
 
     // ── Idle loop — each element starts its loop immediately after its own spawn completes ──
-    // Spawn timing: sequence = [...leftEls(0-4), ...charEls(5-7), ...rightEls(8-12)]
+    // Spawn timing: sequence = [...leftEls(0-5), ...charEls(6-8), ...rightEls(9-14)]
     //   leftEls[i]  spawn finishes at: 0.9 + i*0.1 + 0.35  = 1.25 + i*0.1
-    //   charEls[j]  spawn finishes at: 0.9 + (5+j)*0.1 + 0.45 = 1.85 + j*0.1
-    //   rightEls[k] spawn finishes at: 0.9 + (8+k)*0.1 + 0.35 = 2.05 + k*0.1
+    //   charEls[j]  spawn finishes at: 0.9 + (6+j)*0.1 + 0.45 = 1.95 + j*0.1
+    //   rightEls[k] spawn finishes at: 0.9 + (9+k)*0.1 + 0.35 = 2.15 + k*0.1
     // ease 'steps(6)' = 6 discrete jumps per cycle → 8-bit stepped look, no smooth interpolation
     const idleTweens: gsap.core.Tween[] = [];
 
@@ -177,7 +187,7 @@ export default function ReadyOverlay({ onStart }: { onStart: () => void }) {
       const data    = RIGHT_CANDLES[i];
       const bodyDiv = (el as HTMLElement).firstElementChild?.children[1] as HTMLElement | null;
       const dur     = 1.6 + i * 0.2;
-      const delay   = 2.05 + i * 0.1;
+      const delay   = 2.15 + i * 0.1;
       idleTweens.push(gsap.to(el, {
         y: -(10 + i * 7), duration: dur, ease: 'steps(6)',
         repeat: -1, yoyo: true, delay,
@@ -201,7 +211,7 @@ export default function ReadyOverlay({ onStart }: { onStart: () => void }) {
       const baseDepth = CFM_CONFIG[i].depth;
       const span      = el as HTMLElement;
       const dur       = 1.8 + i * 0.3;
-      const delay     = 1.85 + i * 0.1;
+      const delay     = 1.95 + i * 0.1;
       idleTweens.push(gsap.to(el, {
         y: baseY - 24, duration: dur, ease: 'steps(6)',
         repeat: -1, yoyo: true, delay,
@@ -218,6 +228,29 @@ export default function ReadyOverlay({ onStart }: { onStart: () => void }) {
       }));
     });
 
+    // Top & bottom bar idle bob — smooth, starts immediately
+    const barDur = 2.2;
+    idleTweens.push(gsap.to(topBarRef.current, {
+      y: -10, duration: barDur, ease: 'sine.inOut',
+      repeat: -1, yoyo: true, delay: 0,
+    }));
+    idleTweens.push(gsap.to(botBarRef.current, {
+      y: -10, duration: barDur, ease: 'sine.inOut',
+      repeat: -1, yoyo: true, delay: 0,
+    }));
+
+    // Seal idle bob — 8-bit stepped, starts with intro
+    idleTweens.push(gsap.to(sealRef.current, {
+      y: -18, duration: 2.2, ease: 'steps(6)',
+      repeat: -1, yoyo: true, delay: 0.9 + 10 * 0.1,
+    }));
+
+    // Goose idle bob — mirrors seal on the left
+    idleTweens.push(gsap.to(gooseRef.current, {
+      y: -18, duration: 2.0, ease: 'steps(6)',
+      repeat: -1, yoyo: true, delay: 0.9 + 5 * 0.1,
+    }));
+
     return () => { tl.kill(); blinkTween.kill(); idleTweens.forEach(t => t.kill()); };
   }, []);
 
@@ -225,26 +258,61 @@ export default function ReadyOverlay({ onStart }: { onStart: () => void }) {
     if (leaving) return;
     setLeaving(true);
     const tl = gsap.timeline({ onComplete: onStart });
-    tl
-      .to(wrapRef.current, { scaleY: 0.008, duration: 0.18, ease: 'power2.in', transformOrigin: 'center center' })
-      .to(wrapRef.current, { opacity: 0, filter: 'brightness(4)', duration: 0.1, ease: 'power1.out' }, '-=0.05')
-      .to(wrapRef.current, { opacity: 0, filter: 'brightness(0)', duration: 0.3 });
+
+    // Click to start blinks out
+    tl.to(subRef.current, { opacity: 0, duration: 0.1 }, 0);
+
+    // CFM letters shoot upward and fade
+    const charEls = Array.from(titleRef.current?.children ?? []);
+    charEls.forEach((el, i) => {
+      tl.to(el, { y: -300, opacity: 0, duration: 0.4, ease: 'power3.in' }, 0.05 + i * 0.06);
+    });
+
+    // Top bar — lines retract, label fades
+    tl.to(topBarRef.current, { y: -80, opacity: 0, duration: 0.35, ease: 'power2.in' }, 0.1);
+
+    // Bottom bar — drops down and fades
+    tl.to(botBarRef.current, { y: 80, opacity: 0, duration: 0.35, ease: 'power2.in' }, 0.15);
+
+    // Left candles fly left
+    const leftEls = Array.from(leftCandlesRef.current?.children ?? []);
+    leftEls.forEach((el, i) => {
+      tl.to(el, { x: -200 - i * 60, opacity: 0, duration: 0.35, ease: 'power2.in' }, 0.05 + i * 0.04);
+    });
+
+    // Right candles fly right
+    const rightEls = Array.from(rightCandlesRef.current?.children ?? []);
+    rightEls.forEach((el, i) => {
+      tl.to(el, { x: 200 + i * 60, opacity: 0, duration: 0.35, ease: 'power2.in' }, 0.05 + i * 0.04);
+    });
+
+    // Baseline shrinks
+    tl.to(baselineRef.current, { scaleX: 0, opacity: 0, duration: 0.3, ease: 'power2.in' }, 0.1);
+
+    // Goose flies off left
+    tl.to(gooseRef.current, { x: -400, opacity: 0, duration: 0.4, ease: 'power2.in' }, 0.1);
+
+    // Seal flies off right
+    tl.to(sealRef.current, { x: 400, opacity: 0, duration: 0.4, ease: 'power2.in' }, 0.1);
+
+    // Final wrapper fade to black
+    tl.to(wrapRef.current, { opacity: 0, duration: 0.25, ease: 'power1.out' }, 0.45);
   };
 
   return (
     <div
       ref={wrapRef}
       onClick={handleClick}
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center cursor-pointer overflow-hidden bg-black"
+      className="fixed inset-0 z-[60] flex flex-col items-center justify-center cursor-pointer overflow-hidden bg-black"
     >
       <div className="absolute inset-0">
-        <LetterGlitch glitchColors={['#0d0d0d', '#141414', '#1a1a1a', '#2a2a2a']} glitchSpeed={60} outerVignette smooth />
+        <LetterGlitch glitchColors={['#2a2a2a', '#3a3a3a', '#4a4a4a', '#5a5a5a']} glitchSpeed={60} outerVignette smooth />
       </div>
       <div className="absolute inset-0 pointer-events-none"
         style={{ background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.75) 0%, transparent 65%)', zIndex: 1 }} />
 
-      {/* Chart: same -6deg tilt as CFM text */}
-      <div className="absolute inset-x-0 pointer-events-none" style={{ zIndex: 2, top: '50%', height: '75vh', transform: 'translateY(-48%) rotate(-6deg)', transformOrigin: 'center center' }}>
+      {/* Chart: same -6deg tilt as CFM text — crops from center on narrow viewports */}
+      <div className="absolute pointer-events-none" style={{ zIndex: 2, top: '50%', left: '50%', width: 1600, height: '75vh', transform: 'translate(-50%, -44%) rotate(-6deg)', transformOrigin: 'center center' }}>
 
         {/* Horizontal baseline — the "chart floor" */}
         <div ref={baselineRef} className="absolute inset-x-0 bottom-0"
@@ -252,7 +320,7 @@ export default function ReadyOverlay({ onStart }: { onStart: () => void }) {
 
         <div className="flex h-full">
           {/* Left candles: ascending staircase left→right via marginBottom steps */}
-          <div ref={leftCandlesRef} className="flex items-end justify-between px-4" style={{ flex: 1 }}>
+          <div ref={leftCandlesRef} className="flex items-end justify-between px-4" style={{ flex: 1, marginLeft: 40 }}>
             {LEFT_CANDLES.map((c, i) => (
               <div key={i} style={{ marginBottom: `${LEFT_MARGINS[i]}px` }}>
                 <Candle {...c} />
@@ -260,7 +328,7 @@ export default function ReadyOverlay({ onStart }: { onStart: () => void }) {
             ))}
           </div>
           {/* Center gap for CFM text — wide enough to prevent candle shadow overlap */}
-          <div style={{ flexShrink: 0, width: 'clamp(340px, 38vw, 600px)' }} />
+          <div style={{ flexShrink: 0, width: 500 }} />
           {/* Right candles: staircase continues ascending */}
           <div ref={rightCandlesRef} className="flex items-end justify-between px-4" style={{ flex: 1 }}>
             {RIGHT_CANDLES.map((c, i) => (
@@ -274,10 +342,13 @@ export default function ReadyOverlay({ onStart }: { onStart: () => void }) {
 
       <div ref={contentRef} className="relative z-10 select-none" style={{ fontFamily: 'var(--font-arcade)' }}>
 
+        {/* Negative margin to shift the text block upward */}
+        <div style={{ marginTop: 0 }} />
+
         {/* Top bar */}
-        <div className="flex items-center justify-center gap-6 mb-16">
+        <div ref={topBarRef} className="flex items-center justify-center gap-6 mb-16">
           <div ref={lineLeftRef}  style={{ width: '60px', height: '1px', background: 'white' }} />
-          <span ref={labelTopRef} style={{ fontSize: '16px', letterSpacing: '0.3em', color: 'white' }}>
+          <span ref={labelTopRef} style={{ fontSize: 16, letterSpacing: '0.3em', color: 'white', whiteSpace: 'nowrap' }}>
             COMPUTING AND FINANCIAL MANAGEMENT
           </span>
           <div ref={lineRightRef} style={{ width: '60px', height: '1px', background: 'white' }} />
@@ -287,7 +358,7 @@ export default function ReadyOverlay({ onStart }: { onStart: () => void }) {
         <div
           ref={titleRef}
           className="text-white flex justify-center"
-          style={{ fontSize: 'clamp(130px, 22vw, 290px)', lineHeight: 1, gap: '0.1em', transform: 'rotate(-6deg)' }}
+          style={{ fontSize: 240, lineHeight: 1, gap: '0.1em', transform: 'rotate(-6deg)' }}
         >
           {['C', 'F', 'M'].map((char, i) => {
             const { wickTop, wickBot, depth } = CFM_CONFIG[i];
@@ -306,9 +377,9 @@ export default function ReadyOverlay({ onStart }: { onStart: () => void }) {
         </div>
 
         {/* Bottom bar */}
-        <div className="flex items-center justify-center gap-6 mt-16">
+        <div ref={botBarRef} className="flex items-center justify-center gap-6 mt-16">
           <div ref={lineBotLeftRef}  style={{ width: '60px', height: '1px', background: 'white' }} />
-          <span ref={labelBotRef} style={{ fontSize: '16px', letterSpacing: '0.3em', color: 'white' }}>
+          <span ref={labelBotRef} style={{ fontSize: 16, letterSpacing: '0.3em', color: 'white', whiteSpace: 'nowrap' }}>
             UNIVERSITY OF WATERLOO
           </span>
           <div ref={lineBotRightRef} style={{ width: '60px', height: '1px', background: 'white' }} />
@@ -320,6 +391,25 @@ export default function ReadyOverlay({ onStart }: { onStart: () => void }) {
         </p>
 
       </div>
+
+      {/* Goose — ASCII art SVG, bottom left */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        ref={gooseRef}
+        src="/goose-ascii.png"
+        alt="UWaterloo Goose"
+        className="absolute -left-20 z-[1] -top-20 pointer-events-none select-none w-auto h-[550px] rotate-6"
+      />
+
+      {/* UWaterloo seal — ASCII art SVG, bottom right */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        ref={sealRef}
+        src="/waterloo-ascii.svg"
+        alt="University of Waterloo"
+        className="absolute bottom-5 right-15 z-[1] pointer-events-none select-none"
+        style={{ width: 380, height: 380, transform: 'rotate(20deg) scaleX(1.05)' }}
+      />
     </div>
   );
 }

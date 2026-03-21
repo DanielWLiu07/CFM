@@ -22,13 +22,17 @@ export default function Home() {
   const crushTargetRef = useRef<number>(0);
   const leftWireRef    = useRef<HTMLImageElement>(null);
   const rightWireRef   = useRef<HTMLImageElement>(null);
+  const introOffsetRef = useRef<number>(800); // wires start 800px off-screen
 
   // ── rAF loop ───────────────────────────────────────────────────────────────
   // Beats are driven from audio.currentTime — perfectly locked to the music.
   // On music loop, beat index resets so sync is restored every cycle.
+  // Intro offset decays to 0 over the first ~0.8s, then crush runs unaffected.
   const startLoop = () => {
     let lastAudioTime = 0;
     let lastFiredIdx  = -1;
+    const introStart  = performance.now();
+    const INTRO_DUR   = 800; // ms for wires to slide in
 
     const loop = () => {
       const t = audioRef.current?.currentTime ?? 0;
@@ -51,10 +55,17 @@ export default function Home() {
       crushVelRef.current += (crushTargetRef.current - crushRef.current) * STIFFNESS;
       crushVelRef.current *= DAMPING;
       crushRef.current += crushVelRef.current;
+
+      // Intro slide-in: easeOut from 800 → 0
+      const elapsed = performance.now() - introStart;
+      const progress = Math.min(1, elapsed / INTRO_DUR);
+      const eased = 1 - Math.pow(1 - progress, 3); // cubic ease-out
+      introOffsetRef.current = 800 * (1 - eased);
+
       if (leftWireRef.current)
-        leftWireRef.current.style.transform = `translateX(${crushRef.current}px)`;
+        leftWireRef.current.style.transform = `translateX(${crushRef.current - introOffsetRef.current}px)`;
       if (rightWireRef.current)
-        rightWireRef.current.style.transform = `translateX(${-crushRef.current}px)`;
+        rightWireRef.current.style.transform = `translateX(${-crushRef.current + introOffsetRef.current}px)`;
 
       animFrameRef.current = requestAnimationFrame(loop);
     };
@@ -62,12 +73,15 @@ export default function Home() {
   };
 
   // ── "ready?" click — start everything immediately ─────────────────────────
-  const handleStart = () => {
+  const handleStart = async () => {
     setStarted(true);
     videoRef.current!.currentTime = 0;
-    videoRef.current!.play();
     audioRef.current!.currentTime = 0;
-    audioRef.current!.play();
+    // Ensure both are actually playing before starting the beat loop
+    await Promise.all([
+      videoRef.current!.play(),
+      audioRef.current!.play(),
+    ]);
     startLoop();
   };
 
@@ -77,8 +91,17 @@ export default function Home() {
   }, [started]);
 
   useEffect(() => {
-    return () => cancelAnimationFrame(animFrameRef.current);
+    return () => {
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    };
   }, []);
+
+  const CLICKABLE_PANELS = [
+    { id: 'cfm',       href: 'https://uwaterloo.ca/future-students/programs/computing-and-financial-management', x: 0.7,  y: 8.0,  w: 32.3, h: 20.8 },
+    { id: 'waterloo',  href: 'https://uwaterloo.ca/', x: 63.8, y: 7.7,  w: 33.4, h: 21.5 },
+    { id: 'cs',        href: '#', x: 1.9,  y: 36.4, w: 33.7, h: 22.3 },
+    { id: 'finance',   href: '#', x: 64.1, y: 38.8, w: 33.4, h: 22.4 },
+  ];
 
   return (
     <div className="bg-black">
@@ -95,11 +118,11 @@ export default function Home() {
 
         <img ref={leftWireRef} src="/images/side_wires.png"
           className="absolute top-0 h-full w-auto z-20 pointer-events-none"
-          style={{ right: 'calc(50% + 100vh * 1512 / 1964)', willChange: 'transform' }}
+          style={{ right: 'calc(50% + 100vh * 1512 / 1964)', willChange: 'transform', transform: 'translateX(-800px)' }}
         />
         <img ref={rightWireRef} src="/images/side_wires.png"
           className="absolute top-0 h-full w-auto z-20 pointer-events-none"
-          style={{ left: 'calc(50% + 100vh * 1512 / 1964)', willChange: 'transform' }}
+          style={{ left: 'calc(50% + 100vh * 1512 / 1964)', willChange: 'transform', transform: 'translateX(800px)' }}
         />
 
         <div className="absolute inset-x-0 top-0 pointer-events-none z-30" style={{ height: '5%', background: 'linear-gradient(to bottom, black, transparent)' }} />
@@ -113,8 +136,17 @@ export default function Home() {
             <div className="absolute inset-y-0 left-0 w-24 pointer-events-none" style={{ background: 'linear-gradient(to right, black, transparent)' }} />
             <div className="absolute inset-y-0 right-0 w-24 pointer-events-none" style={{ background: 'linear-gradient(to left, black, transparent)' }} />
           </div>
-          <div className="absolute inset-0">
+          <div className="absolute inset-0 pointer-events-none">
             <PixelTrail gridSize={100} trailSize={0.02} maxAge={250} interpolate={2} color="#ffffff" />
+          </div>
+          {/* Clickable panel areas */}
+          <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 h-full" style={{ aspectRatio: '3024 / 1964', zIndex: 40 }}>
+            {CLICKABLE_PANELS.map(p => (
+              <a key={p.id} href={p.href} target="_blank" rel="noopener noreferrer"
+                className="absolute block cursor-pointer"
+                style={{ left: `${p.x}%`, top: `${p.y}%`, width: `${p.w}%`, height: `${p.h}%` }}
+              />
+            ))}
           </div>
         </div>
       </div>

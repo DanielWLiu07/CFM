@@ -10,7 +10,7 @@ const links = [
   { href: "/about", label: "About" },
   { href: "/class", label: "Class" },
   { href: "/webring", label: "Webring" },
-  { href: "https://github.com", label: "Github", external: true },
+  { href: "https://github.com/DanielWLiu07/CFM", label: "Github", external: true },
 ];
 
 export default function Navbar() {
@@ -28,7 +28,7 @@ export default function Navbar() {
           gap: '4px',
         }}
       >
-        {links.map(({ href, label, external }, i) => (
+        {links.map(({ href, label, external }) => (
           <React.Fragment key={href}>
             <NavigationMenu.Item key={href}>
               <NavigationMenu.Link asChild active={pathname === href}>
