@@ -397,7 +397,7 @@ export default function ReadyOverlay({ onStart, muted, onToggleMute, volume, onV
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         ref={gooseRef}
-        src="/goose-ascii.png"
+        src="/images/goose-ascii.png"
         alt="UWaterloo Goose"
         className="absolute -left-20 z-[1] -top-20 pointer-events-none select-none w-auto h-[550px] rotate-6"
       />
@@ -406,14 +406,14 @@ export default function ReadyOverlay({ onStart, muted, onToggleMute, volume, onV
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         ref={sealRef}
-        src="/waterloo-ascii.svg"
+        src="/images/waterloo-ascii.svg"
         alt="University of Waterloo"
         className="absolute bottom-5 right-15 z-[1] pointer-events-none select-none"
         style={{ width: 380, height: 380, transform: 'rotate(20deg) scaleX(1.05)' }}
       />
 
       {/* Mute button — bottom right */}
-      <div className="absolute bottom-4 right-4 z-10">
+      <div className="absolute bottom-4 right-4 z-[999]">
         <MuteButton muted={muted} onToggle={onToggleMute} volume={volume} onVolumeChange={onVolumeChange} />
       </div>
     </div>

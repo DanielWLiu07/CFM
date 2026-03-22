@@ -42,19 +42,24 @@ export default function MuteButton({ muted, onToggle, volume, onVolumeChange }: 
   return (
     <div className="flex flex-col items-center gap-2">
       {/* Slider — toggle on click */}
+      {expanded && (
       <div
-        className="flex flex-col items-center rounded-lg border border-white/20 bg-white/10 backdrop-blur-md transition-all duration-200 overflow-hidden"
+        className="flex flex-col items-center rounded-lg overflow-hidden"
         style={{
-          height: expanded ? 120 : 0,
-          opacity: expanded ? 1 : 0,
-          padding: expanded ? '12px 0' : '0',
+          height: 120,
+          padding: '12px 0',
           width: 40,
+          border: '1px solid rgba(255,255,255,0.3)',
+          background: 'rgba(255,255,255,0.08)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          boxShadow: '0 0 20px rgba(0,0,0,0.4)',
         }}
       >
-        <div className="relative h-full w-1 rounded-full bg-white/10">
+        <div className="relative h-full w-1 rounded-full bg-white/20">
           <div
-            className="absolute bottom-0 left-0 w-full rounded-full bg-white/50"
-            style={{ height: `${(muted ? 0 : volume) * 100}%` }}
+            className="absolute bottom-0 left-0 w-full rounded-full bg-white"
+            style={{ height: `${(muted ? 0 : volume) * 100}%`, boxShadow: '0 0 6px rgba(255,255,255,0.5)' }}
           />
           <input
             type="range"
@@ -76,12 +81,13 @@ export default function MuteButton({ muted, onToggle, volume, onVolumeChange }: 
           />
         </div>
         <span
-          className="text-white/40 mt-2"
-          style={{ fontFamily: 'var(--font-arcade)', fontSize: 8 }}
+          className="text-white/70 mt-2"
+          style={{ fontFamily: 'var(--font-arcade)', fontSize: 8, textShadow: '0 0 3px rgba(0,0,0,1), 0 1px 2px rgba(0,0,0,0.8)' }}
         >
           {Math.round((muted ? 0 : volume) * 100)}
         </span>
       </div>
+      )}
 
       {/* Mute/unmute button — click toggles slider, right-click or double-click for mute */}
       <button
