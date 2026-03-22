@@ -54,7 +54,9 @@ html, body {
 }
 
 @keyframes cat-bob {
-  0%, 100% { transform: translateY(0px); }
-  50%      { transform: translateY(-40px); }
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  25%      { transform: translateY(-20px) rotate(8deg); }
+  50%      { transform: translateY(-40px) rotate(0deg); }
+  75%      { transform: translateY(-20px) rotate(-8deg); }
 }
 

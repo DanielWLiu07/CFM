@@ -23,8 +23,9 @@ function Dim({ children }: { children: React.ReactNode }) {
 const CARDS = [
   {
     title: 'WHAT  IS  CFM',
+    image: '/images/uwaterloo-seal.svg',
     content: (
-      <div className="space-y-3">
+      <div className="space-y-1">
         <p className="text-lg" style={{ color: '#fff', fontFamily: 'var(--font-arcade)', fontSize: 18, letterSpacing: '0.05em' }}>
           Computing and Financial Management
         </p>
@@ -32,7 +33,7 @@ const CARDS = [
         <p><Dim>{'>'} </Dim>A <G>joint degree</G> between the Faculty of</p>
         <p><Dim>{'  '}</Dim>Mathematics and the School of Accounting</p>
         <p><Dim>{'  '}</Dim>and Finance at the University of Waterloo.</p>
-        <p>&nbsp;</p>
+        <p className="h-2" />
         <p><Dim>{'>'} </Dim>Degree: <G>Bachelor of Computer Science</G></p>
         <p><Dim>{'  '}</Dim>+ <G>Bachelor of Business Administration</G></p>
         <p><Dim>{'>'} </Dim>Duration: <G>5 years</G> with co-op</p>
@@ -42,22 +43,23 @@ const CARDS = [
   },
   {
     title: 'CURRICULUM',
+    image: '/images/nav_bg.png',
     content: (
-      <div className="space-y-3">
+      <div className="space-y-1">
         <p><Dim>{'// '}what you learn, year by year</Dim></p>
         <p style={{ color: '#333' }}>{'─'.repeat(36)}</p>
         <p><Dim>{'>'} </Dim><G>Year 1-2</G></p>
         <p><Dim>{'  '}</Dim>CS fundamentals, intro accounting,</p>
         <p><Dim>{'  '}</Dim>economics, statistics</p>
-        <p>&nbsp;</p>
+        <p className="h-2" />
         <p><Dim>{'>'} </Dim><G>Year 2-3</G></p>
         <p><Dim>{'  '}</Dim>Algorithms, OS, databases +</p>
         <p><Dim>{'  '}</Dim>corporate finance, investments</p>
-        <p>&nbsp;</p>
+        <p className="h-2" />
         <p><Dim>{'>'} </Dim><G>Year 3-4</G></p>
         <p><Dim>{'  '}</Dim>Elective depth -- AI/ML, distributed</p>
         <p><Dim>{'  '}</Dim>systems, fintech</p>
-        <p>&nbsp;</p>
+        <p className="h-2" />
         <p><Dim>{'>'} </Dim><G>Year 4-5</G></p>
         <p><Dim>{'  '}</Dim>Capstone + advanced electives</p>
         <p><Dim>{'  '}</Dim>in both faculties</p>
@@ -66,14 +68,15 @@ const CARDS = [
   },
   {
     title: 'COOP  PROGRAM',
+    image: '/images/goose-ascii.png',
     content: (
-      <div className="space-y-3">
+      <div className="space-y-1">
         <p><Dim>{'>'} </Dim>Co-op rotations: <G>6 terms</G></p>
         <p><Dim>{'>'} </Dim>That&apos;s <G>2 full years</G> of paid work</p>
         <p><Dim>{'>'} </Dim>Placement rate: <G>98%+</G></p>
         <p style={{ color: '#333' }}>{'─'.repeat(36)}</p>
         <p><Dim>{'// '}where CFM students work</Dim></p>
-        <p>&nbsp;</p>
+        <p className="h-2" />
         <p><Dim>{'>'} </Dim>[<G> Tech    </G>] Google, Meta, Amazon, Shopify</p>
         <p><Dim>{'>'} </Dim>[<G> Finance </G>] RBC, TD, BMO, CIBC, Manulife</p>
         <p><Dim>{'>'} </Dim>[<G> Fintech </G>] Stripe, Plaid, Wealthsimple</p>
@@ -83,8 +86,9 @@ const CARDS = [
   },
   {
     title: 'CAREERS',
+    image: '/images/waterloo-ascii.svg',
     content: (
-      <div className="space-y-3">
+      <div className="space-y-1">
         <p><Dim>{'// '}where CFM graduates end up</Dim></p>
         <p style={{ color: '#333' }}>{'─'.repeat(36)}</p>
         <p><Dim>{'>'} </Dim><G>Software Engineering</G></p>
@@ -93,10 +97,10 @@ const CARDS = [
         <p><Dim>{'>'} </Dim><G>Fintech Engineering</G></p>
         <p><Dim>{'>'} </Dim><G>Data Science / ML Engineering</G></p>
         <p style={{ color: '#333' }}>{'─'.repeat(36)}</p>
-        <p>&nbsp;</p>
+        <p className="h-2" />
         <p><Dim>{'>'} </Dim>Graduate with <G>2 years of experience</G></p>
         <p><Dim>{'  '}</Dim>and <G>two degrees</G> that compound.</p>
-        <p>&nbsp;</p>
+        <p className="h-2" />
         <p><Dim>{'>'} </Dim>Build software that moves markets.</p>
       </div>
     ),
@@ -113,7 +117,7 @@ function getSlot(index: number, total: number) {
     y: index * -VERT_DIST,
     scale: 1 - index * 0.06,
     opacity: index === 0 ? 1 : Math.max(0.15, 0.7 - index * 0.2),
-    zIndex: total - index,
+    zIndex: index === 0 ? 70 : total - index,
   };
 }
 
@@ -125,7 +129,7 @@ export default function AboutSection({ onVisibilityChange, audioRef }: AboutSect
   const dotsRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [tunerOpen, setTunerOpen] = useState(false);
-  const [stackPos, setStackPos] = useState({ ml: 36, mt: -45, rot: 0, w: 560, h: 420 });
+  const [stackPos, setStackPos] = useState({ ml: 36, mt: -45, rot: -3, rotZ: 2, w: 690, h: 500 });
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isAnimatingRef = useRef(false);
   const titleAnimStarted = useRef(false);
@@ -247,48 +251,35 @@ export default function AboutSection({ onVisibilityChange, audioRef }: AboutSect
     layoutCards(0, false);
   }, [layoutCards]);
 
-  // Auto-cycle
-  useEffect(() => {
-    timerRef.current = setInterval(() => {
-      if (isAnimatingRef.current) return;
-      setActiveIndex(prev => {
-        const next = (prev + 1) % CARDS.length;
-        isAnimatingRef.current = true;
-        layoutCards(next, true);
-        setTimeout(() => { isAnimatingRef.current = false; }, 650);
-        return next;
-      });
-    }, 5000);
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [layoutCards]);
-
   const goTo = useCallback((index: number) => {
     if (isAnimatingRef.current || index === activeIndex) return;
     isAnimatingRef.current = true;
     setActiveIndex(index);
     layoutCards(index, true);
     setTimeout(() => { isAnimatingRef.current = false; }, 650);
-    // Reset auto-cycle timer
-    if (timerRef.current) clearInterval(timerRef.current);
-    timerRef.current = setInterval(() => {
-      if (isAnimatingRef.current) return;
-      setActiveIndex(prev => {
-        const next = (prev + 1) % CARDS.length;
-        isAnimatingRef.current = true;
-        layoutCards(next, true);
-        setTimeout(() => { isAnimatingRef.current = false; }, 650);
-        return next;
-      });
-    }, 5000);
   }, [activeIndex, layoutCards]);
 
   const handleNext = useCallback(() => {
     goTo((activeIndex + 1) % CARDS.length);
   }, [activeIndex, goTo]);
 
+  const handlePrev = useCallback(() => {
+    goTo((activeIndex - 1 + CARDS.length) % CARDS.length);
+  }, [activeIndex, goTo]);
+
+  // Arrow key navigation
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') handleNext();
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') handlePrev();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [handleNext, handlePrev]);
+
   return (
     <section
-      className="relative min-h-screen py-24 px-6 md:px-12 lg:px-20 flex flex-col items-center overflow-hidden"
+      className="relative min-h-screen pt-24 pb-15 px-6 md:px-12 lg:px-20 flex flex-col items-center overflow-hidden"
       style={{ backgroundColor: 'black' }}
     >
       {/* Sentinel for intersection observer */}
@@ -297,7 +288,7 @@ export default function AboutSection({ onVisibilityChange, audioRef }: AboutSect
       {/* Centered spinning background image */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/about_bg.png"
+        src="/images/about_bg.png"
         alt=""
         className="absolute pointer-events-none select-none"
         style={{
@@ -314,10 +305,15 @@ export default function AboutSection({ onVisibilityChange, audioRef }: AboutSect
       {/* Cat watching */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/cat_watching.png"
+        src="/images/cat_watching.png"
         alt=""
         className="absolute pointer-events-none select-none"
-        style={{ bottom: -60, left: 0, height: '100%', width: 'auto', zIndex: 30, animation: 'cat-bob 3s ease-in-out infinite' }}
+        style={{
+          bottom: -80, left: 0, height: '100%', width: 'auto', zIndex: 65,
+          transformOrigin: '25% 89%', animation: 'cat-bob 3s ease-in-out infinite',
+          WebkitMaskImage: 'linear-gradient(to bottom, black 70%, transparent 100%)',
+          maskImage: 'linear-gradient(to bottom, black 70%, transparent 100%)',
+        }}
       />
 
       {/* Vignette — linear fades on all sides, same style as hero */}
@@ -327,7 +323,7 @@ export default function AboutSection({ onVisibilityChange, audioRef }: AboutSect
       <div className="absolute inset-y-0 right-0 pointer-events-none z-[45]" style={{ width: '10%', background: 'linear-gradient(to left, black, transparent)' }} />
 
       {/* Section header */}
-      <div className="relative mb-20" style={{ zIndex: 50 }}>
+      <div className="relative mb-20" style={{ zIndex: 65 }}>
         {/* Glow behind title */}
         <div className="absolute inset-0 pointer-events-none" style={{
           background: 'radial-gradient(ellipse at center, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.03) 40%, transparent 70%)',
@@ -337,7 +333,7 @@ export default function AboutSection({ onVisibilityChange, audioRef }: AboutSect
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           ref={titleRef}
-          src="/about_title.png"
+          src="/images/about_title.png"
           alt="ABOUT"
           className="relative w-auto"
           style={{ height: 160, opacity: 0 }}
@@ -351,10 +347,12 @@ export default function AboutSection({ onVisibilityChange, audioRef }: AboutSect
         style={{
           width: stackPos.w,
           height: stackPos.h,
-          zIndex: 50,
+          zIndex: 65,
           marginLeft: `${stackPos.ml}%`,
           marginTop: stackPos.mt,
-          transform: `rotate(${stackPos.rot}deg)`,
+          perspective: 1200,
+          transformStyle: 'preserve-3d' as const,
+          transform: `rotateY(${stackPos.rot}deg) rotateZ(${stackPos.rotZ}deg)`,
         }}
         onClick={handleNext}
       >
@@ -363,6 +361,7 @@ export default function AboutSection({ onVisibilityChange, audioRef }: AboutSect
             key={i}
             ref={el => { cardRefs.current[i] = el; }}
             title={card.title}
+            image={card.image}
             className="absolute top-0 left-0 w-full"
             style={{ willChange: 'transform, opacity', height: stackPos.h }}
           >
@@ -371,41 +370,41 @@ export default function AboutSection({ onVisibilityChange, audioRef }: AboutSect
         ))}
       </div>
 
-      {/* Navigation dots */}
-      <div className="flex gap-3 mt-12" style={{ zIndex: 50 }}>
-        {CARDS.map((_, i) => (
-          <button
-            key={i}
-            onClick={() => goTo(i)}
-            style={{
-              width: 10,
-              height: 10,
-              border: '1px solid #888',
-              borderRadius: '50%',
-              background: activeIndex === i ? '#fff' : 'transparent',
-              boxShadow: activeIndex === i ? '0 0 8px rgba(255, 255, 255, 0.4)' : 'none',
-              cursor: 'pointer',
-              transition: 'all 0.3s ease',
-              padding: 0,
-            }}
-            aria-label={`Go to card ${i + 1}`}
-          />
-        ))}
+      {/* Navigation dots + hint */}
+      <div className="flex flex-col items-center mt-10" style={{ zIndex: 70, marginLeft: `${stackPos.ml}%` }}>
+        <div className="flex gap-4">
+          {CARDS.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => goTo(i)}
+              style={{
+                width: activeIndex === i ? 24 : 12,
+                height: 4,
+                border: 'none',
+                borderRadius: 2,
+                background: activeIndex === i ? '#fff' : 'rgba(255,255,255,0.25)',
+                boxShadow: activeIndex === i ? '0 0 10px rgba(255,255,255,0.5)' : 'none',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                padding: 0,
+              }}
+              aria-label={`Go to card ${i + 1}`}
+            />
+          ))}
+        </div>
+        <p
+          className="mt-3"
+          style={{
+            fontFamily: 'var(--font-arcade)',
+            fontSize: 12,
+            letterSpacing: '0.25em',
+            color: 'rgba(255,255,255,0.5)',
+            textShadow: '0 0 4px #000, 0 0 8px #000, 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000',
+          }}
+        >
+          CLICK  CARD  TO  CYCLE
+        </p>
       </div>
-
-      {/* Hint text */}
-      <p
-        className="mt-4"
-        style={{
-          zIndex: 50,
-          fontFamily: 'var(--font-arcade)',
-          fontSize: 10,
-          letterSpacing: '0.2em',
-          color: '#333',
-        }}
-      >
-        CLICK TO CYCLE
-      </p>
 
       {/* Card stack position tuner */}
       {!tunerOpen ? (
@@ -433,7 +432,8 @@ export default function AboutSection({ onVisibilityChange, audioRef }: AboutSect
           {[
             { label: 'margin-left %', key: 'ml', min: -30, max: 50, step: 1, suffix: '%' },
             { label: 'margin-top px', key: 'mt', min: -200, max: 200, step: 5, suffix: 'px' },
-            { label: 'rotate deg', key: 'rot', min: -15, max: 15, step: 0.5, suffix: 'deg' },
+            { label: 'rotateY deg', key: 'rot', min: -15, max: 15, step: 0.5, suffix: 'deg' },
+            { label: 'rotateZ deg', key: 'rotZ', min: -15, max: 15, step: 0.5, suffix: 'deg' },
             { label: 'width px', key: 'w', min: 300, max: 800, step: 10, suffix: 'px' },
             { label: 'height px', key: 'h', min: 200, max: 700, step: 10, suffix: 'px' },
           ].map(c => (
@@ -449,7 +449,8 @@ export default function AboutSection({ onVisibilityChange, audioRef }: AboutSect
           <div style={{ background: '#111', border: '1px solid #333', padding: 6, fontSize: 10, whiteSpace: 'pre', color: '#ccc', marginTop: 6 }}>
 {`marginLeft: '${stackPos.ml}%'
 marginTop: ${stackPos.mt}
-rotate: ${stackPos.rot}deg
+rotateY: ${stackPos.rot}deg
+rotateZ: ${stackPos.rotZ}deg
 maxWidth: ${stackPos.w}
 height: ${stackPos.h}`}
           </div>
