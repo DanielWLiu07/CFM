@@ -49,11 +49,11 @@ export default function MuteButton({ muted, onToggle, volume, onVolumeChange }: 
           height: 120,
           padding: '12px 0',
           width: 40,
-          border: '1px solid rgba(255,255,255,0.3)',
+          border: '1px solid rgba(0,0,0,0.6)',
           background: 'rgba(255,255,255,0.08)',
           backdropFilter: 'blur(16px)',
           WebkitBackdropFilter: 'blur(16px)',
-          boxShadow: '0 0 20px rgba(0,0,0,0.4)',
+          boxShadow: '0 0 0 1px rgba(255,255,255,0.2), 0 0 20px rgba(0,0,0,0.4)',
         }}
       >
         <div className="relative h-full w-1 rounded-full bg-white/20">

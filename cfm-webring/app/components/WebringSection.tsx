@@ -237,6 +237,8 @@ export default function WebringSection({ onVisibilityChange }: WebringSectionPro
   const dragCamRotRef = useRef(0);
   // Orbit dragging
   const orbitDragRef = useRef<{ lastX: number; lastTime: number } | null>(null);
+  // Mouse position ref for hover-attract
+  const mousePosRef = useRef({ x: 0, y: 0 });
 
   const panelRef = useRef<HTMLDivElement>(null);
   const [panelPos, setPanelPos] = useState({ x: 32, y: 80 });
@@ -393,29 +395,38 @@ export default function WebringSection({ onVisibilityChange }: WebringSectionPro
         dn.vx = 0; dn.vy = 0; dn.vz = 0;
       }
 
-      // Panel repulsion (on projected coords, push direction unprojected to world)
+      // Panel avoidance — direct position lerp, no velocity forces (prevents oscillation)
       const pr = panelRectRef.current;
-      const PAD_PANEL = 30;
+      const PAD_PANEL = 25;
       for (const node of nodes) {
-        if (dragging === node.index) continue;
+        if (dragging === node.index || hoveredNode === node.index) continue;
         const p = project(node.x, node.y, node.z, cam, cx, cy);
         const px1 = pr.x - PAD_PANEL, py1 = pr.y - PAD_PANEL;
         const px2 = pr.x + pr.w + PAD_PANEL, py2 = pr.y + pr.h + PAD_PANEL;
         if (p.sx > px1 && p.sx < px2 && p.sy > py1 && p.sy < py2) {
           const dL = p.sx - px1, dR = px2 - p.sx, dT = p.sy - py1, dB = py2 - p.sy;
           const minD = Math.min(dL, dR, dT, dB);
-          const pushPx = Math.min(8, minD * 0.15);
-          // Push in screen space, then unproject to get world target
-          let pushSx = p.sx, pushSy = p.sy;
-          if (minD === dL) pushSx = px1 - 5;
-          else if (minD === dR) pushSx = px2 + 5;
-          else if (minD === dT) pushSy = py1 - 5;
-          else pushSy = py2 + 5;
-          const target = unproject(pushSx, pushSy, node.z, cam, cx, cy);
-          node.vx += (target.x - node.x) * 0.15;
-          node.vy += (target.y - node.y) * 0.15;
-          node.vx *= 0.6; node.vy *= 0.6;
+          let targetSx = p.sx, targetSy = p.sy;
+          if (minD === dL) targetSx = px1 - 2;
+          else if (minD === dR) targetSx = px2 + 2;
+          else if (minD === dT) targetSy = py1 - 2;
+          else targetSy = py2 + 2;
+          const target = unproject(targetSx, targetSy, node.z, cam, cx, cy);
+          // Lerp position directly — no velocity, no bounce
+          node.x += (target.x - node.x) * 0.12;
+          node.y += (target.y - node.y) * 0.12;
+          node.vx *= 0.3; node.vy *= 0.3; // kill existing velocity
         }
+      }
+
+      // Hover-attract: smoothly move hovered node toward cursor position
+      if (hoveredNode >= 0 && hoveredNode < nodes.length && dragging < 0) {
+        const hn = nodes[hoveredNode];
+        const mp = mousePosRef.current;
+        const target = unproject(mp.x, mp.y, hn.z, cam, cx, cy);
+        hn.x += (target.x - hn.x) * 0.06;
+        hn.y += (target.y - hn.y) * 0.06;
+        hn.vx *= 0.3; hn.vy *= 0.3;
       }
 
       // Project all nodes
@@ -642,8 +653,8 @@ export default function WebringSection({ onVisibilityChange }: WebringSectionPro
     if (orbitDragRef.current) {
       const dx = mx - orbitDragRef.current.lastX;
       const dt = Math.max(1, Date.now() - orbitDragRef.current.lastTime);
-      cam.rotY += dx * 0.004;
-      cam.rotVel = (dx * 0.004) / Math.min(dt / 16, 3); // normalize to ~60fps
+      cam.rotY -= dx * 0.004;
+      cam.rotVel = (-dx * 0.004) / Math.min(dt / 16, 3); // normalize to ~60fps
       orbitDragRef.current.lastX = mx;
       orbitDragRef.current.lastTime = Date.now();
       return;
@@ -661,12 +672,16 @@ export default function WebringSection({ onVisibilityChange }: WebringSectionPro
       return;
     }
 
+    mousePosRef.current = { x: mx, y: my };
     const closest = findNodeAt(mx, my);
     setHoveredNode(closest);
     if (closest >= 0) {
       const node = graph.nodes[closest];
       setTooltip({ x: node.sx, y: node.sy, entry: node.entry });
       canvas.style.cursor = 'grab';
+      // Keep sim alive for hover-attract
+      settled.current = false;
+      frameCount.current = 150;
     } else {
       setTooltip(null);
       canvas.style.cursor = 'default';
@@ -726,34 +741,44 @@ export default function WebringSection({ onVisibilityChange }: WebringSectionPro
     setTooltip(null);
   }, []);
 
-  const handleWheel = useCallback((e: React.WheelEvent<HTMLCanvasElement>) => {
-    e.preventDefault();
-    const cam = cameraRef.current;
-    if (e.ctrlKey) {
-      // Pinch-to-zoom (trackpad)
-      cam.zoom = Math.max(0.4, Math.min(2.5, cam.zoom - e.deltaY * 0.005));
-    } else {
-      // Horizontal swipe → orbit, vertical scroll → zoom
-      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
-        cam.rotVel += e.deltaX * 0.00008;
-      } else {
-        cam.zoom = Math.max(0.4, Math.min(2.5, cam.zoom - e.deltaY * 0.001));
+  // Native wheel listener to prevent page scroll (React onWheel is passive)
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const onWheel = (e: WheelEvent) => {
+      const cam = cameraRef.current;
+      if (e.ctrlKey) {
+        // Pinch-to-zoom (trackpad) or Ctrl+scroll → zoom
+        e.preventDefault();
+        e.stopPropagation();
+        cam.zoom = Math.max(0.4, Math.min(2.5, cam.zoom - e.deltaY * 0.005));
+      } else if (Math.abs(e.deltaX) > Math.abs(e.deltaY) * 0.5 && Math.abs(e.deltaX) > 3) {
+        // Horizontal swipe → rotate
+        e.preventDefault();
+        e.stopPropagation();
+        cam.rotVel -= e.deltaX * 0.00008;
       }
-    }
+      // Regular vertical scroll → passes through to page
+    };
+    canvas.addEventListener('wheel', onWheel, { passive: false });
+    return () => canvas.removeEventListener('wheel', onWheel);
   }, []);
 
-  // Slider-driven rotation — reads from camera each frame for display
+  // Sliders
   const [sliderAngle, setSliderAngle] = useState(0);
+  const [sliderZoom, setSliderZoom] = useState(100);
   const sliderDraggingRef = useRef(false);
+  const zoomSliderDraggingRef = useRef(false);
 
-  // Sync slider display with camera (throttled via rAF already)
   useEffect(() => {
     let id = 0;
     const sync = () => {
+      const cam = cameraRef.current;
       if (!sliderDraggingRef.current) {
-        // Normalize to 0-360
-        const deg = ((cameraRef.current.rotY * 180 / Math.PI) % 360 + 360) % 360;
-        setSliderAngle(deg);
+        setSliderAngle(((cam.rotY * 180 / Math.PI) % 360 + 360) % 360);
+      }
+      if (!zoomSliderDraggingRef.current) {
+        setSliderZoom(Math.round(cam.zoom * 100));
       }
       id = requestAnimationFrame(sync);
     };
@@ -765,14 +790,20 @@ export default function WebringSection({ onVisibilityChange }: WebringSectionPro
     const deg = parseFloat(e.target.value);
     setSliderAngle(deg);
     sliderDraggingRef.current = true;
-    const cam = cameraRef.current;
-    cam.rotY = deg * Math.PI / 180;
-    cam.rotVel = 0;
+    cameraRef.current.rotY = deg * Math.PI / 180;
+    cameraRef.current.rotVel = 0;
   }, []);
 
-  const handleSliderUp = useCallback(() => {
-    sliderDraggingRef.current = false;
+  const handleSliderUp = useCallback(() => { sliderDraggingRef.current = false; }, []);
+
+  const handleZoomChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = parseFloat(e.target.value);
+    setSliderZoom(v);
+    zoomSliderDraggingRef.current = true;
+    cameraRef.current.zoom = v / 100;
   }, []);
+
+  const handleZoomUp = useCallback(() => { zoomSliderDraggingRef.current = false; }, []);
 
   const listMaxHeight = panelSize.h - 230;
 
@@ -905,13 +936,13 @@ export default function WebringSection({ onVisibilityChange }: WebringSectionPro
 
       <div className="absolute inset-0">
         <canvas ref={canvasRef} className="w-full h-full"
-          onMouseDown={handleCanvasDown} onMouseMove={handleCanvasMove} onMouseUp={handleCanvasUp} onMouseLeave={handleCanvasLeave} onWheel={handleWheel}
+          onMouseDown={handleCanvasDown} onMouseMove={handleCanvasMove} onMouseUp={handleCanvasUp} onMouseLeave={handleCanvasLeave}
         />
       </div>
 
-      {/* Rotation slider — bottom center */}
+      {/* Controls bar — bottom center */}
       <div
-        className="absolute z-20 flex items-center gap-3"
+        className="absolute z-20 flex items-center gap-5"
         style={{
           bottom: 24,
           left: '50%',
@@ -923,31 +954,35 @@ export default function WebringSection({ onVisibilityChange }: WebringSectionPro
           userSelect: 'none',
         }}
       >
-        <span style={{ fontFamily: 'var(--font-arcade)', fontSize: 8, color: '#555', letterSpacing: '0.1em', whiteSpace: 'nowrap' }}>
-          ROTATE
-        </span>
-        <input
-          type="range"
-          min="0"
-          max="360"
-          step="0.5"
-          value={sliderAngle}
-          onChange={handleSliderChange}
-          onMouseUp={handleSliderUp}
-          onTouchEnd={handleSliderUp}
-          style={{
-            width: 200,
-            height: 2,
-            appearance: 'none',
-            background: '#333',
-            outline: 'none',
-            cursor: 'pointer',
-            accentColor: '#fff',
-          }}
-        />
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#444', width: 32, textAlign: 'right' }}>
-          {Math.round(sliderAngle)}°
-        </span>
+        <div className="flex items-center gap-2">
+          <span style={{ fontFamily: 'var(--font-arcade)', fontSize: 8, color: '#555', letterSpacing: '0.1em', whiteSpace: 'nowrap' }}>
+            ROTATE
+          </span>
+          <input
+            type="range" min="0" max="360" step="0.5"
+            value={sliderAngle} onChange={handleSliderChange}
+            onMouseUp={handleSliderUp} onTouchEnd={handleSliderUp}
+            style={{ width: 140, height: 2, appearance: 'none', background: '#333', outline: 'none', cursor: 'pointer', accentColor: '#fff' }}
+          />
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#444', width: 28, textAlign: 'right' }}>
+            {Math.round(sliderAngle)}°
+          </span>
+        </div>
+        <div style={{ width: 1, height: 14, background: '#333' }} />
+        <div className="flex items-center gap-2">
+          <span style={{ fontFamily: 'var(--font-arcade)', fontSize: 8, color: '#555', letterSpacing: '0.1em', whiteSpace: 'nowrap' }}>
+            ZOOM
+          </span>
+          <input
+            type="range" min="40" max="250" step="1"
+            value={sliderZoom} onChange={handleZoomChange}
+            onMouseUp={handleZoomUp} onTouchEnd={handleZoomUp}
+            style={{ width: 100, height: 2, appearance: 'none', background: '#333', outline: 'none', cursor: 'pointer', accentColor: '#fff' }}
+          />
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#444', width: 32, textAlign: 'right' }}>
+            {sliderZoom}%
+          </span>
+        </div>
       </div>
     </section>
   );

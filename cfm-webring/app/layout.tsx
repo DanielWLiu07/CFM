@@ -22,6 +22,9 @@ const arcadeClassic = localFont({
 export const metadata: Metadata = {
   title: "CFM Webring",
   description: "CFM Webring",
+  icons: {
+    icon: "/favicon_cfm.png",
+  },
 };
 
 export default function RootLayout({

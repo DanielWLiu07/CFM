@@ -26,7 +26,7 @@ const CARDS = [
     image: '/images/uwaterloo-seal.svg',
     content: (
       <div className="space-y-1">
-        <p className="text-lg" style={{ color: '#fff', fontFamily: 'var(--font-arcade)', fontSize: 18, letterSpacing: '0.05em' }}>
+        <p style={{ color: '#fff', fontFamily: 'var(--font-arcade)', fontSize: 16, letterSpacing: '0.05em' }}>
           Computing and Financial Management
         </p>
         <p style={{ color: '#333' }}>{'─'.repeat(36)}</p>
