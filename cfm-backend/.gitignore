@@ -1,0 +1,30 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build outputs
+dist/
+*.tsbuildinfo
+
+# Local environment
+.env
+.env.local
+.env.*.local
+
+# TypeScript compiled artifacts if kept next to src
+src/**/*.js
+src/**/*.js.map
+src/**/*.d.ts
+src/**/*.d.ts.map
+types/**/*.js
+types/**/*.js.map
+types/**/*.d.ts
+types/**/*.d.ts.map
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/
