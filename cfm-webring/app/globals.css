@@ -73,6 +73,13 @@ html, body {
   100%     { transform: translateX(-50%) translateY(0) scale(1); filter: drop-shadow(0 0 30px rgba(255,255,255,0.3)) drop-shadow(0 0 60px rgba(255,255,255,0.15)) brightness(1.1); }
 }
 
+/* ── Reduced motion ────────────────────────────────────────────────────── */
+.reduced-motion *,
+.reduced-motion *::before,
+.reduced-motion *::after {
+  animation-play-state: paused !important;
+}
+
 /* ── Global smooth transitions ─────────────────────────────────────────── */
 
 /* Buttons & interactive elements */

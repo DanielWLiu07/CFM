@@ -1,5 +1,7 @@
 'use client';
 
+import { useRef, useEffect } from 'react';
+
 const FRONTEND_REPO = 'https://github.com/DanielWLiu07/CFM';
 const BACKEND_REPO = 'https://github.com/AadyaCFM/CFM-backend';
 
@@ -23,9 +25,22 @@ const TECH_STACK = {
   ],
 };
 
-export default function GithubSection() {
+export default function GithubSection({ onVisibilityChange }: { onVisibilityChange?: (visible: boolean) => void }) {
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!onVisibilityChange || !sentinelRef.current) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => onVisibilityChange(entry.isIntersecting),
+      { threshold: 0.1 }
+    );
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [onVisibilityChange]);
+
   return (
-    <section className="relative flex flex-col items-center justify-center py-20 px-6" style={{ background: '#000', minHeight: '60vh' }}>
+    <section className="relative flex flex-col items-center justify-center py-20 px-6" style={{ background: '#000' }}>
+      <div ref={sentinelRef} className="absolute top-0 left-0 w-full h-24" />
 
       {/* Terminal box */}
       <div style={{

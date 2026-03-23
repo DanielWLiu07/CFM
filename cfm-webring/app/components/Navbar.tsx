@@ -10,7 +10,7 @@ const links = [
   { href: "/about", label: "About" },
   { href: "/class", label: "Class" },
   { href: "/webring", label: "Webring" },
-  { href: "https://github.com/DanielWLiu07/CFM", label: "Github", external: true },
+  { href: "/github", label: "Github" },
 ];
 
 interface NavbarProps {
@@ -34,7 +34,7 @@ export default function Navbar({ activeRoute }: NavbarProps) {
         }}
       >
         {links.map(({ href, label, external }) => {
-          const isScrollTarget = href === '/' || href === '/about' || href === '/class' || href === '/webring';
+          const isScrollTarget = href === '/' || href === '/about' || href === '/class' || href === '/webring' || href === '/github';
           const isActive = currentRoute === href;
 
           const handleClick = (e: React.MouseEvent) => {
@@ -42,15 +42,9 @@ export default function Navbar({ activeRoute }: NavbarProps) {
             e.preventDefault();
             if (href === '/') {
               window.scrollTo({ top: 0, behavior: 'smooth' });
-            } else if (href === '/about') {
-              const sections = document.querySelectorAll('section');
-              sections[0]?.scrollIntoView({ behavior: 'smooth' });
-            } else if (href === '/class') {
-              const sections = document.querySelectorAll('section');
-              sections[1]?.scrollIntoView({ behavior: 'smooth' });
-            } else if (href === '/webring') {
-              const sections = document.querySelectorAll('section');
-              sections[2]?.scrollIntoView({ behavior: 'smooth' });
+            } else {
+              const el = document.getElementById(href.slice(1));
+              el?.scrollIntoView({ behavior: 'smooth' });
             }
           };
 

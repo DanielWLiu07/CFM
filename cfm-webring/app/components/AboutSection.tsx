@@ -10,6 +10,7 @@ const BEAT_OFFSET = 0.229;
 interface AboutSectionProps {
   onVisibilityChange: (visible: boolean) => void;
   audioRef: React.RefObject<HTMLAudioElement | null>;
+  reducedMotion?: boolean;
 }
 
 function G({ children }: { children: React.ReactNode }) {
@@ -110,9 +111,19 @@ function getSlot(index: number, total: number) {
   };
 }
 
-export default function AboutSection({ onVisibilityChange, audioRef }: AboutSectionProps) {
+export default function AboutSection({ onVisibilityChange, audioRef, reducedMotion }: AboutSectionProps) {
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const reducedMotionRef = useRef(reducedMotion);
+  reducedMotionRef.current = reducedMotion;
   const titleRef = useRef<HTMLImageElement>(null);
+
+  // Kill gsap animations and reset title when reduced motion turns on
+  useEffect(() => {
+    if (reducedMotion && titleRef.current) {
+      gsap.killTweensOf(titleRef.current);
+      gsap.set(titleRef.current, { y: 0, scaleX: 1, scaleY: 1 });
+    }
+  }, [reducedMotion]);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
   const stackRef = useRef<HTMLDivElement>(null);
   const dotsRef = useRef<HTMLDivElement>(null);
@@ -171,7 +182,7 @@ export default function AboutSection({ onVisibilityChange, audioRef }: AboutSect
       // Reset on audio loop
       if (t < 0.1) state.lastFiredIdx = -1;
 
-      if (t >= BEAT_OFFSET) {
+      if (t >= BEAT_OFFSET && !reducedMotionRef.current) {
         const beatIdx = Math.floor((t - BEAT_OFFSET) / BEAT_INTERVAL);
         if (beatIdx > state.lastFiredIdx) {
           state.lastFiredIdx = beatIdx;
@@ -287,7 +298,7 @@ export default function AboutSection({ onVisibilityChange, audioRef }: AboutSect
           width: 'auto',
           maxWidth: 'none',
           transform: 'translate(-50%, -50%)',
-          animation: 'about-bg-spin 120s linear infinite',
+          animation: reducedMotion ? 'none' : 'about-bg-spin 120s linear infinite',
           zIndex: 1,
         }}
       />

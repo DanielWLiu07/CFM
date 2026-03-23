@@ -30,7 +30,7 @@ export default function Home() {
 
   const updateActiveRoute = useCallback(() => {
     // Priority: bottommost visible section wins
-    const priority = ['/webring', '/class', '/about'];
+    const priority = ['/github', '/webring', '/class', '/about'];
     for (const route of priority) {
       if (visibleSections.current.has(route)) {
         setActiveRoute(route);
@@ -57,6 +57,12 @@ export default function Home() {
   const handleWebringVisibility = useCallback((visible: boolean) => {
     if (visible) visibleSections.current.add('/webring');
     else visibleSections.current.delete('/webring');
+    updateActiveRoute();
+  }, [updateActiveRoute]);
+
+  const handleGithubVisibility = useCallback((visible: boolean) => {
+    if (visible) visibleSections.current.add('/github');
+    else visibleSections.current.delete('/github');
     updateActiveRoute();
   }, [updateActiveRoute]);
 
@@ -114,19 +120,14 @@ export default function Home() {
       }
       lastAudioTime = t;
 
-      if (t >= BEAT_OFFSET) {
+      if (t >= BEAT_OFFSET && !reducedMotionRef.current) {
         const beatIdx = Math.floor((t - BEAT_OFFSET) / BEAT_INTERVAL);
         if (beatIdx > lastFiredIdx) {
           lastFiredIdx = beatIdx;
           crushTargetRef.current = beatIdx % 2 === 0 ? 0 : MAX_CRUSH;
           sepTargetRef.current = beatIdx % 2 === 0 ? 0 : 1;
-          // Trigger shake on slam beats (odd = crush inward)
-          if (beatIdx % 2 === 1 && !reducedMotionRef.current) {
-            shakeRef.current = 0.04;
-          }
-          // Webring title beat pulse
-          if (!reducedMotionRef.current) webringBeatRef.current = 1;
-          // Gears swing between -15 and 15 on beat
+          if (beatIdx % 2 === 1) shakeRef.current = 0.04;
+          webringBeatRef.current = 1;
           if (beatIdx % 2 === 1) {
             gearAngleRef.current = 15;
             gear2AngleRef.current = 15;
@@ -191,6 +192,19 @@ export default function Home() {
         ref.current.style.filter = '';
       }
 
+      // Orbital rings — beat-synced scale + opacity (matches 3JS ConcentricRings)
+      for (const ref of [ring1Ref, ring2Ref, ring3Ref]) {
+        if (!ref.current) continue;
+        const baseBorder = ref.current.dataset.baseBorderW ?? '1';
+        const baseOp = ref.current.dataset.baseOpacity ?? '0.06';
+        const bw = parseFloat(baseBorder) + wb * 0.5;
+        const op = parseFloat(baseOp) + wb * 0.06;
+        const s = 1 + wb * 0.08;
+        ref.current.style.borderWidth = `${bw}px`;
+        ref.current.style.borderColor = `rgba(255,255,255,${op})`;
+        ref.current.style.scale = `${s}`;
+      }
+
       // Separate wires — spring-driven scaleY pulse on beat
       sepCrushVelRef.current += (sepTargetRef.current - sepCrushRef.current) * STIFFNESS;
       sepCrushVelRef.current *= DAMPING;
@@ -230,8 +244,13 @@ export default function Home() {
 
   const toggleReducedMotion = useCallback(() => {
     setReducedMotion(prev => {
-      reducedMotionRef.current = !prev;
-      return !prev;
+      const next = !prev;
+      reducedMotionRef.current = next;
+      if (videoRef.current) {
+        if (next) videoRef.current.pause();
+        else videoRef.current.play();
+      }
+      return next;
     });
   }, []);
 
@@ -299,7 +318,7 @@ export default function Home() {
   ];
 
   return (
-    <div className="bg-black" style={{ overflowX: 'clip' }}>
+    <div className={`bg-black${reducedMotion ? ' reduced-motion' : ''}`} style={{ overflowX: 'clip' }}>
 
       <div className="fixed top-4 left-3 z-[100]">
         <Navbar activeRoute={activeRoute} />
@@ -482,7 +501,7 @@ export default function Home() {
             style={{
               bottom: '-2400%', left: '-22%',
               height: '900px', width: 'auto', zIndex: 5,
-              transformOrigin: '25% 89%', animation: 'cat-bob 3s ease-in-out infinite',
+              transformOrigin: '25% 89%', animation: reducedMotion ? 'none' : 'cat-bob 3s ease-in-out infinite',
             }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -500,7 +519,7 @@ export default function Home() {
       </div>
 
       <div id="about" style={{ position: 'relative', zIndex: 50 }}>
-        <AboutSection onVisibilityChange={handleAboutVisibility} audioRef={audioRef} />
+        <AboutSection onVisibilityChange={handleAboutVisibility} audioRef={audioRef} reducedMotion={reducedMotion} />
       </div>
 
       <div id="class" className="relative">
@@ -515,19 +534,25 @@ export default function Home() {
       <div id="webring" style={{ position: 'relative', zIndex: 70 }}>
         {/* Big orbital rings — span entire section, slowly rotate */}
         <div ref={ring1Ref} className="absolute pointer-events-none" style={{
-          top: '-15%', left: '50%', width: '120vw', height: '120vw',
-          borderRadius: '50%', border: '1.5px solid rgba(255,255,255,0.08)',
-          zIndex: 30, animation: 'ring-spin 180s linear infinite',
+          top: '-17%', left: '50%', width: '120vw', height: '120vw',
+          borderRadius: '50%', border: '2px solid rgba(255,255,255,0.15)',
+          clipPath: 'inset(0 0 50% 0)',
+          zIndex: 30,
+          animation: reducedMotion ? 'none' : 'ring-spin 180s linear infinite',
         }} />
         <div ref={ring2Ref} className="absolute pointer-events-none" style={{
-          top: '-5%', left: '50%', width: '90vw', height: '90vw',
-          borderRadius: '50%', border: '1px solid rgba(255,255,255,0.06)',
-          zIndex: 30, animation: 'ring-spin 240s linear infinite reverse',
+          top: '5%', left: '50%', width: '90vw', height: '90vw',
+          borderRadius: '50%', border: '1.5px solid rgba(255,255,255,0.12)',
+          clipPath: 'inset(0 0 50% 0)',
+          zIndex: 30,
+          animation: reducedMotion ? 'none' : 'ring-spin 240s linear infinite reverse',
         }} />
         <div ref={ring3Ref} className="absolute pointer-events-none" style={{
-          top: '5%', left: '50%', width: '140vw', height: '140vw',
-          borderRadius: '50%', border: '1px solid rgba(255,255,255,0.04)',
-          zIndex: 30, animation: 'ring-spin 300s linear infinite',
+          top: '-9%', left: '50%', width: '140vw', height: '140vw',
+          borderRadius: '50%', border: '1.5px solid rgba(255,255,255,0.1)',
+          clipPath: 'inset(0 0 50% 0)',
+          zIndex: 30,
+          animation: reducedMotion ? 'none' : 'ring-spin 300s linear infinite',
         }} />
 
         {/* Webring title — JS-driven beat animation synced to audio */}
@@ -591,7 +616,7 @@ export default function Home() {
           src="/images/sponge.png"
           alt=""
           className="absolute pointer-events-none select-none"
-          style={{ left: '63%', top: '40%', height: '678px', width: 'auto', maxWidth: 'none', zIndex: 12, opacity: 0.1, transform: 'rotate(0deg)' }}
+          style={{ left: '52%', top: '40%', height: '678px', width: 'auto', maxWidth: 'none', zIndex: 12, opacity: 0.1, transform: 'rotate(0deg)' }}
         />
         {/* Wall decoration */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -610,21 +635,21 @@ export default function Home() {
         <div className="absolute inset-0 bg-black" style={{ zIndex: 5 }} />
         {/* Content — above webring deco */}
         <div style={{ position: 'relative', zIndex: 15 }}>
-          <GithubSection />
+          <GithubSection onVisibilityChange={handleGithubVisibility} />
         </div>
       </div>
 
       <DecoTuner items={[
         { ref: starLeftRef, label: 'STAR LEFT', defaults: { x: 3, y: -7, size: 340, rotation: -136, opacity: 0.2 } },
         { ref: starRightRef, label: 'STAR RIGHT', defaults: { x: 75, y: -7, size: 340, rotation: 0, opacity: 0.2 } },
-        { ref: spongeRef, label: 'SPONGE', defaults: { x: 63, y: 40, size: 678, rotation: 0, opacity: 0.1 } },
+        { ref: spongeRef, label: 'SPONGE', defaults: { x: 52, y: 40, size: 678, rotation: 0, opacity: 0.1 } },
         { ref: wallRef, label: 'WALL', defaults: { x: -14, y: 60, size: 466, rotation: -10, opacity: 0.2 } },
       ]} />
 
       <RingTuner items={[
-        { ref: ring1Ref, label: 'RING 1 (big)', defaults: { top: -15, left: 50, size: 120, opacity: 0.08, borderW: 1.5 } },
-        { ref: ring2Ref, label: 'RING 2 (mid)', defaults: { top: -5, left: 50, size: 90, opacity: 0.06, borderW: 1 } },
-        { ref: ring3Ref, label: 'RING 3 (huge)', defaults: { top: 5, left: 50, size: 140, opacity: 0.04, borderW: 1 } },
+        { ref: ring1Ref, label: 'RING 1 (big)', defaults: { top: -17, left: 50, size: 120, opacity: 0.15, borderW: 2 } },
+        { ref: ring2Ref, label: 'RING 2 (mid)', defaults: { top: 5, left: 50, size: 90, opacity: 0.12, borderW: 1.5 } },
+        { ref: ring3Ref, label: 'RING 3 (huge)', defaults: { top: -9, left: 50, size: 140, opacity: 0.1, borderW: 1.5 } },
       ]} />
 
       <div className="fixed bottom-4 right-4 z-[999] flex items-end gap-2">
@@ -636,14 +661,12 @@ export default function Home() {
         >
           {reducedMotion ? (
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
+              <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .963L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" opacity="0.3" />
               <line x1="4" y1="4" x2="20" y2="20" />
             </svg>
           ) : (
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M2 12c0 0 2-4 5-4s3 8 6 8 5-4 5-4" />
-              <path d="M2 4l0 16" />
-              <path d="M22 4l0 16" />
+              <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .963L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
             </svg>
           )}
         </button>

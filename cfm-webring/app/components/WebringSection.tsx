@@ -370,7 +370,8 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
           beatPulseRef.current = 1;
         }
       }
-      beatPulseRef.current *= 0.96; // smooth decay
+      if (reducedMotion) beatPulseRef.current = 0;
+      else beatPulseRef.current *= 0.96; // smooth decay
       const beat = beatPulseRef.current;
 
       // Center glow — pulses on beat
@@ -858,7 +859,7 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
       <div ref={sentinelRef} className="absolute top-0 left-0 w-full h-24" />
 
       {/* Three.js background scene */}
-      <WebringBackground beatRef={beatPulseRef} />
+      <WebringBackground beatRef={beatPulseRef} paused={reducedMotion} />
 
       {/* Center glow — beat-synced radial pulse */}
       <div
@@ -887,7 +888,7 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
         <div
           style={{
             border: '2px solid #000',
-            background: 'rgba(0, 0, 0, 0.85)',
+            background: 'rgba(0, 0, 0, 1)',
             backdropFilter: 'blur(8px)',
             boxShadow: '3px 3px 0 #000',
             height: collapsed ? 'auto' : panelSize.h,

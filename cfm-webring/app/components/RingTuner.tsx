@@ -31,6 +31,8 @@ export default function RingTuner({ items }: { items: RingItem[] }) {
       el.style.width = `${v.size}vw`;
       el.style.height = `${v.size}vw`;
       el.style.border = `${v.borderW}px solid rgba(255,255,255,${v.opacity})`;
+      el.dataset.baseBorderW = String(v.borderW);
+      el.dataset.baseOpacity = String(v.opacity);
     });
   }, [values, items]);
 

@@ -400,7 +400,7 @@ function CameraRig() {
 
 // ── Main ────────────────────────────────────────────────────────────────────
 
-export default function WebringBackground({ beatRef }: { beatRef?: RefObject<number> }) {
+export default function WebringBackground({ beatRef, paused }: { beatRef?: RefObject<number>; paused?: boolean }) {
   const fallbackRef = useRef(0);
   const activeBeatRef = beatRef ?? fallbackRef;
 
@@ -411,6 +411,7 @@ export default function WebringBackground({ beatRef }: { beatRef?: RefObject<num
         style={{ background: 'transparent' }}
         gl={{ alpha: true, antialias: true, powerPreference: 'high-performance' }}
         dpr={[1, 1.5]}
+        frameloop={paused ? 'demand' : 'always'}
       >
         <BeatContext.Provider value={activeBeatRef}>
         <fog attach="fog" args={['#000000', 10, 30]} />
