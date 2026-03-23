@@ -3,7 +3,7 @@
 import { useRef, useEffect } from 'react';
 
 const FRONTEND_REPO = 'https://github.com/DanielWLiu07/CFM';
-const BACKEND_REPO = 'https://github.com/AadyaCFM/CFM-backend';
+const BACKEND_REPO = 'https://github.com/aadya-khanna/CFM-Webring-Backend';
 
 const TECH_STACK = {
   frontend: [
