@@ -57,7 +57,7 @@ const TerminalCard = forwardRef<HTMLDivElement, TerminalCardProps>(
             WebkitBackdropFilter: 'blur(24px)',
             position: 'relative',
             overflow: 'hidden',
-            height: '100%',
+            minHeight: 'inherit',
             display: 'flex',
             flexDirection: 'column' as const,
           }}
@@ -122,7 +122,7 @@ const TerminalCard = forwardRef<HTMLDivElement, TerminalCardProps>(
 
           {/* Terminal body */}
           <div
-            style={{ display: 'flex', flex: 1, overflow: 'hidden' }}
+            style={{ display: 'flex', flex: 1, overflow: 'visible' }}
           >
             <div
               className="p-5 md:p-6"
@@ -140,7 +140,7 @@ const TerminalCard = forwardRef<HTMLDivElement, TerminalCardProps>(
             {image && (
               <div
                 style={{
-                  width: '35%',
+                  width: '28%',
                   flexShrink: 0,
                   borderLeft: '1px solid rgba(255,255,255,0.08)',
                   position: 'relative',

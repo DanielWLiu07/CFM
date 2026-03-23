@@ -1,9 +1,16 @@
 'use client';
 
-import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
+import { useRef, useEffect, useState, useCallback, useMemo, type RefObject } from 'react';
+import dynamic from 'next/dynamic';
+
+const WebringBackground = dynamic(() => import('./WebringBackground'), { ssr: false });
+
+const BEAT_INTERVAL = 60 / 93;
+const BEAT_OFFSET = 0.229;
 
 interface WebringSectionProps {
   onVisibilityChange: (visible: boolean) => void;
+  audioRef: RefObject<HTMLAudioElement | null>;
 }
 
 interface WebringEntry {
@@ -11,10 +18,11 @@ interface WebringEntry {
   url: string;
   description: string;
   cohort: string;
+  avatar?: string; // optional image path
 }
 
 const WEBRING_ENTRIES: WebringEntry[] = [
-  { name: 'Daniel Liu', url: 'https://danielwliu.com', description: 'SWE @ building things', cohort: '2029' },
+  { name: 'Daniel Liu', url: 'https://danielwliu.com', description: 'SWE @ building things', cohort: '2029', avatar: '/images/avatars/daniel.png' },
   { name: 'Alice Chen', url: '#', description: 'quant dev in training', cohort: '2028' },
   { name: 'Bob Zhang', url: '#', description: 'full-stack fintech', cohort: '2029' },
   { name: 'Carol Wu', url: '#', description: 'ML + markets', cohort: '2027' },
@@ -40,14 +48,12 @@ interface Node {
   index: number;
   // Cached projection (updated each frame)
   sx: number; sy: number; scale: number; depth: number;
+  hoverAnim: number; // 0 = not hovered, 1 = fully hovered (lerps smoothly)
+  avatarImg: HTMLImageElement | null;
 }
 
 interface Edge { from: number; to: number; }
 
-interface Star {
-  x: number; y: number; z: number;
-  brightness: number;
-}
 
 interface Camera {
   rotY: number;
@@ -63,7 +69,6 @@ const CAM_Z = 0;
 const FOG_NEAR = -400;
 const FOG_FAR = 800;
 const Z_BOUND = 200;
-const STAR_COUNT = 120;
 const TAU = Math.PI * 2;
 
 // ── Projection ──────────────────────────────────────────────────────────────
@@ -101,25 +106,21 @@ function depthFog(depth: number) {
 // ── Unproject (screen → world, pinning z) ───────────────────────────────────
 
 function unproject(sx: number, sy: number, nodeZ: number, cam: Camera, cx: number, cy: number) {
-  // Compute what rz2 (rotated z) would be for this node's z
-  // We need to estimate rx to rotate, but we're solving for it — use iterative approach:
-  // Start with rx guess = 0, compute rz2, then solve rx from screen coords
-  const cosR = Math.cos(cam.rotY);
-  const sinR = Math.sin(cam.rotY);
+  const C = Math.cos(cam.rotY);
+  const S = Math.sin(cam.rotY);
+  const F = FOCAL * cam.zoom;
+  const A = sx - cx;
 
-  // First pass: assume rx ≈ 0 to get approximate rz2
-  let rz2 = nodeZ * cosR; // rx*sinR ≈ 0
-  const focalZoomed = FOCAL * cam.zoom;
-  let scale = focalZoomed / (focalZoomed + rz2);
+  // Exact closed-form: solve rx from the projection equation
+  // A = (rx*C - Z*S) * F / (F + rx*S + Z*C)
+  // → rx = (A*(F + Z*C) + Z*S*F) / (C*F - A*S)
+  const denom = C * F - A * S;
+  const rx = denom !== 0 ? (A * (F + nodeZ * C) + nodeZ * S * F) / denom : A;
 
-  // Solve rx2 from screen position
-  const rx2 = (sx - cx) / scale;
+  // Now compute the actual rz2 and scale for accurate Y
+  const rz2 = rx * S + nodeZ * C;
+  const scale = F / (F + rz2);
   const ry = (sy - cy) / scale - Math.sin(cam.bobPhase) * 8;
-
-  // Inverse rotation: rx2 = rx*cos - rz*sin, rz2 = rx*sin + rz*cos
-  // We know nodeZ and rx2, solve for rx:
-  // rx2 = rx*cos - nodeZ*sin  →  rx = (rx2 + nodeZ*sin) / cos
-  const rx = cosR !== 0 ? (rx2 + nodeZ * sinR) / cosR : rx2;
 
   return { x: rx + cx, y: ry + cy };
 }
@@ -127,12 +128,17 @@ function unproject(sx: number, sy: number, nodeZ: number, cam: Camera, cx: numbe
 // ── Graph Construction ──────────────────────────────────────────────────────
 
 function buildGraph(entries: WebringEntry[], w: number, h: number) {
-  const padX = 120, padY = 120;
+  const padX = 60, padY = 60;
   const nodes: Node[] = entries.map((entry, i) => {
     const x = padX + seededRandom(i * 2) * (w - padX * 2);
     const y = padY + seededRandom(i * 2 + 1) * (h - padY * 2);
     const z = -Z_BOUND + seededRandom(i * 2 + 100) * Z_BOUND * 2;
-    return { x, y, z, vx: 0, vy: 0, vz: 0, entry, index: i, sx: 0, sy: 0, scale: 1, depth: 0 };
+    let avatarImg: HTMLImageElement | null = null;
+    if (entry.avatar) {
+      avatarImg = new Image();
+      avatarImg.src = entry.avatar;
+    }
+    return { x, y, z, vx: 0, vy: 0, vz: 0, entry, index: i, sx: 0, sy: 0, scale: 1, depth: 0, hoverAnim: 0, avatarImg };
   });
 
   const edges: Edge[] = [];
@@ -148,27 +154,15 @@ function buildGraph(entries: WebringEntry[], w: number, h: number) {
   return { nodes, edges };
 }
 
-function buildStars(): Star[] {
-  const stars: Star[] = [];
-  for (let i = 0; i < STAR_COUNT; i++) {
-    stars.push({
-      x: (seededRandom(i * 3 + 1000) - 0.5) * 1600,
-      y: (seededRandom(i * 3 + 1001) - 0.5) * 1000,
-      z: (seededRandom(i * 3 + 1002) - 0.5) * 1200,
-      brightness: 0.15 + seededRandom(i * 3 + 1003) * 0.5,
-    });
-  }
-  return stars;
-}
 
 // ── 3D Physics ──────────────────────────────────────────────────────────────
 
-function simulate3D(nodes: Node[], edges: Edge[], w: number, h: number) {
-  const REPULSION = 12000;
-  const SPRING = 0.004;
-  const SPRING_LEN = 200;
+function simulate3D(nodes: Node[], edges: Edge[], w: number, h: number, pinnedIndex = -1) {
+  const REPULSION = 30000;
+  const SPRING = 0.002;
+  const SPRING_LEN = 320;
   const DAMPING = 0.84;
-  const PAD = 80;
+  const PAD = 40;
 
   // Repulsion
   for (let i = 0; i < nodes.length; i++) {
@@ -200,13 +194,14 @@ function simulate3D(nodes: Node[], edges: Edge[], w: number, h: number) {
   // Centering
   const cx = w / 2, cy = h / 2;
   for (const n of nodes) {
-    n.vx += (cx - n.x) * 0.0003;
-    n.vy += (cy - n.y) * 0.0003;
-    n.vz += (0 - n.z) * 0.0005; // stronger Z centering
+    n.vx += (cx - n.x) * 0.00015;
+    n.vy += (cy - n.y) * 0.00015;
+    n.vz += (0 - n.z) * 0.0003;
   }
 
   // Integration + bounds
   for (const n of nodes) {
+    if (n.index === pinnedIndex) { n.vx = 0; n.vy = 0; n.vz = 0; continue; }
     n.vx *= DAMPING; n.vy *= DAMPING; n.vz *= DAMPING;
     n.x += n.vx; n.y += n.vy; n.z += n.vz;
     n.x = Math.max(PAD, Math.min(w - PAD, n.x));
@@ -217,7 +212,7 @@ function simulate3D(nodes: Node[], edges: Edge[], w: number, h: number) {
 
 // ── Component ───────────────────────────────────────────────────────────────
 
-export default function WebringSection({ onVisibilityChange }: WebringSectionProps) {
+export default function WebringSection({ onVisibilityChange, audioRef }: WebringSectionProps) {
   const sentinelRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [search, setSearch] = useState('');
@@ -225,7 +220,6 @@ export default function WebringSection({ onVisibilityChange }: WebringSectionPro
   const [hoveredNode, setHoveredNode] = useState(-1);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; entry: WebringEntry } | null>(null);
   const graphRef = useRef<{ nodes: Node[]; edges: Edge[] } | null>(null);
-  const starsRef = useRef<Star[]>([]);
   const cameraRef = useRef<Camera>({ rotY: 0, rotVel: 0.0008, bobPhase: 0, zoom: 1 });
   const rafRef = useRef(0);
   const sectionRef = useRef<HTMLElement>(null);
@@ -234,11 +228,17 @@ export default function WebringSection({ onVisibilityChange }: WebringSectionPro
 
   const draggedNodeRef = useRef(-1);
   const dragStartPosRef = useRef({ x: 0, y: 0 });
+  const dragOrigScreenRef = useRef({ sx: 0, sy: 0 });
+  const dragOrigDepthRef = useRef(0); // camera-relative depth (rz2) at drag start
   const dragCamRotRef = useRef(0);
   // Orbit dragging
   const orbitDragRef = useRef<{ lastX: number; lastTime: number } | null>(null);
   // Mouse position ref for hover-attract
   const mousePosRef = useRef({ x: 0, y: 0 });
+  // Beat pulse — 0..1, decays each frame
+  const beatPulseRef = useRef(0);
+  const lastBeatIdxRef = useRef(-1);
+  const centerGlowRef = useRef<HTMLDivElement>(null);
 
   const panelRef = useRef<HTMLDivElement>(null);
   const [panelPos, setPanelPos] = useState({ x: 32, y: 80 });
@@ -276,7 +276,15 @@ export default function WebringSection({ onVisibilityChange }: WebringSectionPro
       if (!dragRef.current) return;
       const dx = ev.clientX - dragRef.current.startX;
       const dy = ev.clientY - dragRef.current.startY;
-      const newPos = { x: dragRef.current.origX + dx, y: dragRef.current.origY + dy };
+      const section = sectionRef.current;
+      const pw = panelRectRef.current.w;
+      const ph = panelRectRef.current.h;
+      const maxX = section ? section.clientWidth - pw : window.innerWidth - pw;
+      const maxY = section ? section.clientHeight - ph : window.innerHeight - ph;
+      const newPos = {
+        x: Math.max(0, Math.min(maxX, dragRef.current.origX + dx)),
+        y: Math.max(0, Math.min(maxY, dragRef.current.origY + dy)),
+      };
       setPanelPos(newPos);
       panelRectRef.current = { ...panelRectRef.current, x: newPos.x, y: newPos.y };
       settled.current = false;
@@ -331,7 +339,6 @@ export default function WebringSection({ onVisibilityChange }: WebringSectionPro
     const h = canvas.height / window.devicePixelRatio;
 
     if (!graphRef.current) graphRef.current = buildGraph(WEBRING_ENTRIES, w, h);
-    if (starsRef.current.length === 0) starsRef.current = buildStars();
 
     const ctx = canvas.getContext('2d')!;
     const dpr = window.devicePixelRatio;
@@ -340,45 +347,43 @@ export default function WebringSection({ onVisibilityChange }: WebringSectionPro
     const draw = () => {
       const graph = graphRef.current!;
       const { nodes, edges } = graph;
-      const stars = starsRef.current;
       const dragging = draggedNodeRef.current;
       const cx = w / 2, cy = h / 2;
 
-      // Camera — momentum + friction + auto-rotate + hover-to-front
-      if (!orbitDragRef.current) {
-        // If a node is hovered, gently rotate to face it
-        if (hoveredNode >= 0 && hoveredNode < nodes.length && dragging < 0) {
-          const hn = nodes[hoveredNode];
-          // Compute what rotY would place this node at depth minimum (facing camera)
-          // Node's contribution to rz2 = rx*sin(rotY) + rz*cos(rotY)
-          // Minimize rz2 → derivative = rx*cos(rotY) - rz*sin(rotY) = 0
-          // → tan(rotY) = rx/rz, but rx = node.x - cx
-          const rx = hn.x - cx;
-          const rz = hn.z;
-          const targetRot = Math.atan2(-rx, -rz); // rotation that puts node at front
-          // Shortest angular path
-          let diff = targetRot - cam.rotY;
-          while (diff > Math.PI) diff -= TAU;
-          while (diff < -Math.PI) diff += TAU;
-          // Gently steer toward target (don't snap — blend with existing velocity)
-          cam.rotVel += diff * 0.003;
-          cam.rotVel *= 0.92; // stronger friction when homing
-        } else {
-          cam.rotVel *= 0.97; // normal friction
-          // When momentum is nearly gone, gently push toward auto-rotate speed
-          if (Math.abs(cam.rotVel) < 0.002) {
-            cam.rotVel += (0.0008 - cam.rotVel) * 0.01;
-          }
+      // Camera — momentum + friction + auto-rotate (paused during node drag)
+      if (!orbitDragRef.current && dragging < 0) {
+        cam.rotVel *= 0.97;
+        if (Math.abs(cam.rotVel) < 0.002) {
+          cam.rotVel += (0.0008 - cam.rotVel) * 0.01;
         }
         cam.rotY += cam.rotVel;
       }
       cam.bobPhase += 0.006;
 
+      // Beat detection from audio
+      if (audioRef.current && !audioRef.current.paused) {
+        const t = audioRef.current.currentTime;
+        const beatIdx = Math.floor((t - BEAT_OFFSET) / BEAT_INTERVAL);
+        if (beatIdx > lastBeatIdxRef.current) {
+          lastBeatIdxRef.current = beatIdx;
+          beatPulseRef.current = 1;
+        }
+      }
+      beatPulseRef.current *= 0.96; // smooth decay
+      const beat = beatPulseRef.current;
+
+      // Center glow — pulses on beat
+      if (centerGlowRef.current) {
+        const glowOpacity = 0.02 + beat * 0.05;
+        const glowScale = 1 + beat * 0.06;
+        centerGlowRef.current.style.opacity = String(glowOpacity);
+        centerGlowRef.current.style.transform = `scale(${glowScale})`;
+      }
 
       // Physics
       if (dragging >= 0) { settled.current = false; frameCount.current = 100; }
       if (!settled.current) {
-        for (let i = 0; i < 3; i++) simulate3D(nodes, edges, w, h);
+        for (let i = 0; i < 3; i++) simulate3D(nodes, edges, w, h, dragging);
         frameCount.current++;
         if (frameCount.current > 200 && dragging < 0) settled.current = true;
       } else {
@@ -419,15 +424,6 @@ export default function WebringSection({ onVisibilityChange }: WebringSectionPro
         }
       }
 
-      // Hover-attract: smoothly move hovered node toward cursor position
-      if (hoveredNode >= 0 && hoveredNode < nodes.length && dragging < 0) {
-        const hn = nodes[hoveredNode];
-        const mp = mousePosRef.current;
-        const target = unproject(mp.x, mp.y, hn.z, cam, cx, cy);
-        hn.x += (target.x - hn.x) * 0.06;
-        hn.y += (target.y - hn.y) * 0.06;
-        hn.vx *= 0.3; hn.vy *= 0.3;
-      }
 
       // Project all nodes
       for (const n of nodes) {
@@ -440,62 +436,16 @@ export default function WebringSection({ onVisibilityChange }: WebringSectionPro
       ctx.scale(dpr, dpr);
       ctx.clearRect(0, 0, w, h);
 
+      // Animate hoverAnim for each node (smooth lerp toward target)
+      for (const n of nodes) {
+        const target = hoveredNode === n.index ? 1 : 0;
+        n.hoverAnim += (target - n.hoverAnim) * 0.12;
+        if (Math.abs(n.hoverAnim - target) < 0.01) n.hoverAnim = target;
+      }
+
       const time = Date.now() * 0.001;
 
-      // Nebula glow — subtle radial pulse in the center
-      const pulseAlpha = 0.03 + 0.015 * Math.sin(time * 0.5);
-      const nebulaGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.min(w, h) * 0.5);
-      nebulaGrad.addColorStop(0, `rgba(255,255,255,${pulseAlpha})`);
-      nebulaGrad.addColorStop(0.5, `rgba(200,200,255,${pulseAlpha * 0.3})`);
-      nebulaGrad.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = nebulaGrad;
-      ctx.fillRect(0, 0, w, h);
-
-      // Stars with varied sizes and twinkle
-      for (const star of stars) {
-        const p = project(cx + star.x, cy + star.y, star.z, cam, cx, cy);
-        if (p.depth < -200 || p.scale < 0.01) continue;
-        const fog = depthFog(p.depth);
-        const twinkle = 0.7 + 0.3 * Math.sin(time * 2.5 + star.x * 0.02 + star.y * 0.03);
-        const alpha = star.brightness * fog * twinkle * p.scale;
-        if (alpha < 0.01) continue;
-        const starR = Math.max(0.4, (0.8 + star.brightness * 1.2) * p.scale);
-        ctx.beginPath();
-        ctx.arc(p.sx, p.sy, starR, 0, TAU);
-        ctx.fillStyle = `rgba(255,255,255,${alpha})`;
-        ctx.fill();
-        // Bright stars get a cross flare
-        if (alpha > 0.3 && starR > 1) {
-          ctx.strokeStyle = `rgba(255,255,255,${alpha * 0.3})`;
-          ctx.lineWidth = 0.5;
-          const flareLen = starR * 3;
-          ctx.beginPath(); ctx.moveTo(p.sx - flareLen, p.sy); ctx.lineTo(p.sx + flareLen, p.sy); ctx.stroke();
-          ctx.beginPath(); ctx.moveTo(p.sx, p.sy - flareLen); ctx.lineTo(p.sx, p.sy + flareLen); ctx.stroke();
-        }
-      }
-
-      // Parallax grid (2 layers)
-      for (const gz of [-150, 150]) {
-        const gFog = depthFog(gz) * 0.025;
-        if (gFog < 0.002) continue;
-        ctx.strokeStyle = `rgba(255,255,255,${gFog})`;
-        ctx.lineWidth = 0.5;
-        const step = 60;
-        for (let gx = -400; gx <= w + 400; gx += step) {
-          const p1 = project(gx, -200 + cy, gz, cam, cx, cy);
-          const p2 = project(gx, h + 200, gz, cam, cx, cy);
-          if (p1.scale > 0.01 && p2.scale > 0.01) {
-            ctx.beginPath(); ctx.moveTo(p1.sx, p1.sy); ctx.lineTo(p2.sx, p2.sy); ctx.stroke();
-          }
-        }
-        for (let gy = -200; gy <= h + 200; gy += step) {
-          const p1 = project(-400, gy, gz, cam, cx, cy);
-          const p2 = project(w + 400, gy, gz, cam, cx, cy);
-          if (p1.scale > 0.01 && p2.scale > 0.01) {
-            ctx.beginPath(); ctx.moveTo(p1.sx, p1.sy); ctx.lineTo(p2.sx, p2.sy); ctx.stroke();
-          }
-        }
-      }
+      // Background is now rendered by Three.js (WebringBackground component)
 
       // Edges
       for (const edge of edges) {
@@ -510,15 +460,16 @@ export default function WebringSection({ onVisibilityChange }: WebringSectionPro
         ctx.moveTo(a.sx, a.sy);
         ctx.lineTo(b.sx, b.sy);
 
+        const beatEdge = beat * 0.25;
         if (eitherHovered) {
           ctx.strokeStyle = `rgba(255,255,255,${0.6 * avgFog})`;
           ctx.lineWidth = 2 * avgScale;
         } else if (bothMatch) {
-          ctx.strokeStyle = `rgba(255,255,255,${0.12 * avgFog})`;
-          ctx.lineWidth = Math.max(0.3, 1 * avgScale);
+          ctx.strokeStyle = `rgba(255,255,255,${(0.12 + beatEdge) * avgFog})`;
+          ctx.lineWidth = Math.max(0.3, (1 + beat * 1) * avgScale);
         } else {
-          ctx.strokeStyle = `rgba(255,255,255,${0.03 * avgFog})`;
-          ctx.lineWidth = Math.max(0.2, 0.5 * avgScale);
+          ctx.strokeStyle = `rgba(255,255,255,${(0.03 + beatEdge) * avgFog})`;
+          ctx.lineWidth = Math.max(0.2, (0.5 + beat * 0.8) * avgScale);
         }
         ctx.stroke();
       }
@@ -535,25 +486,57 @@ export default function WebringSection({ onVisibilityChange }: WebringSectionPro
         const fog = depthFog(p.depth);
         if (fog < 0.01) continue;
         ctx.beginPath();
-        ctx.arc(p.sx, p.sy, Math.max(0.5, 1.5 * p.scale), 0, TAU);
-        ctx.fillStyle = `rgba(255,255,255,${0.5 * fog})`;
+        ctx.arc(p.sx, p.sy, Math.max(0.5, (1.5 + beat * 2) * p.scale), 0, TAU);
+        ctx.fillStyle = `rgba(255,255,255,${(0.5 + beat * 0.4) * fog})`;
         ctx.fill();
       }
 
-      // Nodes — sort back to front
-      const sorted = [...nodes].sort((a, b) => b.depth - a.depth);
+      // Nodes — sort back to front, hovered node always rendered last (on top)
+      const sorted = [...nodes].sort((a, b) => {
+        if (hoveredNode === a.index) return 1;  // hovered always last
+        if (hoveredNode === b.index) return -1;
+        return b.depth - a.depth;
+      });
       for (const node of sorted) {
         const isMatch = matchingIndices.has(node.index);
         const isHovered = hoveredNode === node.index;
-        const fog = depthFog(node.depth);
-        const r = (isHovered ? 28 : 22) * node.scale;
+        const ha = node.hoverAnim; // 0→1 smooth
+        const effectiveScale = node.scale * (1 + ha * 0.4); // grows 40% on hover
+        const baseFog = depthFog(node.depth);
+        const fog = baseFog + (0.95 - baseFog) * ha; // brightens on hover
+        const beatSize = 1 + beat * 0.15; // pulse on beat
+        const r = (22 + ha * 8) * effectiveScale * beatSize;
         if (fog < 0.01 || r < 1) continue;
 
-        // Glow halo
-        if (isMatch && fog > 0.1) {
-          const glowR = (isHovered ? 50 : 35) * node.scale;
+        // Hover animation — expanding rings + glow burst (fades in with hoverAnim)
+        if (ha > 0.05) {
+          const t = Date.now() * 0.003;
+          // Outer expanding rings (3 concentric, staggered phase)
+          for (let ring = 0; ring < 3; ring++) {
+            const phase = (t + ring * 2.1) % 6.28;
+            const ringR = r + 10 + Math.sin(phase) * 15 + ring * 12;
+            const ringAlpha = (0.15 - ring * 0.04) * (0.5 + 0.5 * Math.cos(phase)) * ha;
+            ctx.beginPath();
+            ctx.arc(node.sx, node.sy, ringR * effectiveScale / 1.2, 0, TAU);
+            ctx.strokeStyle = `rgba(255,255,255,${ringAlpha * fog})`;
+            ctx.lineWidth = 1.5 - ring * 0.3;
+            ctx.stroke();
+          }
+          // Glow burst
+          const glowR = 55 * effectiveScale;
           const grad = ctx.createRadialGradient(node.sx, node.sy, 0, node.sx, node.sy, glowR);
-          grad.addColorStop(0, `rgba(255,255,255,${(isHovered ? 0.12 : 0.06) * fog})`);
+          grad.addColorStop(0, `rgba(255,255,255,${0.15 * fog * ha})`);
+          grad.addColorStop(0.4, `rgba(255,255,255,${0.06 * fog * ha})`);
+          grad.addColorStop(1, 'rgba(255,255,255,0)');
+          ctx.beginPath();
+          ctx.arc(node.sx, node.sy, glowR, 0, TAU);
+          ctx.fillStyle = grad;
+          ctx.fill();
+        } else if (isMatch && fog > 0.1) {
+          // Normal glow halo
+          const glowR = 35 * effectiveScale;
+          const grad = ctx.createRadialGradient(node.sx, node.sy, 0, node.sx, node.sy, glowR);
+          grad.addColorStop(0, `rgba(255,255,255,${0.06 * fog})`);
           grad.addColorStop(1, 'rgba(255,255,255,0)');
           ctx.beginPath();
           ctx.arc(node.sx, node.sy, glowR, 0, TAU);
@@ -561,42 +544,77 @@ export default function WebringSection({ onVisibilityChange }: WebringSectionPro
           ctx.fill();
         }
 
-        // Hover pulse ring
-        if (isHovered) {
-          const pulseR = (36 + Math.sin(Date.now() * 0.004) * 6) * node.scale;
+        // Node circle — dark fill with border
+        ctx.beginPath();
+        ctx.arc(node.sx, node.sy, r, 0, TAU);
+        const fillBase = isMatch ? 10 : 5;
+        const fillVal = Math.round(fillBase + (30 - fillBase) * ha);
+        ctx.fillStyle = `rgba(${fillVal},${fillVal},${fillVal},${fog})`;
+        ctx.fill();
+
+        // Avatar image or initials inside the circle
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(node.sx, node.sy, r - 1, 0, TAU);
+        ctx.clip();
+
+        if (node.avatarImg && node.avatarImg.complete && node.avatarImg.naturalWidth > 0) {
+          // Draw avatar image clipped to circle
+          const imgSize = r * 2;
+          ctx.globalAlpha = fog * (0.6 + ha * 0.4);
+          ctx.drawImage(node.avatarImg, node.sx - r, node.sy - r, imgSize, imgSize);
+          ctx.globalAlpha = 1;
+        } else {
+          // Styled initials
+          const fontSize = Math.max(8, Math.round((12 + ha * 4) * effectiveScale));
+          ctx.font = `${fontSize}px ArcadeClassic, monospace`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          const textAlpha = isMatch ? (0.7 + ha * 0.3) : (0.2 + ha * 0.3);
+          ctx.fillStyle = `rgba(255,255,255,${textAlpha * fog})`;
+          ctx.fillText(node.entry.name.split(' ').map(w => w[0]).join(''), node.sx, node.sy + 1);
+        }
+        ctx.restore();
+
+        // Border ring — glows on hover + beat pulse
+        const beatGlow = beat * 0.4;
+        const strokeAlpha = (isMatch ? 0.5 : 0.1) + ha * 0.5 + beatGlow;
+        ctx.beginPath();
+        ctx.arc(node.sx, node.sy, r, 0, TAU);
+        ctx.strokeStyle = `rgba(255,255,255,${Math.min(1, strokeAlpha * fog)})`;
+        ctx.lineWidth = (1.5 + ha * 1.5 + beat * 1.5) * effectiveScale;
+        ctx.stroke();
+
+        // Beat pulse ring
+        if (beat > 0.1 && fog > 0.1) {
+          const pulseR = r + 8 * beat * effectiveScale;
           ctx.beginPath();
           ctx.arc(node.sx, node.sy, pulseR, 0, TAU);
-          ctx.strokeStyle = `rgba(255,255,255,${0.2 * fog})`;
+          ctx.strokeStyle = `rgba(255,255,255,${beat * 0.25 * fog})`;
           ctx.lineWidth = 1;
           ctx.stroke();
         }
 
-        // Node circle
-        ctx.beginPath();
-        ctx.arc(node.sx, node.sy, r, 0, TAU);
-        ctx.fillStyle = isHovered ? `rgba(255,255,255,${fog})` : isMatch ? `rgba(10,10,10,${fog})` : `rgba(5,5,5,${fog * 0.5})`;
-        ctx.fill();
-        ctx.strokeStyle = isMatch ? `rgba(255,255,255,${0.6 * fog})` : `rgba(255,255,255,${0.1 * fog})`;
-        ctx.lineWidth = (isHovered ? 2.5 : isMatch ? 1.5 : 0.5) * node.scale;
-        ctx.stroke();
-
-        // Glow on hover
-        if (isHovered && fog > 0.2) {
+        // Glow on hover — fades in
+        if (ha > 0.1 && fog > 0.2) {
           ctx.shadowColor = '#fff';
-          ctx.shadowBlur = 15 * node.scale;
+          ctx.shadowBlur = 15 * effectiveScale * ha;
           ctx.beginPath();
           ctx.arc(node.sx, node.sy, r, 0, TAU);
           ctx.stroke();
           ctx.shadowBlur = 0;
         }
 
-        // Initials
-        const fontSize = Math.max(6, Math.round((isHovered ? 11 : 9) * node.scale));
-        ctx.font = `${fontSize}px ArcadeClassic, monospace`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = isHovered ? `rgba(0,0,0,${fog})` : isMatch ? `rgba(255,255,255,${0.7 * fog})` : `rgba(255,255,255,${0.15 * fog})`;
-        ctx.fillText(node.entry.name.split(' ').map(w => w[0]).join(''), node.sx, node.sy + 1);
+        // Name label below node on hover
+        if (ha > 0.3) {
+          const labelY = node.sy + r + 12 * effectiveScale;
+          const labelSize = Math.max(8, Math.round(10 * effectiveScale));
+          ctx.font = `${labelSize}px ArcadeClassic, monospace`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+          ctx.fillStyle = `rgba(255,255,255,${ha * fog * 0.8})`;
+          ctx.fillText(node.entry.name, node.sx, labelY);
+        }
       }
 
       ctx.restore();
@@ -660,11 +678,34 @@ export default function WebringSection({ onVisibilityChange }: WebringSectionPro
       return;
     }
 
-    // Node drag
+    // Node drag — move along camera-perpendicular plane (constant depth)
     if (draggedNodeRef.current >= 0) {
       const node = graph.nodes[draggedNodeRef.current];
-      const world = unproject(mx, my, node.z, cam, cx, cy);
-      node.x = world.x; node.y = world.y;
+      const screenDx = mx - dragStartPosRef.current.x;
+      const screenDy = my - dragStartPosRef.current.y;
+      const targetSx = dragOrigScreenRef.current.sx + screenDx;
+      const targetSy = dragOrigScreenRef.current.sy + screenDy;
+
+      // Camera-relative depth is constant → scale is constant
+      const rz2 = dragOrigDepthRef.current;
+      const F = FOCAL * cam.zoom;
+      const scale = F / (F + rz2);
+      const C = Math.cos(cam.rotY);
+      const S = Math.sin(cam.rotY);
+
+      // Screen → rotated coords
+      const rx2 = (targetSx - cx) / scale;
+      const ry = (targetSy - cy) / scale - Math.sin(cam.bobPhase) * 8;
+
+      // Inverse rotation with fixed rz2:
+      // rx2 = rx*C - rz*S, rz2 = rx*S + rz*C
+      // → rx = rx2*C + rz2*S, rz = rz2*C - rx2*S (but we use rz = (rz2 - rx*S)/C below)
+      const rx = rx2 * C + rz2 * S;
+      const rz = C !== 0 ? (rz2 - rx * S) / C : node.z;
+
+      node.x = rx + cx;
+      node.y = ry + cy;
+      node.z = rz;
       node.vx = 0; node.vy = 0; node.vz = 0;
       const p = project(node.x, node.y, node.z, cam, cx, cy);
       node.sx = p.sx; node.sy = p.sy; node.scale = p.scale; node.depth = p.depth;
@@ -679,9 +720,6 @@ export default function WebringSection({ onVisibilityChange }: WebringSectionPro
       const node = graph.nodes[closest];
       setTooltip({ x: node.sx, y: node.sy, entry: node.entry });
       canvas.style.cursor = 'grab';
-      // Keep sim alive for hover-attract
-      settled.current = false;
-      frameCount.current = 150;
     } else {
       setTooltip(null);
       canvas.style.cursor = 'default';
@@ -698,7 +736,14 @@ export default function WebringSection({ onVisibilityChange }: WebringSectionPro
       // Drag node
       draggedNodeRef.current = hit;
       dragStartPosRef.current = { x: mx, y: my };
-      dragCamRotRef.current = cameraRef.current.rotY;
+      const hitNode = graphRef.current!.nodes[hit];
+      dragOrigScreenRef.current = { sx: hitNode.sx, sy: hitNode.sy };
+      // Store camera-relative depth: rz2 = rx*sin + z*cos
+      const cam = cameraRef.current;
+      const canvasCx = (canvas.width / window.devicePixelRatio) / 2;
+      const rx = hitNode.x - canvasCx;
+      dragOrigDepthRef.current = rx * Math.sin(cam.rotY) + hitNode.z * Math.cos(cam.rotY);
+      dragCamRotRef.current = cam.rotY;
       canvas.style.cursor = 'grabbing';
       setHoveredNode(hit);
     } else {
@@ -808,8 +853,29 @@ export default function WebringSection({ onVisibilityChange }: WebringSectionPro
   const listMaxHeight = panelSize.h - 230;
 
   return (
-    <section ref={sectionRef} className="relative h-screen flex flex-col overflow-hidden" style={{ zIndex: 10 }}>
+    <section ref={sectionRef} className="relative h-screen flex flex-col" style={{ zIndex: 10, background: '#000' }}>
       <div ref={sentinelRef} className="absolute top-0 left-0 w-full h-24" />
+
+      {/* Three.js background scene */}
+      <WebringBackground beatRef={beatPulseRef} />
+
+      {/* Center glow — beat-synced radial pulse */}
+      <div
+        ref={centerGlowRef}
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          zIndex: 1,
+          opacity: 0.03,
+          background: 'radial-gradient(ellipse at 50% 50%, rgba(150,180,255,0.4) 0%, rgba(100,140,255,0.15) 25%, transparent 55%)',
+          transition: 'none',
+        }}
+      />
+
+      {/* Circular vignette — above canvas/3D, below search panel */}
+      <div className="absolute inset-0 pointer-events-none" style={{
+        zIndex: 15,
+        background: 'radial-gradient(ellipse at 50% 50%, transparent 40%, rgba(0,0,0,0.3) 55%, rgba(0,0,0,0.7) 65%, rgba(0,0,0,0.95) 78%, black 88%)',
+      }} />
 
       {/* Draggable + resizable search panel */}
       <div
@@ -850,6 +916,7 @@ export default function WebringSection({ onVisibilityChange }: WebringSectionPro
                 {matchingIndices.size}/{WEBRING_ENTRIES.length}
               </span>
               <button
+                className="collapse-btn"
                 onClick={(e) => {
                   e.stopPropagation();
                   setCollapsed(prev => !prev);
@@ -863,7 +930,17 @@ export default function WebringSection({ onVisibilityChange }: WebringSectionPro
             </div>
           </div>
 
-          {!collapsed && <div className="flex-1 overflow-hidden flex flex-col px-4 py-3 relative z-10">
+          <div
+            className="flex flex-col relative z-10"
+            style={{
+              maxHeight: collapsed ? 0 : 600,
+              opacity: collapsed ? 0 : 1,
+              padding: collapsed ? '0 16px' : '12px 16px',
+              overflow: 'hidden',
+              transition: 'max-height 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease, padding 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
+              flex: collapsed ? 'none' : '1',
+            }}
+          >
             <div style={{ border: '1px solid #333', background: '#111', display: 'flex', alignItems: 'center', padding: '0 12px', flexShrink: 0 }}>
               <span style={{ color: '#888', fontFamily: 'var(--font-mono)', fontSize: 13, marginRight: 8 }}>{'>'}</span>
               <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="search..." spellCheck={false}
@@ -876,7 +953,7 @@ export default function WebringSection({ onVisibilityChange }: WebringSectionPro
               {ALL_COHORTS.map(cohort => {
                 const active = selectedCohorts.has(cohort);
                 return (
-                  <button key={cohort} onClick={() => toggleCohort(cohort)}
+                  <button key={cohort} className="cohort-chip" onClick={() => toggleCohort(cohort)}
                     style={{ fontFamily: 'var(--font-arcade)', fontSize: 9, letterSpacing: '0.08em', padding: '3px 10px', border: `1px solid ${active ? '#fff' : '#333'}`, background: active ? '#fff' : 'transparent', color: active ? '#000' : '#666', cursor: 'pointer', transition: 'all 0.15s ease' }}
                   >{cohort}</button>
                 );
@@ -888,7 +965,7 @@ export default function WebringSection({ onVisibilityChange }: WebringSectionPro
               {WEBRING_ENTRIES.map((entry, i) => {
                 if (!matchingIndices.has(i)) return null;
                 return (
-                  <a key={i} href={entry.url} target="_blank" rel="noopener noreferrer" className="block no-underline"
+                  <a key={i} href={entry.url} target="_blank" rel="noopener noreferrer" className="block no-underline webring-item"
                     onMouseEnter={() => setHoveredNode(i)} onMouseLeave={() => setHoveredNode(-1)}
                     style={{ padding: '6px 8px', background: hoveredNode === i ? 'rgba(255,255,255,0.08)' : 'transparent', border: `1px solid ${hoveredNode === i ? 'rgba(255,255,255,0.2)' : 'transparent'}`, transition: 'all 0.15s ease', flexShrink: 0 }}
                   >
@@ -905,13 +982,14 @@ export default function WebringSection({ onVisibilityChange }: WebringSectionPro
 
             <div className="mt-3 pt-2" style={{ borderTop: '1px solid #222', flexShrink: 0 }}>
               <a href="https://github.com/DanielWLiu07/CFM" target="_blank" rel="noopener noreferrer"
-                className="inline-block no-underline transition-all duration-200"
+                className="inline-block no-underline cta-btn"
                 style={{ fontFamily: 'var(--font-arcade)', fontSize: 9, letterSpacing: '0.15em', color: '#fff', border: '2px solid #fff', boxShadow: '2px 2px 0 #000', padding: '5px 14px', background: 'transparent' }}
                 onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#fff'; (e.currentTarget as HTMLElement).style.color = '#000'; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#fff'; }}
               >ADD YOUR SITE</a>
+
             </div>
-          </div>}
+          </div>
 
           {!collapsed && (
             <div onMouseDown={handleResizeStart} style={{ position: 'absolute', bottom: 0, right: 0, width: 16, height: 16, cursor: 'nwse-resize', zIndex: 10 }}>
@@ -934,8 +1012,8 @@ export default function WebringSection({ onVisibilityChange }: WebringSectionPro
         </div>
       )}
 
-      <div className="absolute inset-0">
-        <canvas ref={canvasRef} className="w-full h-full"
+      <div className="absolute inset-0" style={{ zIndex: 1 }}>
+        <canvas ref={canvasRef} className="w-full h-full" style={{ background: 'transparent' }}
           onMouseDown={handleCanvasDown} onMouseMove={handleCanvasMove} onMouseUp={handleCanvasUp} onMouseLeave={handleCanvasLeave}
         />
       </div>

@@ -25,19 +25,17 @@ const CARDS = [
     title: 'WHAT  IS  CFM',
     image: '/images/uwaterloo-seal.svg',
     content: (
-      <div className="space-y-1">
-        <p style={{ color: '#fff', fontFamily: 'var(--font-arcade)', fontSize: 16, letterSpacing: '0.05em' }}>
+      <div className="space-y-2">
+        <p style={{ color: '#fff', fontFamily: 'var(--font-arcade)', fontSize: 15, letterSpacing: '0.05em' }}>
           Computing and Financial Management
         </p>
-        <p style={{ color: '#333' }}>{'─'.repeat(36)}</p>
-        <p><Dim>{'>'} </Dim>A <G>joint degree</G> between the Faculty of</p>
-        <p><Dim>{'  '}</Dim>Mathematics and the School of Accounting</p>
-        <p><Dim>{'  '}</Dim>and Finance at the University of Waterloo.</p>
-        <p className="h-2" />
-        <p><Dim>{'>'} </Dim>Degree: <G>Bachelor of Computer Science</G></p>
-        <p><Dim>{'  '}</Dim>+ <G>Bachelor of Business Administration</G></p>
-        <p><Dim>{'>'} </Dim>Duration: <G>5 years</G> with co-op</p>
-        <p><Dim>{'>'} </Dim>Not a minor. A real double degree.</p>
+        <p style={{ color: '#333' }}>{'─'.repeat(50)}</p>
+        <p><Dim>{'>'} </Dim>The <G>only program of its kind in Canada</G> combining computer science and finance into a single interdisciplinary degree.</p>
+        <p><Dim>{'>'} </Dim>Degree: <G>Bachelor of Computing and Financial Management (BCFM)</G></p>
+        <p><Dim>{'>'} </Dim>Duration: <G>5 years</G> (co-op only)</p>
+        <p><Dim>{'>'} </Dim>Faculties: <G>Mathematics</G> + <G>Accounting and Finance</G></p>
+        <p style={{ color: '#333' }}>{'─'.repeat(50)}</p>
+        <p><Dim>{'>'} </Dim><G>86%</G> graduation rate. <G>90%+</G> employed within 6 months of graduating.</p>
       </div>
     ),
   },
@@ -45,24 +43,16 @@ const CARDS = [
     title: 'CURRICULUM',
     image: '/images/nav_bg.png',
     content: (
-      <div className="space-y-1">
-        <p><Dim>{'// '}what you learn, year by year</Dim></p>
-        <p style={{ color: '#333' }}>{'─'.repeat(36)}</p>
-        <p><Dim>{'>'} </Dim><G>Year 1-2</G></p>
-        <p><Dim>{'  '}</Dim>CS fundamentals, intro accounting,</p>
-        <p><Dim>{'  '}</Dim>economics, statistics</p>
-        <p className="h-2" />
-        <p><Dim>{'>'} </Dim><G>Year 2-3</G></p>
-        <p><Dim>{'  '}</Dim>Algorithms, OS, databases +</p>
-        <p><Dim>{'  '}</Dim>corporate finance, investments</p>
-        <p className="h-2" />
-        <p><Dim>{'>'} </Dim><G>Year 3-4</G></p>
-        <p><Dim>{'  '}</Dim>Elective depth -- AI/ML, distributed</p>
-        <p><Dim>{'  '}</Dim>systems, fintech</p>
-        <p className="h-2" />
-        <p><Dim>{'>'} </Dim><G>Year 4-5</G></p>
-        <p><Dim>{'  '}</Dim>Capstone + advanced electives</p>
-        <p><Dim>{'  '}</Dim>in both faculties</p>
+      <div className="space-y-2">
+        <p style={{ color: '#fff', fontFamily: 'var(--font-arcade)', fontSize: 15, letterSpacing: '0.05em' }}>
+          Courses Across Three Departments
+        </p>
+        <p style={{ color: '#333' }}>{'─'.repeat(50)}</p>
+        <p><Dim>{'>'} </Dim><G>Computer Science</G> — CS 135/136, algorithms, AI/ML, systems design, software analysis</p>
+        <p><Dim>{'>'} </Dim><G>Accounting and Finance</G> — Financial reporting, derivative securities, fixed income, financial data analytics</p>
+        <p><Dim>{'>'} </Dim><G>Mathematics</G> — Algebra, calculus, linear algebra, statistics, quantitative methods</p>
+        <p style={{ color: '#333' }}>{'─'.repeat(50)}</p>
+        <p><Dim>{'>'} </Dim>Spotlight: <G>CFM 101</G> — Introduction to Financial Markets and Data Analytics</p>
       </div>
     ),
   },
@@ -70,13 +60,15 @@ const CARDS = [
     title: 'COOP  PROGRAM',
     image: '/images/goose-ascii.png',
     content: (
-      <div className="space-y-1">
-        <p><Dim>{'>'} </Dim>Co-op rotations: <G>6 terms</G></p>
-        <p><Dim>{'>'} </Dim>That&apos;s <G>2 full years</G> of paid work</p>
-        <p><Dim>{'>'} </Dim>Placement rate: <G>98%+</G></p>
-        <p style={{ color: '#333' }}>{'─'.repeat(36)}</p>
+      <div className="space-y-2">
+        <p style={{ color: '#fff', fontFamily: 'var(--font-arcade)', fontSize: 15, letterSpacing: '0.05em' }}>
+          World Leading Coop Program
+        </p>
+        <p style={{ color: '#333' }}>{'─'.repeat(50)}</p>
+        <p><Dim>{'>'} </Dim><G>6 work terms</G> — 2 full years of paid experience, starting after Year 1</p>
+        <p><Dim>{'>'} </Dim>Alternate 4-month study and work blocks throughout the program</p>
+        <p style={{ color: '#333' }}>{'─'.repeat(50)}</p>
         <p><Dim>{'// '}where CFM students work</Dim></p>
-        <p className="h-2" />
         <p><Dim>{'>'} </Dim>[<G> Tech    </G>] Google, Meta, Amazon, Shopify</p>
         <p><Dim>{'>'} </Dim>[<G> Finance </G>] RBC, TD, BMO, CIBC, Manulife</p>
         <p><Dim>{'>'} </Dim>[<G> Fintech </G>] Stripe, Plaid, Wealthsimple</p>
@@ -88,20 +80,17 @@ const CARDS = [
     title: 'CAREERS',
     image: '/images/waterloo-ascii.svg',
     content: (
-      <div className="space-y-1">
-        <p><Dim>{'// '}where CFM graduates end up</Dim></p>
-        <p style={{ color: '#333' }}>{'─'.repeat(36)}</p>
-        <p><Dim>{'>'} </Dim><G>Software Engineering</G></p>
-        <p><Dim>{'>'} </Dim><G>Quantitative Development</G></p>
-        <p><Dim>{'>'} </Dim><G>Product Management</G></p>
-        <p><Dim>{'>'} </Dim><G>Fintech Engineering</G></p>
+      <div className="space-y-2">
+        <p style={{ color: '#fff', fontFamily: 'var(--font-arcade)', fontSize: 15, letterSpacing: '0.05em' }}>
+          Where CFM Graduates End Up
+        </p>
+        <p style={{ color: '#333' }}>{'─'.repeat(50)}</p>
+        <p><Dim>{'>'} </Dim><G>Investment Analyst</G> · <G>Software Engineer</G> · <G>Quantitative Developer</G></p>
+        <p><Dim>{'>'} </Dim><G>Fintech Engineer</G> · <G>Trading / Portfolio Management</G></p>
         <p><Dim>{'>'} </Dim><G>Data Science / ML Engineering</G></p>
-        <p style={{ color: '#333' }}>{'─'.repeat(36)}</p>
-        <p className="h-2" />
-        <p><Dim>{'>'} </Dim>Graduate with <G>2 years of experience</G></p>
-        <p><Dim>{'  '}</Dim>and <G>two degrees</G> that compound.</p>
-        <p className="h-2" />
-        <p><Dim>{'>'} </Dim>Build software that moves markets.</p>
+        <p style={{ color: '#333' }}>{'─'.repeat(50)}</p>
+        <p><Dim>{'>'} </Dim>Direct pathway to the <G>CFA</G> designation.</p>
+        <p><Dim>{'>'} </Dim>Graduate with <G>2 years of experience</G> and a degree that bridges both worlds.</p>
       </div>
     ),
   },
@@ -129,7 +118,7 @@ export default function AboutSection({ onVisibilityChange, audioRef }: AboutSect
   const dotsRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [tunerOpen, setTunerOpen] = useState(false);
-  const [stackPos, setStackPos] = useState({ ml: 36, mt: -45, rot: -3, rotZ: 2, w: 690, h: 500 });
+  const [stackPos, setStackPos] = useState({ ml: 30, mt: -45, rot: -3, rotZ: 2, w: 800, h: 460 });
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isAnimatingRef = useRef(false);
   const titleAnimStarted = useRef(false);
@@ -279,8 +268,8 @@ export default function AboutSection({ onVisibilityChange, audioRef }: AboutSect
 
   return (
     <section
-      className="relative min-h-screen pt-24 pb-15 px-6 md:px-12 lg:px-20 flex flex-col items-center overflow-hidden"
-      style={{ backgroundColor: 'black' }}
+      className="relative min-h-screen pt-24 pb-15 flex flex-col items-center"
+      style={{ backgroundColor: 'black', zIndex: 1, overflow: 'clip' }}
     >
       {/* Sentinel for intersection observer */}
       <div ref={sentinelRef} className="absolute top-0 left-0 w-full h-24" />
@@ -296,34 +285,21 @@ export default function AboutSection({ onVisibilityChange, audioRef }: AboutSect
           left: '50%',
           height: '100vh',
           width: 'auto',
+          maxWidth: 'none',
           transform: 'translate(-50%, -50%)',
           animation: 'about-bg-spin 120s linear infinite',
           zIndex: 1,
         }}
       />
 
-      {/* Cat watching */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/images/cat_watching.png"
-        alt=""
-        className="absolute pointer-events-none select-none"
-        style={{
-          bottom: -80, left: 0, height: '100%', width: 'auto', zIndex: 65,
-          transformOrigin: '25% 89%', animation: 'cat-bob 3s ease-in-out infinite',
-          WebkitMaskImage: 'linear-gradient(to bottom, black 70%, transparent 100%)',
-          maskImage: 'linear-gradient(to bottom, black 70%, transparent 100%)',
-        }}
-      />
-
       {/* Vignette — linear fades on all sides, same style as hero */}
-      <div className="absolute inset-x-0 top-0 pointer-events-none z-[45]" style={{ height: '15%', background: 'linear-gradient(to bottom, black, transparent)' }} />
-      <div className="absolute inset-x-0 bottom-0 pointer-events-none z-[45]" style={{ height: '15%', background: 'linear-gradient(to top, black, transparent)' }} />
-      <div className="absolute inset-y-0 left-0 pointer-events-none z-[45]" style={{ width: '10%', background: 'linear-gradient(to right, black, transparent)' }} />
-      <div className="absolute inset-y-0 right-0 pointer-events-none z-[45]" style={{ width: '10%', background: 'linear-gradient(to left, black, transparent)' }} />
+      <div className="absolute inset-x-0 top-0 pointer-events-none z-[80]" style={{ height: '15%', background: 'linear-gradient(to bottom, black, transparent)' }} />
+      <div className="absolute inset-x-0 bottom-0 pointer-events-none z-[80]" style={{ height: '15%', background: 'linear-gradient(to top, black, transparent)' }} />
+      <div className="absolute inset-y-0 left-0 pointer-events-none z-[80]" style={{ width: '10%', background: 'linear-gradient(to right, black, transparent)' }} />
+      <div className="absolute inset-y-0 right-0 pointer-events-none z-[80]" style={{ width: '10%', background: 'linear-gradient(to left, black, transparent)' }} />
 
       {/* Section header */}
-      <div className="relative mb-20" style={{ zIndex: 65 }}>
+      <div className="relative mb-20" style={{ zIndex: 85 }}>
         {/* Glow behind title */}
         <div className="absolute inset-0 pointer-events-none" style={{
           background: 'radial-gradient(ellipse at center, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.03) 40%, transparent 70%)',
@@ -336,7 +312,7 @@ export default function AboutSection({ onVisibilityChange, audioRef }: AboutSect
           src="/images/about_title.png"
           alt="ABOUT"
           className="relative w-auto"
-          style={{ height: 160, opacity: 0 }}
+          style={{ height: 'clamp(100px, 12vw, 160px)', maxWidth: 'none', opacity: 0 }}
         />
       </div>
 
@@ -345,10 +321,9 @@ export default function AboutSection({ onVisibilityChange, audioRef }: AboutSect
         ref={stackRef}
         className="relative cursor-pointer"
         style={{
-          width: stackPos.w,
-          height: stackPos.h,
-          zIndex: 65,
-          marginLeft: `${stackPos.ml}%`,
+          width: 'clamp(500px, 55vw, 800px)',
+          minHeight: 500,
+          zIndex: 85,
           marginTop: stackPos.mt,
           perspective: 1200,
           transformStyle: 'preserve-3d' as const,
@@ -363,7 +338,7 @@ export default function AboutSection({ onVisibilityChange, audioRef }: AboutSect
             title={card.title}
             image={card.image}
             className="absolute top-0 left-0 w-full"
-            style={{ willChange: 'transform, opacity', height: stackPos.h }}
+            style={{ willChange: 'transform, opacity', minHeight: 500 }}
           >
             {card.content}
           </TerminalCard>
@@ -371,7 +346,7 @@ export default function AboutSection({ onVisibilityChange, audioRef }: AboutSect
       </div>
 
       {/* Navigation dots + hint */}
-      <div className="flex flex-col items-center mt-10" style={{ zIndex: 70, marginLeft: `${stackPos.ml}%` }}>
+      <div className="flex flex-col items-center mt-10" style={{ zIndex: 85 }}>
         <div className="flex gap-4">
           {CARDS.map((_, i) => (
             <button

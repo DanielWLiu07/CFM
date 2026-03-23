@@ -9,6 +9,7 @@ import MuteButton from './components/MuteButton';
 import ClassSection from './components/ClassSection';
 import WebringSection from './components/WebringSection';
 import GearTuner from './components/GearTuner';
+import GithubSection from './components/GithubSection';
 
 const MAX_CRUSH   = 180;
 const STIFFNESS   = 0.35;  // spring pull toward target
@@ -21,36 +22,39 @@ export default function Home() {
   const [muted, setMuted] = useState(false);
   const [volume, setVolume] = useState(1);
   const [activeRoute, setActiveRoute] = useState('/');
+  const visibleSections = useRef(new Set<string>());
+
+  const updateActiveRoute = useCallback(() => {
+    // Priority: bottommost visible section wins
+    const priority = ['/webring', '/class', '/about'];
+    for (const route of priority) {
+      if (visibleSections.current.has(route)) {
+        setActiveRoute(route);
+        window.history.replaceState(null, '', route);
+        return;
+      }
+    }
+    setActiveRoute('/');
+    window.history.replaceState(null, '', '/');
+  }, []);
 
   const handleAboutVisibility = useCallback((visible: boolean) => {
-    if (visible) {
-      setActiveRoute('/about');
-      window.history.replaceState(null, '', '/about');
-    } else if (activeRoute === '/about') {
-      setActiveRoute('/');
-      window.history.replaceState(null, '', '/');
-    }
-  }, [activeRoute]);
+    if (visible) visibleSections.current.add('/about');
+    else visibleSections.current.delete('/about');
+    updateActiveRoute();
+  }, [updateActiveRoute]);
 
   const handleClassVisibility = useCallback((visible: boolean) => {
-    if (visible) {
-      setActiveRoute('/class');
-      window.history.replaceState(null, '', '/class');
-    } else if (activeRoute === '/class') {
-      setActiveRoute('/about');
-      window.history.replaceState(null, '', '/about');
-    }
-  }, [activeRoute]);
+    if (visible) visibleSections.current.add('/class');
+    else visibleSections.current.delete('/class');
+    updateActiveRoute();
+  }, [updateActiveRoute]);
 
   const handleWebringVisibility = useCallback((visible: boolean) => {
-    if (visible) {
-      setActiveRoute('/webring');
-      window.history.replaceState(null, '', '/webring');
-    } else if (activeRoute === '/webring') {
-      setActiveRoute('/about');
-      window.history.replaceState(null, '', '/about');
-    }
-  }, [activeRoute]);
+    if (visible) visibleSections.current.add('/webring');
+    else visibleSections.current.delete('/webring');
+    updateActiveRoute();
+  }, [updateActiveRoute]);
 
   const audioRef       = useRef<HTMLAudioElement>(null);
   const videoRef       = useRef<HTMLVideoElement>(null);
@@ -76,6 +80,10 @@ export default function Home() {
   const gearAngleRef   = useRef<number>(0);
   const gear2AngleRef  = useRef<number>(0);
   const gear3AngleRef  = useRef<number>(0);
+  const webringTitleRef = useRef<HTMLImageElement>(null);
+  const starLeftRef     = useRef<HTMLImageElement>(null);
+  const starRightRef    = useRef<HTMLImageElement>(null);
+  const webringBeatRef  = useRef<number>(0);
 
   // ── rAF loop ───────────────────────────────────────────────────────────────
   // Beats are driven from audio.currentTime — perfectly locked to the music.
@@ -107,6 +115,8 @@ export default function Home() {
           if (beatIdx % 2 === 1) {
             shakeRef.current = 0.04;
           }
+          // Webring title beat pulse
+          webringBeatRef.current = 1;
           // Gears swing between -15 and 15 on beat
           if (beatIdx % 2 === 1) {
             gearAngleRef.current = 15;
@@ -152,6 +162,38 @@ export default function Home() {
         leftGear3Ref.current.style.transform = `rotate(${angle3}deg)`;
       if (rightGear3Ref.current)
         rightGear3Ref.current.style.transform = `rotate(${-angle3}deg)`;
+
+      // Webring title — beat-driven scale + glow
+      webringBeatRef.current *= 0.92;
+      const wb = webringBeatRef.current;
+      if (webringTitleRef.current) {
+        const s = 1 + wb * 0.04;
+        const y = -wb * 4;
+        const bright = 1.1 + wb * 0.15;
+        const glow1 = 30 + wb * 15;
+        const glowA1 = 0.3 + wb * 0.15;
+        const glow2 = 60 + wb * 20;
+        const glowA2 = 0.15 + wb * 0.1;
+        webringTitleRef.current.style.transform = `translateX(-50%) translateY(${y}px) scale(${s})`;
+        webringTitleRef.current.style.filter = `drop-shadow(0 0 ${glow1}px rgba(255,255,255,${glowA1})) drop-shadow(0 0 ${glow2}px rgba(255,255,255,${glowA2})) brightness(${bright})`;
+      }
+
+      // Stars — beat-driven opacity + scale + glow
+      const starOpacity = 0.75 + wb * 0.25; // 0.75 → 1.0 on beat
+      const starScale = 1 + wb * 0.12;
+      const starBright = 1 + wb * 0.4;
+      const starGlow = 10 + wb * 30;
+      const starGlowA = 0.2 + wb * 0.5;
+      if (starLeftRef.current) {
+        starLeftRef.current.style.opacity = `${starOpacity}`;
+        starLeftRef.current.style.transform = `translateY(${-wb * 3}px) scale(${starScale})`;
+        starLeftRef.current.style.filter = `drop-shadow(0 0 ${starGlow}px rgba(255,255,255,${starGlowA})) brightness(${starBright})`;
+      }
+      if (starRightRef.current) {
+        starRightRef.current.style.opacity = `${starOpacity}`;
+        starRightRef.current.style.transform = `translateY(${-wb * 3}px) scale(${starScale})`;
+        starRightRef.current.style.filter = `drop-shadow(0 0 ${starGlow}px rgba(255,255,255,${starGlowA})) brightness(${starBright})`;
+      }
 
       // Separate wires — spring-driven scaleY pulse on beat
       sepCrushVelRef.current += (sepTargetRef.current - sepCrushRef.current) * STIFFNESS;
@@ -254,7 +296,7 @@ export default function Home() {
   ];
 
   return (
-    <div className="bg-black">
+    <div className="bg-black" style={{ overflowX: 'clip' }}>
 
       <div className="fixed top-4 left-3 z-[100]">
         <Navbar activeRoute={activeRoute} />
@@ -315,132 +357,217 @@ export default function Home() {
             transform: 'translateY(-45%)',
             width: '100%',
             height: 'auto',
-            zIndex: 1,
+            zIndex: 0,
             willChange: 'transform',
           }}
         />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          ref={leftGearRef}
-          src="/images/left_gear.png"
-          alt=""
-          className="absolute pointer-events-none select-none"
-          style={{
-            bottom: '-1200%',
-            left: '-10%',
-            height: '900px',
-            minHeight: '900px',
-            width: 'auto',
-            maxWidth: 'none',
-            transformOrigin: '10% 50%',
-            transition: 'transform 0.15s ease-out',
-            zIndex: 2,
-          }}
-        />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          ref={rightGearRef}
-          src="/images/right_gear.png"
-          alt=""
-          className="absolute pointer-events-none select-none"
-          style={{
-            bottom: '-1200%',
-            right: '-10%',
-            height: '900px',
-            minHeight: '900px',
-            width: 'auto',
-            maxWidth: 'none',
-            transformOrigin: '90% 50%',
-            transition: 'transform 0.15s ease-out',
-            zIndex: 2,
-          }}
-        />
-        {/* Center gears — behind the others */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          ref={leftGear2Ref}
-          src="/images/left_gear.png"
-          alt=""
-          className="absolute pointer-events-none select-none"
-          style={{
-            bottom: '-1650%',
-            left: '-6%',
-            height: '500px',
-            minHeight: '500px',
-            width: 'auto',
-            maxWidth: 'none',
-            transformOrigin: '10% 50%',
-            transition: 'transform 0.15s ease-out',
-            zIndex: 3,
-          }}
-        />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          ref={rightGear2Ref}
-          src="/images/right_gear.png"
-          alt=""
-          className="absolute pointer-events-none select-none"
-          style={{
-            bottom: '-1650%',
-            right: '-6%',
-            height: '500px',
-            minHeight: '500px',
-            width: 'auto',
-            maxWidth: 'none',
-            transformOrigin: '90% 50%',
-            transition: 'transform 0.15s ease-out',
-            zIndex: 3,
-          }}
-        />
-        {/* Third gears — same size as first, different sync */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          ref={leftGear3Ref}
-          src="/images/left_gear.png"
-          alt=""
-          className="absolute pointer-events-none select-none"
-          style={{
-            bottom: '-2500%',
-            left: '-8%',
-            height: '650px',
-            minHeight: '650px',
-            width: 'auto',
-            maxWidth: 'none',
-            transformOrigin: '10% 50%',
-            transition: 'transform 0.15s ease-out',
-            zIndex: 2,
-          }}
-        />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          ref={rightGear3Ref}
-          src="/images/right_gear.png"
-          alt=""
-          className="absolute pointer-events-none select-none"
-          style={{
-            bottom: '-2500%',
-            right: '-8%',
-            height: '650px',
-            minHeight: '650px',
-            width: 'auto',
-            maxWidth: 'none',
-            transformOrigin: '90% 50%',
-            transition: 'transform 0.15s ease-out',
-            zIndex: 2,
-          }}
-        />
+        {/* Fixed-width gear container — crops from center on narrow screens */}
+        <div className="absolute pointer-events-none" style={{ left: '50%', transform: 'translateX(-50%)', width: 1440, height: '100%' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            ref={leftGearRef}
+            src="/images/left_gear.png"
+            alt=""
+            className="absolute pointer-events-none select-none"
+            style={{
+              bottom: '-1200%',
+              left: '-10%',
+              height: '900px',
+              minHeight: '900px',
+              width: 'auto',
+              maxWidth: 'none',
+              transformOrigin: '10% 50%',
+              transition: 'transform 0.15s ease-out',
+              zIndex: 2,
+            }}
+          />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            ref={rightGearRef}
+            src="/images/right_gear.png"
+            alt=""
+            className="absolute pointer-events-none select-none"
+            style={{
+              bottom: '-1200%',
+              right: '-10%',
+              height: '900px',
+              minHeight: '900px',
+              width: 'auto',
+              maxWidth: 'none',
+              transformOrigin: '90% 50%',
+              transition: 'transform 0.15s ease-out',
+              zIndex: 2,
+            }}
+          />
+          {/* Center gears — behind the others */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            ref={leftGear2Ref}
+            src="/images/left_gear.png"
+            alt=""
+            className="absolute pointer-events-none select-none"
+            style={{
+              bottom: '-1650%',
+              left: '-6%',
+              height: '500px',
+              minHeight: '500px',
+              width: 'auto',
+              maxWidth: 'none',
+              transformOrigin: '10% 50%',
+              transition: 'transform 0.15s ease-out',
+              zIndex: 3,
+            }}
+          />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            ref={rightGear2Ref}
+            src="/images/right_gear.png"
+            alt=""
+            className="absolute pointer-events-none select-none"
+            style={{
+              bottom: '-1650%',
+              right: '-6%',
+              height: '500px',
+              minHeight: '500px',
+              width: 'auto',
+              maxWidth: 'none',
+              transformOrigin: '90% 50%',
+              transition: 'transform 0.15s ease-out',
+              zIndex: 3,
+            }}
+          />
+          {/* Third gears — same size as first, different sync */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            ref={leftGear3Ref}
+            src="/images/left_gear.png"
+            alt=""
+            className="absolute pointer-events-none select-none"
+            style={{
+              bottom: '-2500%',
+              left: '-8%',
+              height: '650px',
+              minHeight: '650px',
+              width: 'auto',
+              maxWidth: 'none',
+              transformOrigin: '10% 50%',
+              transition: 'transform 0.15s ease-out',
+              zIndex: 2,
+            }}
+          />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            ref={rightGear3Ref}
+            src="/images/right_gear.png"
+            alt=""
+            className="absolute pointer-events-none select-none"
+            style={{
+              bottom: '-2500%',
+              right: '-8%',
+              height: '650px',
+              minHeight: '650px',
+              width: 'auto',
+              maxWidth: 'none',
+              transformOrigin: '90% 50%',
+              transition: 'transform 0.15s ease-out',
+              zIndex: 2,
+            }}
+          />
+          {/* Cat watching — above gears */}
+          <div
+            className="absolute pointer-events-none select-none"
+            style={{
+              bottom: '-2400%', left: '-22%',
+              height: '900px', width: 'auto', zIndex: 5,
+              transformOrigin: '25% 89%', animation: 'cat-bob 3s ease-in-out infinite',
+            }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/images/cat_watching.png"
+              alt=""
+              style={{
+                height: '100%', width: 'auto', maxWidth: 'none',
+                WebkitMaskImage: 'linear-gradient(to bottom, black 65%, rgba(0,0,0,0) 85%)',
+                maskImage: 'linear-gradient(to bottom, black 65%, rgba(0,0,0,0) 85%)',
+              }}
+            />
+          </div>
+        </div>
       </div>
 
-      <div id="about">
+      <div id="about" style={{ position: 'relative', zIndex: 50 }}>
         <AboutSection onVisibilityChange={handleAboutVisibility} audioRef={audioRef} />
       </div>
 
-      <div id="class">
-        <ClassSection onVisibilityChange={handleClassVisibility} />
+      <div id="class" className="relative">
+        {/* Black background — behind gears/cat (z:50 < gears z:60) */}
+        <div className="absolute inset-0 bg-black" style={{ position: 'absolute', zIndex: 50 }} />
+        {/* Content — above gears/cat (z:65 > gears z:60) */}
+        <div style={{ position: 'relative', zIndex: 65 }}>
+          <ClassSection onVisibilityChange={handleClassVisibility} />
+        </div>
       </div>
 
-      <div id="webring">
-        <WebringSection onVisibilityChange={handleWebringVisibility} />
+      <div id="webring" style={{ position: 'relative', zIndex: 70 }}>
+        {/* Webring title — JS-driven beat animation synced to audio */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          ref={webringTitleRef}
+          src="/images/webring_text.png"
+          alt="WEBRING"
+          style={{
+            position: 'absolute',
+            top: '-4vw',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: 'clamp(350px, 55vw, 700px)',
+            height: 'auto',
+            zIndex: 50,
+            pointerEvents: 'none',
+            filter: 'drop-shadow(0 0 30px rgba(255,255,255,0.3)) drop-shadow(0 0 60px rgba(255,255,255,0.15)) brightness(1.1)',
+          }}
+        />
+        {/* Stars flanking the title */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          ref={starLeftRef}
+          src="/images/star_left.png"
+          alt=""
+          style={{
+            position: 'absolute',
+            top: '-6vw',
+            left: 'calc(50% - clamp(250px, 38vw, 500px))',
+            width: 'clamp(100px, 12vw, 180px)',
+            height: 'auto',
+            maxWidth: 'none',
+            zIndex: 50,
+            pointerEvents: 'none',
+            opacity: 0.75,
+          }}
+        />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          ref={starRightRef}
+          src="/images/star_right.png"
+          alt=""
+          style={{
+            position: 'absolute',
+            top: '-6vw',
+            right: 'calc(50% - clamp(250px, 38vw, 500px))',
+            width: 'clamp(100px, 12vw, 180px)',
+            height: 'auto',
+            maxWidth: 'none',
+            zIndex: 50,
+            pointerEvents: 'none',
+            opacity: 0.75,
+          }}
+        />
+        <WebringSection onVisibilityChange={handleWebringVisibility} audioRef={audioRef} />
+      </div>
+
+      <div id="github" style={{ position: 'relative', zIndex: 75 }}>
+        <GithubSection />
       </div>
 
       <div className="fixed bottom-4 right-4 z-[999]">

@@ -42,18 +42,20 @@ export default function MuteButton({ muted, onToggle, volume, onVolumeChange }: 
   return (
     <div className="flex flex-col items-center gap-2">
       {/* Slider — toggle on click */}
-      {expanded && (
       <div
         className="flex flex-col items-center rounded-lg overflow-hidden"
         style={{
-          height: 120,
-          padding: '12px 0',
+          height: expanded ? 120 : 0,
+          padding: expanded ? '12px 0' : '0',
+          opacity: expanded ? 1 : 0,
           width: 40,
-          border: '1px solid rgba(0,0,0,0.6)',
+          border: expanded ? '1px solid rgba(0,0,0,0.6)' : '1px solid transparent',
           background: 'rgba(255,255,255,0.08)',
           backdropFilter: 'blur(16px)',
           WebkitBackdropFilter: 'blur(16px)',
-          boxShadow: '0 0 0 1px rgba(255,255,255,0.2), 0 0 20px rgba(0,0,0,0.4)',
+          boxShadow: expanded ? '0 0 0 1px rgba(255,255,255,0.2), 0 0 20px rgba(0,0,0,0.4)' : 'none',
+          transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+          pointerEvents: expanded ? 'auto' : 'none',
         }}
       >
         <div className="relative h-full w-1 rounded-full bg-white/20">
@@ -82,19 +84,18 @@ export default function MuteButton({ muted, onToggle, volume, onVolumeChange }: 
         </div>
         <span
           className="text-white/70 mt-2"
-          style={{ fontFamily: 'var(--font-arcade)', fontSize: 8, textShadow: '0 0 3px rgba(0,0,0,1), 0 1px 2px rgba(0,0,0,0.8)' }}
+          style={{ fontFamily: 'var(--font-arcade)', fontSize: 12, textShadow: '0 0 3px rgba(0,0,0,1), 0 1px 2px rgba(0,0,0,0.8)' }}
         >
           {Math.round((muted ? 0 : volume) * 100)}
         </span>
       </div>
-      )}
 
       {/* Mute/unmute button — click toggles slider, right-click or double-click for mute */}
       <button
         onClick={(e) => { e.stopPropagation(); setExpanded(prev => !prev); }}
         onDoubleClick={(e) => { e.stopPropagation(); onToggle(); }}
         onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); onToggle(); }}
-        className="flex items-center justify-center w-10 h-10 rounded-lg border border-white/20 bg-white/10 backdrop-blur-md text-white/70 hover:text-white hover:border-white/40 hover:bg-white/15 transition-colors cursor-pointer"
+        className="mute-btn flex items-center justify-center w-10 h-10 rounded-lg border border-white/20 bg-white/10 backdrop-blur-md text-white/70 hover:text-white cursor-pointer"
         aria-label={muted ? 'Unmute' : 'Mute'}
       >
         <VolumeIcon muted={muted} volume={volume} />
