@@ -13,9 +13,11 @@
   "license": "ISC",
   "description": "CFM Webring backend for University of Waterloo students and alumni.",
   "dependencies": {
+    "cors": "^2.8.6",
     "express": "^5.2.1"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^25.3.0",
     "ts-node-dev": "^2.0.0",

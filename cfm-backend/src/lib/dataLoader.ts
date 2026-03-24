@@ -9,7 +9,13 @@ const __dirname = dirname(__filename);
 let cachedMembers: MembersData | null = null;
 
 function validateMember(member: Member): boolean {
-  return typeof member.url === "string" && member.url.startsWith("https://");
+  if (!member.name || !member.graduationYear) {
+    return false;
+  }
+  if (member.hasWebsite && member.url) {
+    return member.url.startsWith("https://") || member.url.startsWith("http://");
+  }
+  return true;
 }
 
 export function loadMembers(): MembersData {
@@ -32,12 +38,17 @@ export function loadMembers(): MembersData {
     for (const entry of members as any[]) {
       const member: Member = {
         name: entry.name,
-        url: entry.url,
         graduationYear: entry.graduationYear ?? entry.year ?? year,
+        url: entry.url,
+        role: entry.role,
+        blurb: entry.blurb,
+        avatar: entry.avatar,
+        github: entry.github,
+        linkedin: entry.linkedin,
+        hasWebsite: Boolean(entry.url && entry.url !== "#"),
       };
 
       if (!validateMember(member)) {
-        // Skip invalid entries for now; could also throw.
         continue;
       }
 

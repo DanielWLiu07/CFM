@@ -1,28 +1,37 @@
 {
-  "2024": [
-    {
-      "name": "Jane Doe",
-      "url": "https://janedoe.dev",
-      "year": 2024
-    },
-    {
-      "name": "Joe Joe",
-      "url": "https://joe.dev",
-      "year": 2024
-    }
-
-  ],
-  
-  "2025": [
-    {
-      "name": "John Smith",
-      "url": "https://johnsmith.io",
-      "year": 2025
-    },
+  "2026": [
     {
       "name": "Timothy Zheng",
+      "graduationYear": 2026,
       "url": "https://timothyzheng.ca",
-      "year": 2025
+      "role": "Alumni",
+      "blurb": "Power trading",
+      "avatar": "/timothyz.png",
+      "github": "https://github.com/timothyzheng",
+      "linkedin": "https://linkedin.com/in/timothyzheng"
+    }
+  ],
+  "2029": [
+    {
+      "name": "Daniel Liu",
+      "graduationYear": 2029,
+      "url": "https://danielwliu.com",
+      "role": "SWE",
+      "blurb": "Building things on the web and beyond.",
+      "avatar": "/daniel.png",
+      "github": "https://github.com/danielwliu"
+    }
+  ],
+  "2030": [
+    {
+      "name": "Aadya Khanna",
+      "graduationYear": 2030,
+      "url": "https://aadyakhanna.com",
+      "role": "SWE / Fin-tech",
+      "blurb": "SLAY GIRLIE POP",
+      "avatar": "/aadya-khanna.png",
+      "github": "https://github.com/aadya-khanna",
+      "linkedin": "https://linkedin.com/in/aadyakhanna"
     }
   ]
 }

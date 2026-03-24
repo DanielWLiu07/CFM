@@ -23,7 +23,7 @@ function normalizeUrl(url: string): string {
 
 export function getMemberByUrl(flatList: Member[], url: string): Member | undefined {
   const target = normalizeUrl(url);
-  return flatList.find((m) => normalizeUrl(m.url) === target);
+  return flatList.find((m) => m.url && normalizeUrl(m.url) === target);
 }
 
 function getCohortSlice(flatList: Member[], year?: number): Member[] {
@@ -42,7 +42,7 @@ export function getNext(
   if (slice.length === 0) return null;
 
   const target = normalizeUrl(currentUrl);
-  const index = slice.findIndex((m) => normalizeUrl(m.url) === target);
+  const index = slice.findIndex((m) => m.url && normalizeUrl(m.url) === target);
   if (index === -1) return null;
 
   const nextIndex = (index + 1) % slice.length;
@@ -59,7 +59,7 @@ export function getPrev(
   if (slice.length === 0) return null;
 
   const target = normalizeUrl(currentUrl);
-  const index = slice.findIndex((m) => normalizeUrl(m.url) === target);
+  const index = slice.findIndex((m) => m.url && normalizeUrl(m.url) === target);
   if (index === -1) return null;
 
   const prevIndex = (index - 1 + slice.length) % slice.length;
