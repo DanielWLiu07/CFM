@@ -8,7 +8,7 @@ Welcome to the CFM Webring! This is a list of current / past CFM cohorts, organi
 
 ## How to Join
 
-1. Open the `members.json` file
+1. Open the `src/data/members.json` file
 2. Find your **graduation year section**
 3. Add your information following the structure below
 4. Submit a PR!
