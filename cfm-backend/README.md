@@ -1,17 +1,59 @@
-# 🚧 🚧 WORK IN PROGRESS 🚧 🚧
+# CFM Webring
 
-JSON is sorted by graduation year, so please only put your data in your 
-grad year. 
+Welcome to the CFM Webring! This is a list of current / past CFM cohorts, organized by graduation year.
 
-Members.json example structure:
-    "name": "Aadya Khanna",
-    "graduationYear": 2030,
-    "url": "https://aadyakhanna.com",
-    "role": "SWE / Fin-tech",  -- interestss
-    "blurb": "SLAY GIRLIE POP",  -- a little bit about you 
-    "avatar": "/aadya-khanna.png",
-    "github": "https://github.com/aadya-khanna",
-    "linkedin": "https://linkedin.com/in/aadyakhanna" 
+🚧 **This project is currently a work in progress** 🚧
 
-Notes: 
-- please ensure you have included valid links
+---
+
+## How to Join
+
+1. Open the `members.json` file
+2. Find your **graduation year section**
+3. Add your information following the structure below
+4. Submit a PR!
+
+---
+
+## Member Format
+
+Add your entry using this structure:
+
+```json
+{
+  "name": "Your Name",
+  "graduationYear": 2030,
+  "url": "https://yourwebsite.com",
+  "role": "Your interests / focus (e.g. SWE, FinTech, Design)",
+  "blurb": "A short description about you",
+  "avatar": "/your-image.png",
+  "github": "https://github.com/yourusername",
+  "linkedin": "https://linkedin.com/in/yourprofile"
+}
+```
+
+---
+
+## Example
+
+```json
+{
+  "name": "Aadya Khanna",
+  "graduationYear": 2030,
+  "url": "https://aadyakhanna.com",
+  "role": "SWE / FinTech",
+  "blurb": "SLAY GIRLIE POP",
+  "avatar": "/aadya-khanna.png",
+  "github": "https://github.com/aadya-khanna",
+  "linkedin": "https://linkedin.com/in/aadyakhanna"
+}
+```
+
+---
+
+## Important Notes
+
+* Keep **entries within your graduation year**
+* Ensure **all links are valid and working**
+* Make sure your avatar path is correct
+* Keep blurbs short and fun
