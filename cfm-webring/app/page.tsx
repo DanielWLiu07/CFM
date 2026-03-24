@@ -12,6 +12,7 @@ import GearTuner from './components/GearTuner';
 import GithubSection from './components/GithubSection';
 import DecoTuner from './components/DecoTuner';
 import RingTuner from './components/RingTuner';
+import SizeTuner from './components/SizeTuner';
 
 const MAX_CRUSH   = 180;
 const STIFFNESS   = 0.35;  // spring pull toward target
@@ -26,6 +27,8 @@ export default function Home() {
   const [reducedMotion, setReducedMotion] = useState(false);
   const reducedMotionRef = useRef(false);
   const [activeRoute, setActiveRoute] = useState('/');
+  const [githubPos, setGithubPos] = useState({ mt: 0, bgH: 0, pt: 20, pb: 10 });
+  const [githubTunerOpen, setGithubTunerOpen] = useState(false);
   const visibleSections = useRef(new Set<string>());
 
   const updateActiveRoute = useCallback(() => {
@@ -94,11 +97,10 @@ export default function Home() {
   const starLeftRef     = useRef<HTMLImageElement>(null);
   const starRightRef    = useRef<HTMLImageElement>(null);
   const spongeRef       = useRef<HTMLImageElement>(null);
-  const ring1Ref        = useRef<HTMLDivElement>(null);
-  const ring2Ref        = useRef<HTMLDivElement>(null);
-  const ring3Ref        = useRef<HTMLDivElement>(null);
   const wallRef         = useRef<HTMLImageElement>(null);
   const webringBeatRef  = useRef<number>(0);
+  const webringWrapRef  = useRef<HTMLDivElement>(null);
+  const webringSectionRef = useRef<HTMLElement>(null);
 
   // ── rAF loop ───────────────────────────────────────────────────────────────
   // Beats are driven from audio.currentTime — perfectly locked to the music.
@@ -190,19 +192,6 @@ export default function Home() {
         ref.current.style.opacity = `${baseOp + wb * 0.08}`;
         ref.current.style.transform = `rotate(${rot}deg) translateY(${-wb * 1.5}px) scale(${1 + wb * 0.02})`;
         ref.current.style.filter = '';
-      }
-
-      // Orbital rings — beat-synced scale + opacity (matches 3JS ConcentricRings)
-      for (const ref of [ring1Ref, ring2Ref, ring3Ref]) {
-        if (!ref.current) continue;
-        const baseBorder = ref.current.dataset.baseBorderW ?? '1';
-        const baseOp = ref.current.dataset.baseOpacity ?? '0.06';
-        const bw = parseFloat(baseBorder) + wb * 0.5;
-        const op = parseFloat(baseOp) + wb * 0.06;
-        const s = 1 + wb * 0.08;
-        ref.current.style.borderWidth = `${bw}px`;
-        ref.current.style.borderColor = `rgba(255,255,255,${op})`;
-        ref.current.style.scale = `${s}`;
       }
 
       // Separate wires — spring-driven scaleY pulse on beat
@@ -522,135 +511,149 @@ export default function Home() {
         <AboutSection onVisibilityChange={handleAboutVisibility} audioRef={audioRef} reducedMotion={reducedMotion} />
       </div>
 
-      <div id="class" className="relative">
-        {/* Black background — behind gears/cat (z:50 < gears z:60) */}
-        <div className="absolute inset-0 bg-black" style={{ position: 'absolute', zIndex: 50 }} />
-        {/* Content — above gears/cat (z:65 > gears z:60) */}
-        <div style={{ position: 'relative', zIndex: 65 }}>
+      <div id="class" className="relative" style={{ zIndex: 1 }}>
+        {/* Black background — very back */}
+        <div className="absolute inset-0 bg-black" style={{ position: 'absolute', zIndex: 0 }} />
+        {/* Content */}
+        <div style={{ position: 'relative', zIndex: 5 }}>
           <ClassSection onVisibilityChange={handleClassVisibility} />
         </div>
       </div>
 
-      <div id="webring" style={{ position: 'relative', zIndex: 70 }}>
-        {/* Big orbital rings — span entire section, slowly rotate */}
-        <div ref={ring1Ref} className="absolute pointer-events-none" style={{
-          top: '-17%', left: '50%', width: '120vw', height: '120vw',
-          borderRadius: '50%', border: '2px solid rgba(255,255,255,0.15)',
-          clipPath: 'inset(0 0 50% 0)',
-          zIndex: 30,
-          animation: reducedMotion ? 'none' : 'ring-spin 180s linear infinite',
-        }} />
-        <div ref={ring2Ref} className="absolute pointer-events-none" style={{
-          top: '5%', left: '50%', width: '90vw', height: '90vw',
-          borderRadius: '50%', border: '1.5px solid rgba(255,255,255,0.12)',
-          clipPath: 'inset(0 0 50% 0)',
-          zIndex: 30,
-          animation: reducedMotion ? 'none' : 'ring-spin 240s linear infinite reverse',
-        }} />
-        <div ref={ring3Ref} className="absolute pointer-events-none" style={{
-          top: '-9%', left: '50%', width: '140vw', height: '140vw',
-          borderRadius: '50%', border: '1.5px solid rgba(255,255,255,0.1)',
-          clipPath: 'inset(0 0 50% 0)',
-          zIndex: 30,
-          animation: reducedMotion ? 'none' : 'ring-spin 300s linear infinite',
-        }} />
+      <div id="webring" ref={webringWrapRef} style={{ position: 'relative', zIndex: 70, height: '156vh' }}>
+        {/* Sticky container — confines everything to the viewport-sized area */}
+        {/* Sticky container — only 3JS scene + search portal */}
+        <div style={{ position: 'sticky', top: 0, height: '100vh', overflow: 'hidden', zIndex: 1 }}>
+          <WebringSection onVisibilityChange={handleWebringVisibility} audioRef={audioRef} reducedMotion={reducedMotion} sectionRefOut={webringSectionRef} />
+        </div>
 
-        {/* Webring title — JS-driven beat animation synced to audio */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          ref={webringTitleRef}
-          src="/images/webring_text.png"
-          alt="WEBRING"
-          style={{
-            position: 'absolute',
-            top: '-4vw',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            width: 'clamp(350px, 55vw, 700px)',
-            height: 'auto',
-            zIndex: 50,
-            pointerEvents: 'none',
-            filter: 'drop-shadow(0 0 30px rgba(255,255,255,0.3)) drop-shadow(0 0 60px rgba(255,255,255,0.15)) brightness(1.1)',
-          }}
+        {/* Everything below is outside sticky container — not clipped */}
+
+        {/* Rings */}
+        <RingTuner
+          beatRef={webringBeatRef}
+          initialRings={[
+            { top: -17, left: 50, size: 120, rotation: 0, opacity: 0.35, borderW: 3, full: true },
+            { top: 5, left: 50, size: 90, rotation: 0, opacity: 0.3, borderW: 2.5, full: true },
+          ]}
         />
-        {/* Stars flanking the title */}
+
+        {/* Stars */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           ref={starLeftRef}
           src="/images/star_left.png"
           alt=""
-          style={{
-            position: 'absolute',
-            top: '-7%',
-            left: '3%',
-            width: 'auto',
-            height: 'auto',
-            maxWidth: 'none',
-            zIndex: 12,
-            pointerEvents: 'none',
-            opacity: 0.2,
-            transform: 'rotate(-136deg)',
-          }}
+          className="absolute pointer-events-none select-none"
+          style={{ top: '2%', left: '3%', width: 'auto', height: 'auto', maxWidth: 'none', zIndex: 3, opacity: 0.2, transform: 'rotate(-136deg)' }}
         />
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           ref={starRightRef}
           src="/images/star_right.png"
           alt=""
+          className="absolute pointer-events-none select-none"
+          style={{ top: '2%', left: '75%', width: 'auto', height: 'auto', maxWidth: 'none', zIndex: 3, opacity: 0.2 }}
+        />
+
+        {/* Webring title */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          ref={webringTitleRef}
+          src="/images/webring_text.png"
+          alt="WEBRING"
+          className="absolute pointer-events-none"
           style={{
-            position: 'absolute',
-            top: '-7%',
-            left: '75%',
-            width: 'auto',
-            height: 'auto',
-            maxWidth: 'none',
-            zIndex: 12,
-            pointerEvents: 'none',
-            opacity: 0.2,
+            top: '4%', left: '50%', transform: 'translateX(-50%)',
+            width: 'clamp(350px, 55vw, 700px)', height: 'auto', zIndex: 4,
+            filter: 'drop-shadow(0 0 30px rgba(255,255,255,0.3)) drop-shadow(0 0 60px rgba(255,255,255,0.15)) brightness(1.1)',
           }}
         />
-        {/* Sponge decoration */}
+        {/* Sponge + wall — outside sticky container so they're not clipped */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           ref={spongeRef}
           src="/images/sponge.png"
           alt=""
           className="absolute pointer-events-none select-none"
-          style={{ left: '52%', top: '40%', height: '678px', width: 'auto', maxWidth: 'none', zIndex: 12, opacity: 0.1, transform: 'rotate(0deg)' }}
+          style={{ left: '52%', top: '78%', height: '678px', width: 'auto', maxWidth: 'none', zIndex: 2, opacity: 0.1, transform: 'rotate(0deg)' }}
         />
-        {/* Wall decoration */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           ref={wallRef}
           src="/images/wall.png"
           alt=""
           className="absolute pointer-events-none select-none"
-          style={{ left: '-14%', top: '60%', height: '466px', width: 'auto', maxWidth: 'none', zIndex: 12, opacity: 0.2, transform: 'rotate(-10deg)' }}
+          style={{ left: '-20%', top: '84%', height: '604px', width: 'auto', maxWidth: 'none', zIndex: 2, opacity: 0.2, transform: 'rotate(-10deg)' }}
         />
-        <WebringSection onVisibilityChange={handleWebringVisibility} audioRef={audioRef} reducedMotion={reducedMotion} />
+
+        {/* Github bg — extends below webring, behind all webring deco */}
+        <div className="bg-black" style={{ position: 'relative', zIndex: 0, height: `${githubPos.bgH}vh` }} />
       </div>
 
-      <div id="github" className="relative" style={{ zIndex: 60 }}>
-        {/* Black background — behind webring deco */}
-        <div className="absolute inset-0 bg-black" style={{ zIndex: 5 }} />
-        {/* Content — above webring deco */}
-        <div style={{ position: 'relative', zIndex: 15 }}>
+      {/* Github content — below webring (z:65 < webring z:70) */}
+      {/* GitHub — content above webring decos, bg below */}
+      <div id="github" style={{ position: 'relative', marginTop: `${githubPos.mt}vh`, paddingTop: `${githubPos.pt}vh`, paddingBottom: `${githubPos.pb}vh` }}>
+        {/* Background — below webring (z-65 < webring z-70) */}
+        <div className="absolute inset-0 bg-black" style={{ zIndex: 65 }} />
+        {/* Content — above webring (z-75 > webring z-70) */}
+        <div style={{ position: 'relative', zIndex: 75 }}>
           <GithubSection onVisibilityChange={handleGithubVisibility} />
         </div>
       </div>
 
+      {/* Github position tuner */}
+      {!githubTunerOpen ? (
+        <button
+          onClick={() => setGithubTunerOpen(true)}
+          style={{
+            position: 'fixed', top: 10, right: 180, zIndex: 9999,
+            background: '#222', color: '#fff', border: '1px solid #555',
+            padding: '6px 12px', cursor: 'pointer', fontFamily: 'monospace', fontSize: 12,
+          }}
+        >
+          GITHUB
+        </button>
+      ) : (
+        <div style={{
+          position: 'fixed', top: 10, right: 180, zIndex: 9999,
+          background: 'rgba(0,0,0,0.95)', border: '1px solid #333',
+          padding: '12px 16px', fontFamily: 'monospace', fontSize: 11,
+          color: '#fff', width: 280,
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+            <strong>GITHUB POS</strong>
+            <button onClick={() => setGithubTunerOpen(false)} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer' }}>X</button>
+          </div>
+          {[
+            { label: 'margin-top vh', key: 'mt', min: -120, max: 0, step: 1 },
+            { label: 'padding-top vh', key: 'pt', min: 0, max: 60, step: 1 },
+            { label: 'padding-bot vh', key: 'pb', min: 0, max: 60, step: 1 },
+            { label: 'bg height vh', key: 'bgH', min: 0, max: 120, step: 1 },
+          ].map(c => (
+            <label key={c.key} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <span style={{ width: 90 }}>{c.label}</span>
+              <input type="range" min={c.min} max={c.max} step={c.step}
+                value={githubPos[c.key as keyof typeof githubPos]}
+                onChange={e => setGithubPos(prev => ({ ...prev, [c.key]: +e.target.value }))}
+                style={{ flex: 1 }} />
+              <span style={{ width: 45, textAlign: 'right' }}>{githubPos[c.key as keyof typeof githubPos]}vh</span>
+            </label>
+          ))}
+          <div style={{ background: '#111', border: '1px solid #333', padding: 6, fontSize: 10, color: '#ccc', marginTop: 6 }}>
+            {`mt: ${githubPos.mt}vh, pt: ${githubPos.pt}vh, pb: ${githubPos.pb}vh, bgH: ${githubPos.bgH}vh`}
+          </div>
+        </div>
+      )}
+
       <DecoTuner items={[
-        { ref: starLeftRef, label: 'STAR LEFT', defaults: { x: 3, y: -7, size: 340, rotation: -136, opacity: 0.2 } },
-        { ref: starRightRef, label: 'STAR RIGHT', defaults: { x: 75, y: -7, size: 340, rotation: 0, opacity: 0.2 } },
-        { ref: spongeRef, label: 'SPONGE', defaults: { x: 52, y: 40, size: 678, rotation: 0, opacity: 0.1 } },
-        { ref: wallRef, label: 'WALL', defaults: { x: -14, y: 60, size: 466, rotation: -10, opacity: 0.2 } },
+        { ref: starLeftRef, label: 'STAR LEFT', defaults: { x: 3, y: 2, size: 340, rotation: -136, opacity: 0.2 } },
+        { ref: starRightRef, label: 'STAR RIGHT', defaults: { x: 75, y: 2, size: 340, rotation: 0, opacity: 0.2 } },
+        { ref: spongeRef, label: 'SPONGE', defaults: { x: 52, y: 78, size: 678, rotation: 0, opacity: 0.1 } },
+        { ref: wallRef, label: 'WALL', defaults: { x: -20, y: 84, size: 604, rotation: -10, opacity: 0.2 } },
       ]} />
 
-      <RingTuner items={[
-        { ref: ring1Ref, label: 'RING 1 (big)', defaults: { top: -17, left: 50, size: 120, opacity: 0.15, borderW: 2 } },
-        { ref: ring2Ref, label: 'RING 2 (mid)', defaults: { top: 5, left: 50, size: 90, opacity: 0.12, borderW: 1.5 } },
-        { ref: ring3Ref, label: 'RING 3 (huge)', defaults: { top: -9, left: 50, size: 140, opacity: 0.1, borderW: 1.5 } },
-      ]} />
+      <SizeTuner wrapperRef={webringWrapRef} sectionRef={webringSectionRef} defaultWrapperH={156} defaultSectionH={100} />
 
       <div className="fixed bottom-4 right-4 z-[999] flex items-end gap-2">
         <button
@@ -678,6 +681,9 @@ export default function Home() {
         { ref1: leftGear2Ref, ref2: rightGear2Ref, label: 'GEAR 2 (mid)', defaults: { bottom: -1650, lr: -6, height: 500, z: 3 } },
         { ref1: leftGear3Ref, ref2: rightGear3Ref, label: 'GEAR 3 (bot)', defaults: { bottom: -2500, lr: -8, height: 650, z: 2 } },
       ]} />
+
+      {/* Search panel portal — top level, above everything */}
+      <div id="webring-panel-root" className="fixed inset-0 pointer-events-none" style={{ zIndex: 9990 }} />
 
     </div>
   );
