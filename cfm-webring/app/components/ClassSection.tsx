@@ -1,6 +1,9 @@
 'use client';
 
 import { useRef, useEffect, useState, useMemo } from 'react';
+import dynamic from 'next/dynamic';
+
+const ClassCards3D = dynamic(() => import('./ClassCards3D'), { ssr: false });
 
 interface ClassSectionProps {
   onVisibilityChange: (visible: boolean) => void;
@@ -10,25 +13,28 @@ interface ClassMember {
   name: string;
   url: string;
   role: string;
-  year: string;
+  blurb: string;
+  school: string;
+  term: string;
+  avatar?: string;
 }
 
 const MEMBERS: ClassMember[] = [
-  { name: 'Daniel Liu', url: 'https://danielwliu.com', role: 'SWE', year: '2029' },
-  { name: 'Bob Zhang', url: '#', role: 'Fintech', year: '2029' },
-  { name: 'Eve Singh', url: '#', role: 'Distributed Systems', year: '2029' },
-  { name: 'Alice Chen', url: '#', role: 'Quant Dev', year: '2028' },
-  { name: 'David Park', url: '#', role: 'Systems', year: '2028' },
-  { name: 'Grace Kim', url: '#', role: 'Data Science', year: '2028' },
-  { name: 'Carol Wu', url: '#', role: 'ML', year: '2027' },
-  { name: 'Frank Li', url: '#', role: 'Product', year: '2027' },
+  { name: 'Daniel Liu', url: 'https://danielwliu.com', role: 'SWE', blurb: 'Building things on the web and beyond.', school: 'UWaterloo', term: '1B', avatar: '/images/avatars/daniel.png' },
+  { name: 'Bob Zhang', url: '#', role: 'Fintech', blurb: 'Exploring the intersection of finance and tech.', school: 'UWaterloo', term: '1B' },
+  { name: 'Eve Singh', url: '#', role: 'Distributed Systems', blurb: 'Making systems that scale and don\'t break.', school: 'UWaterloo', term: '1B' },
+  { name: 'Alice Chen', url: '#', role: 'Quant Dev', blurb: 'Turning math into money, one model at a time.', school: 'UWaterloo', term: '1A' },
+  { name: 'David Park', url: '#', role: 'Systems', blurb: 'Low-level tinkerer. Kernel enthusiast.', school: 'UWaterloo', term: '1A' },
+  { name: 'Grace Kim', url: '#', role: 'Data Science', blurb: 'Finding patterns where others see noise.', school: 'UWaterloo', term: '1A' },
+  { name: 'Carol Wu', url: '#', role: 'ML', blurb: 'Training models and chasing benchmarks.', school: 'UWaterloo', term: '1A' },
+  { name: 'Frank Li', url: '#', role: 'Product', blurb: 'Designing experiences people actually want.', school: 'UWaterloo', term: '1B' },
 ];
 
-const YEARS = ['ALL', ...Array.from(new Set(MEMBERS.map(m => m.year))).sort((a, b) => b.localeCompare(a))];
+const TERMS = ['ALL', ...Array.from(new Set(MEMBERS.map(m => m.term))).sort()];
 
 export default function ClassSection({ onVisibilityChange }: ClassSectionProps) {
   const sentinelRef = useRef<HTMLDivElement>(null);
-  const [selectedYear, setSelectedYear] = useState('ALL');
+  const [selectedTerm, setSelectedTerm] = useState('ALL');
   const [search, setSearch] = useState('');
 
   useEffect(() => {
@@ -44,12 +50,12 @@ export default function ClassSection({ onVisibilityChange }: ClassSectionProps) 
 
   const filtered = useMemo(() => {
     return MEMBERS.filter(m => {
-      const matchesYear = selectedYear === 'ALL' || m.year === selectedYear;
+      const matchesTerm = selectedTerm === 'ALL' || m.term === selectedTerm;
       const q = search.toLowerCase();
       const matchesSearch = !q || m.name.toLowerCase().includes(q) || m.role.toLowerCase().includes(q);
-      return matchesYear && matchesSearch;
+      return matchesTerm && matchesSearch;
     });
-  }, [selectedYear, search]);
+  }, [selectedTerm, search]);
 
   return (
     <section
@@ -75,140 +81,52 @@ export default function ClassSection({ onVisibilityChange }: ClassSectionProps) 
 
       {/* Search bar */}
       <div style={{ zIndex: 20, width: '100%', maxWidth: 600, marginBottom: 20 }}>
-        <div style={{ position: 'relative' }}>
-          <input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="SEARCH  MEMBERS..."
-            style={{
-              width: '100%',
-              padding: '10px 16px',
-              fontFamily: 'var(--font-arcade)',
-              fontSize: 12,
-              letterSpacing: '0.1em',
-              color: '#fff',
-              background: '#0a0a0a',
-              border: '2px solid #333',
-              outline: 'none',
-            }}
-            onFocus={e => { e.currentTarget.style.borderColor = '#fff'; }}
-            onBlur={e => { e.currentTarget.style.borderColor = '#333'; }}
-          />
-        </div>
+        <input
+          type="text"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="SEARCH  MEMBERS..."
+          style={{
+            width: '100%',
+            padding: '10px 16px',
+            fontFamily: 'var(--font-arcade)',
+            fontSize: 12,
+            letterSpacing: '0.1em',
+            color: '#fff',
+            background: '#0a0a0a',
+            border: '2px solid #333',
+            outline: 'none',
+          }}
+          onFocus={e => { e.currentTarget.style.borderColor = '#fff'; }}
+          onBlur={e => { e.currentTarget.style.borderColor = '#333'; }}
+        />
       </div>
 
-      {/* Year filter */}
+      {/* Term filter */}
       <div className="flex gap-3 mb-10" style={{ zIndex: 20 }}>
-        {YEARS.map(year => (
+        {TERMS.map(term => (
           <button
-            key={year}
-            onClick={() => setSelectedYear(year)}
+            key={term}
+            onClick={() => setSelectedTerm(term)}
             style={{
               fontFamily: 'var(--font-arcade)',
               fontSize: 13,
               letterSpacing: '0.1em',
               padding: '6px 16px',
-              border: selectedYear === year ? '2px solid #fff' : '2px solid #333',
-              background: selectedYear === year ? 'rgba(255,255,255,0.1)' : 'transparent',
-              color: selectedYear === year ? '#fff' : '#555',
+              border: selectedTerm === term ? '2px solid #fff' : '2px solid #333',
+              background: selectedTerm === term ? 'rgba(255,255,255,0.1)' : 'transparent',
+              color: selectedTerm === term ? '#fff' : '#555',
               cursor: 'pointer',
               transition: 'all 0.2s ease',
             }}
           >
-            {year}
+            {term}
           </button>
         ))}
       </div>
 
-      {/* Member cards grid */}
-      <div
-        className="grid gap-4 w-full"
-        style={{
-          maxWidth: 1000,
-          zIndex: 20,
-          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-        }}
-      >
-        {filtered.map((member, i) => (
-          <a
-            key={`${member.name}-${member.year}`}
-            href={member.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block no-underline"
-            style={{
-              border: '2px solid #222',
-              background: '#0a0a0a',
-              position: 'relative',
-              overflow: 'hidden',
-              padding: '16px 20px',
-              transition: 'border-color 0.2s ease, background 0.2s ease',
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)';
-              e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.borderColor = '#222';
-              e.currentTarget.style.background = '#0a0a0a';
-            }}
-          >
-            {/* Scanline */}
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.015) 2px, rgba(255,255,255,0.015) 4px)',
-              }}
-            />
-
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <span
-                  style={{
-                    width: 6,
-                    height: 6,
-                    borderRadius: '50%',
-                    background: '#fff',
-                    display: 'inline-block',
-                    boxShadow: '0 0 6px rgba(255,255,255,0.4)',
-                  }}
-                />
-                <span
-                  style={{
-                    fontFamily: 'var(--font-arcade)',
-                    fontSize: 14,
-                    letterSpacing: '0.06em',
-                    color: '#fff',
-                  }}
-                >
-                  {member.name}
-                </span>
-              </div>
-              <span
-                style={{
-                  fontFamily: 'var(--font-arcade)',
-                  fontSize: 9,
-                  color: '#444',
-                  letterSpacing: '0.1em',
-                }}
-              >
-                {member.year}
-              </span>
-            </div>
-
-            <span
-              style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: 11,
-                color: '#666',
-              }}
-            >
-              {member.role}
-            </span>
-          </a>
-        ))}
-      </div>
+      {/* 3D Card grid */}
+      <ClassCards3D members={filtered} />
 
       {/* Empty state */}
       {filtered.length === 0 && (
