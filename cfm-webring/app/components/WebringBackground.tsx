@@ -217,7 +217,7 @@ function NebulaClouds({ count = 8 }: { count?: number }) {
 
 // ── Concentric Rings ────────────────────────────────────────────────────────
 
-function ConcentricRings({ position = [0, 0, -2] as [number, number, number], baseRotX = Math.PI * 0.45, rotSpeed = 0.02, rings: ringDefs }: {
+function ConcentricRings({ position = [0, 0, -2] as [number, number, number], baseRotX = 0, rotSpeed = 0.02, rings: ringDefs }: {
   position?: [number, number, number];
   baseRotX?: number;
   rotSpeed?: number;

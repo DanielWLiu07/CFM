@@ -201,9 +201,16 @@ function simulate3D(nodes: Node[], edges: Edge[], w: number, h: number, pinnedIn
   }
 
   // Integration + bounds
+  const MAX_VEL = 3;
   for (const n of nodes) {
     if (n.index === pinnedIndex) { n.vx = 0; n.vy = 0; n.vz = 0; continue; }
     n.vx *= DAMPING; n.vy *= DAMPING; n.vz *= DAMPING;
+    // Hard velocity cap — prevents snapping
+    const speed = Math.sqrt(n.vx * n.vx + n.vy * n.vy + n.vz * n.vz);
+    if (speed > MAX_VEL) {
+      const s = MAX_VEL / speed;
+      n.vx *= s; n.vy *= s; n.vz *= s;
+    }
     n.x += n.vx; n.y += n.vy; n.z += n.vz;
     n.x = Math.max(PAD, Math.min(w - PAD, n.x));
     n.y = Math.max(PAD, Math.min(h - PAD, n.y));
@@ -359,7 +366,7 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
         }
         cam.rotY += cam.rotVel;
       }
-      cam.bobPhase += 0.006;
+      if (dragging < 0) cam.bobPhase += 0.006;
 
       // Beat detection from audio (disabled in reduced motion)
       if (audioRef.current && !audioRef.current.paused && !reducedMotion) {
@@ -427,10 +434,26 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
       }
 
 
-      // Project all nodes
+      // Project all nodes + hard screen boundary
+      const SCREEN_PAD = 40;
       for (const n of nodes) {
         const p = project(n.x, n.y, n.z, cam, cx, cy);
         n.sx = p.sx; n.sy = p.sy; n.scale = p.scale; n.depth = p.depth;
+
+        // Hard clamp: if off-screen, snap world position to boundary and bounce
+        if (dragging !== n.index) {
+          const csx = Math.max(SCREEN_PAD, Math.min(w - SCREEN_PAD, p.sx));
+          const csy = Math.max(SCREEN_PAD, Math.min(h - SCREEN_PAD, p.sy));
+          if (csx !== p.sx || csy !== p.sy) {
+            const tgt = unproject(csx, csy, n.z, cam, cx, cy);
+            n.x = tgt.x; n.y = tgt.y;
+            // Bounce: reverse and dampen velocity
+            if (csx !== p.sx) n.vx *= -0.3;
+            if (csy !== p.sy) n.vy *= -0.3;
+            const p2 = project(n.x, n.y, n.z, cam, cx, cy);
+            n.sx = p2.sx; n.sy = p2.sy; n.scale = p2.scale; n.depth = p2.depth;
+          }
+        }
       }
 
       // ── Render ──────────────────────────────────────────────────────────
@@ -685,8 +708,11 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
       const node = graph.nodes[draggedNodeRef.current];
       const screenDx = mx - dragStartPosRef.current.x;
       const screenDy = my - dragStartPosRef.current.y;
-      const targetSx = dragOrigScreenRef.current.sx + screenDx;
-      const targetSy = dragOrigScreenRef.current.sy + screenDy;
+      const PAD = 40;
+      const cw = canvas.width / window.devicePixelRatio;
+      const ch = canvas.height / window.devicePixelRatio;
+      const targetSx = Math.max(PAD, Math.min(cw - PAD, dragOrigScreenRef.current.sx + screenDx));
+      const targetSy = Math.max(PAD, Math.min(ch - PAD, dragOrigScreenRef.current.sy + screenDy));
 
       // Camera-relative depth is constant → scale is constant
       const rz2 = dragOrigDepthRef.current;
