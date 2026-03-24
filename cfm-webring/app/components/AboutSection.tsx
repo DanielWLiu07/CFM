@@ -33,8 +33,9 @@ const CARDS = [
         <p style={{ color: '#333' }}>{'─'.repeat(50)}</p>
         <p><Dim>{'>'} </Dim>The <G>only program of its kind in Canada</G> combining computer science and finance into a single interdisciplinary degree.</p>
         <p><Dim>{'>'} </Dim>Degree: <G>Bachelor of Computing and Financial Management (BCFM)</G></p>
+        <p><Dim>{'>'} </Dim>Double Major: <G>Computer Science & Finance</G></p>
         <p><Dim>{'>'} </Dim>Duration: <G>5 years</G> (co-op only)</p>
-        <p><Dim>{'>'} </Dim>Faculties: <G>Mathematics</G> + <G>Accounting and Finance</G></p>
+        <p><Dim>{'>'} </Dim>Faculties: <G>Mathematics (David R. Cheriton School of Computer Science)</G> + <G>Accounting and Finance</G></p>
         <p style={{ color: '#333' }}>{'─'.repeat(50)}</p>
         <p><Dim>{'>'} </Dim><G>86%</G> graduation rate. <G>90%+</G> employed within 6 months of graduating.</p>
       </div>
