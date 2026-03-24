@@ -24,6 +24,7 @@ interface WebringEntry {
 
 const WEBRING_ENTRIES: WebringEntry[] = [
   { name: 'Daniel Liu', url: 'https://danielwliu.com', description: 'SWE @ building things', cohort: '2029', avatar: '/images/avatars/daniel.png' },
+  { name: 'Timothy Zheng', url: 'https://timothyzheng.ca', description: 'power trading', cohort: '2026', avatar: '/images/avatars/daniel.png' },
   { name: 'Alice Chen', url: '#', description: 'quant dev in training', cohort: '2028' },
   { name: 'Bob Zhang', url: '#', description: 'full-stack fintech', cohort: '2029' },
   { name: 'Carol Wu', url: '#', description: 'ML + markets', cohort: '2027' },

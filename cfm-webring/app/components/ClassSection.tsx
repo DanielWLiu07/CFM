@@ -21,6 +21,7 @@ interface ClassMember {
 
 const MEMBERS: ClassMember[] = [
   { name: 'Daniel Liu', url: 'https://danielwliu.com', role: 'SWE', blurb: 'Building things on the web and beyond.', school: 'UWaterloo', term: '1B', avatar: '/images/avatars/daniel.png' },
+  { name: 'Timothy Zheng', url: 'https://timothyzheng.ca', role: 'Alumni', blurb: 'Power trading', school: 'UWaterloo', term: '4B', avatar: '/images/avatars/timothyz.png' },
   { name: 'Bob Zhang', url: '#', role: 'Fintech', blurb: 'Exploring the intersection of finance and tech.', school: 'UWaterloo', term: '1B' },
   { name: 'Eve Singh', url: '#', role: 'Distributed Systems', blurb: 'Making systems that scale and don\'t break.', school: 'UWaterloo', term: '1B' },
   { name: 'Alice Chen', url: '#', role: 'Quant Dev', blurb: 'Turning math into money, one model at a time.', school: 'UWaterloo', term: '1A' },
