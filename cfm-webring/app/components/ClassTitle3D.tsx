@@ -1,68 +1,291 @@
 'use client';
 
-import { Canvas } from '@react-three/fiber';
-import { Text3D, Center } from '@react-three/drei';
-import { useMemo } from 'react';
+import { useRef, useMemo, useState, useEffect, useCallback } from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { Text3D, Edges } from '@react-three/drei';
+import * as THREE from 'three';
 
-function getYearRotation(year: string): [number, number, number] {
-  const rotations: Record<string, [number, number, number]> = {
-    '2027': [0.1, -0.2, 0.03],
-    '2028': [-0.08, 0.15, -0.04],
-    '2029': [0.06, 0.25, 0.02],
-    '2030': [-0.1, -0.18, 0.05],
-    '2031': [0.12, 0.1, -0.03],
-  };
-  return rotations[year] || [0, 0.1, 0];
+export interface ClassTitle3DConfig {
+  size: number;
+  depth: number;
+  tiltX: number;
+  tiltY: number;
+  edgeWidth: number;
+  fov: number;
+  dpr: number;
+  frontLight: number;
+  topLight: number;
+  ambient: number;
+  titleGap: number;
+  bgScale: number;
+  bgOpacity: number;
+  bgY: number;
+  titleY: number;
+  searchY: number;
 }
 
-const textProps = {
-  font: '/fonts/arcadeclassic.typeface.json',
-  size: 1.8,
-  letterSpacing: 0.08,
-} as const;
+export const DEFAULT_CONFIG: ClassTitle3DConfig = {
+  size: 6.5,
+  depth: 4.0,
+  tiltX: -0.25,
+  tiltY: 0,
+  edgeWidth: 8,
+  fov: 42,
+  dpr: 0.5,
+  frontLight: 7.0,
+  topLight: 2.5,
+  ambient: 0.15,
+  titleGap: -130,
+  bgScale: 90,
+  bgOpacity: 1.0,
+  bgY: 135,
+  titleY: 0,
+  searchY: 0,
+};
 
-function ClassText({ year }: { year: string }) {
-  const rotation = useMemo(() => getYearRotation(year), [year]);
+function AutoCamera({ textWidth }: { textWidth: number }) {
+  const { camera, size } = useThree();
+  const prevW = useRef(0);
+  const prevH = useRef(0);
+
+  useFrame(() => {
+    // Only update when size changes
+    if (size.width === prevW.current && size.height === prevH.current) return;
+    prevW.current = size.width;
+    prevH.current = size.height;
+    const cam = camera as THREE.OrthographicCamera;
+    const aspect = size.width / size.height;
+    const halfW = (textWidth / 2) * 1.45;
+    const halfH = halfW / aspect;
+    cam.left = -halfW;
+    cam.right = halfW;
+    cam.top = halfH;
+    cam.bottom = -halfH;
+    cam.position.set(0, 0, 100);
+    cam.updateProjectionMatrix();
+    cam.lookAt(0, 0, 0);
+  });
+
+  return null;
+}
+
+// Character width lookup for the arcade classic font
+const CHAR_WIDTH: Record<string, number> = {
+  C: 764, L: 580, A: 764, S: 764, O: 764, F: 620, M: 764,
+  '0': 764, '1': 764, '2': 764, '3': 764, '4': 764,
+  '5': 764, '6': 764, '7': 764, '8': 764, '9': 764,
+  ' ': 178,
+};
+
+// Single component that manages ALL letters in one useFrame
+function AllLetters({ year, config, twoLine }: { year: string; config: ClassTitle3DConfig; twoLine: boolean }) {
+  const groupRef = useRef<THREE.Group>(null);
+  const letterRefs = useRef<THREE.Group[]>([]);
+  const swapPhase = useRef(0); // 0 = idle, >0 = animating
+  const prevYear = useRef(year);
+
+  // Trigger swap animation when year changes
+  useEffect(() => {
+    if (prevYear.current !== year) {
+      swapPhase.current = 1.0;
+      prevYear.current = year;
+    }
+  }, [year]);
+
+  // Simple bright white — MeshStandardMaterial is MUCH cheaper than Physical
+  const frontMat = useMemo(() => new THREE.MeshStandardMaterial({
+    color: '#ffffff',
+    emissive: '#ffffff',
+    emissiveIntensity: 0.6,
+    metalness: 0.1,
+    roughness: 0.1,
+  }), []);
+
+  const sideMat = useMemo(() => new THREE.MeshStandardMaterial({
+    color: '#6688aa',
+    emissive: '#1a2a3a',
+    emissiveIntensity: 0.2,
+    metalness: 0.5,
+    roughness: 0.2,
+  }), []);
+
+  const materials = useMemo(() => [frontMat, sideMat], [frontMat, sideMat]);
+
+  const layoutLines = useMemo(() => {
+    const lines = twoLine
+      ? ['CLASS', `OF ${year}`]
+      : [`CLASS OF ${year}`];
+
+    return lines.map((line, lineIdx) => {
+      const chars = line.split('');
+      const spacing = 0.06;
+      let totalWidth = 0;
+      const charData = chars.map((ch) => {
+        const w = ((CHAR_WIDTH[ch] || 764) / 1000) * config.size;
+        const entry = { char: ch, width: w, x: totalWidth };
+        totalWidth += w + spacing * config.size;
+        return entry;
+      });
+      totalWidth -= spacing * config.size;
+      const halfW = totalWidth / 2;
+      const lineGap = config.size * 1.3;
+      const yOff = twoLine ? (lineIdx === 0 ? lineGap / 2 : -lineGap / 2) : 0;
+      return charData.map((d, i) => ({
+        char: d.char,
+        x: d.x - halfW,
+        y: yOff,
+        normalizedPos: chars.length > 1 ? (i / (chars.length - 1)) * 2 - 1 : 0,
+        index: lineIdx * 20 + i,
+      }));
+    }).flat();
+  }, [twoLine, year, config.size]);
+
+  // Store ref callback
+  const setRef = useCallback((el: THREE.Group | null, idx: number) => {
+    if (el) letterRefs.current[idx] = el;
+  }, []);
+
+  // Single useFrame for ALL letters
+  useFrame(({ clock }) => {
+    const t = clock.getElapsedTime();
+
+    // Decay swap animation
+    if (swapPhase.current > 0.01) {
+      swapPhase.current *= 0.92;
+    } else {
+      swapPhase.current = 0;
+    }
+    const swap = swapPhase.current;
+
+    for (let i = 0; i < layoutLines.length; i++) {
+      const ref = letterRefs.current[i];
+      if (!ref) continue;
+      const d = layoutLines[i];
+      const seed = d.index * 137.5;
+      const np = d.normalizedPos;
+
+      // Base splay
+      const splayY = np * 0.35;
+      const splayX = Math.abs(np) * 0.08;
+      const zBase = -Math.abs(np) * 1.8;
+
+      // 8-bit style: quantize to steps for pixel-snappy feel
+      const step = 0.15;
+      const rawFloat = Math.sin(t * (0.5 + (d.index % 4) * 0.08) + seed) * 0.1;
+      const quantFloat = Math.round(rawFloat / step) * step;
+
+      // Swap animation — letters scatter and snap back
+      const swapY = swap * Math.sin(seed * 0.3) * 2.5;
+      const swapX = swap * Math.cos(seed * 0.5) * 1.5;
+      const swapZ = swap * Math.abs(Math.sin(seed * 0.7)) * -4;
+      const swapRotX = swap * Math.sin(seed * 0.4) * 0.8;
+      const swapRotY = swap * Math.cos(seed * 0.6) * 1.0;
+
+      ref.position.x = d.x + swapX;
+      ref.position.y = d.y + quantFloat + swapY;
+      ref.position.z = zBase + swapZ;
+
+      ref.rotation.x = splayX + swapRotX;
+      ref.rotation.y = splayY + swapRotY;
+    }
+  });
 
   return (
-    <group rotation={rotation}>
-      <Center>
-        <Text3D
-          {...textProps}
-          height={0.5}
-          bevelEnabled
-          bevelThickness={0.06}
-          bevelSize={0.04}
-          bevelSegments={3}
-        >
-          {`CLASS OF ${year}`}
-          <meshStandardMaterial
-            color="#ffffff"
-            metalness={0.3}
-            roughness={0.4}
-          />
-        </Text3D>
-      </Center>
+    <group ref={groupRef} rotation={[config.tiltX, config.tiltY, 0]}>
+      {layoutLines.map((d, i) => (
+        d.char === ' ' ? null : (
+          <group
+            key={`${i}-${d.char}`}
+            ref={(el) => setRef(el, i)}
+            position={[d.x, d.y, -Math.abs(d.normalizedPos) * 1.8]}
+            rotation={[Math.abs(d.normalizedPos) * 0.08, d.normalizedPos * 0.35, 0]}
+          >
+            <Text3D
+              font="/fonts/arcadeclassic.typeface.json"
+              size={config.size}
+              height={config.depth}
+              letterSpacing={0}
+              curveSegments={1}
+              bevelEnabled={false}
+              material={materials}
+            >
+              {d.char}
+              <Edges threshold={1} color="#000000" lineWidth={config.edgeWidth} />
+            </Text3D>
+          </group>
+        )
+      ))}
     </group>
   );
 }
 
 interface ClassTitle3DProps {
-  year: string;
+  year?: string;
+  config?: ClassTitle3DConfig;
 }
 
-export default function ClassTitle3D({ year }: ClassTitle3DProps) {
+export default function ClassTitle3D({ year = '26', config = DEFAULT_CONFIG }: ClassTitle3DProps) {
+  const [screenW, setScreenW] = useState(1200);
+  const [visible, setVisible] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const update = () => setScreenW(window.innerWidth);
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(([e]) => setVisible(e.isIntersecting), { threshold: 0.05 });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  const isMobile = screenW < 640;
+
+  const charCount = isMobile ? 5 : 9;
+  const spaceCount = isMobile ? 0 : 2;
+  const textWidth = ((charCount * 764 + spaceCount * 178) / 1000 + (charCount + spaceCount - 1) * 0.06) * config.size;
+
+  const containerHeight = isMobile ? 'clamp(180px, 50vw, 300px)' : 'clamp(160px, 24vw, 300px)';
+
   return (
-    <div style={{ width: '100%', height: 200 }}>
+    <div
+      ref={wrapRef}
+      className="class-title-3d-wrap"
+      style={{
+        width: '100%',
+        height: containerHeight,
+        position: 'relative',
+        zIndex: 70,
+        pointerEvents: 'none',
+        imageRendering: 'pixelated',
+        transform: 'none',
+      }}
+    >
       <Canvas
-        camera={{ position: [0, 0, 10], fov: 50 }}
-        style={{ background: 'transparent' }}
-        gl={{ alpha: true }}
+        orthographic
+        camera={{ position: [0, 0, 100], zoom: 1 }}
+        gl={{ alpha: true, antialias: false, powerPreference: 'high-performance' }}
+        style={{
+          background: 'transparent',
+          imageRendering: 'pixelated',
+        }}
+        dpr={config.dpr}
+        className="class-title-canvas"
+        frameloop={visible ? 'always' : 'demand'}
       >
-        <ambientLight intensity={0.5} />
-        <directionalLight position={[5, 5, 5]} intensity={1.2} />
-        <directionalLight position={[-3, -2, 4]} intensity={0.4} />
-        <ClassText year={year} />
+        <AutoCamera textWidth={textWidth} />
+        <ambientLight intensity={config.ambient} />
+        <directionalLight position={[0, 0, 10]} intensity={config.frontLight} />
+        <directionalLight position={[0, 14, 2]} intensity={config.topLight} />
+        <directionalLight position={[-12, 4, 6]} intensity={0.6} color="#4488ff" />
+        <directionalLight position={[12, -2, 6]} intensity={0.4} color="#ffaa44" />
+        <directionalLight position={[0, 2, -10]} intensity={0.3} color="#7766ff" />
+        <AllLetters year={year} config={config} twoLine={isMobile} />
       </Canvas>
     </div>
   );
