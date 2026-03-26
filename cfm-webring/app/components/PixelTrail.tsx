@@ -1,7 +1,7 @@
 /* eslint-disable react/no-unknown-property */
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useRef, useState, useEffect } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { shaderMaterial, useTrailTexture } from '@react-three/drei';
 import * as THREE from 'three';
@@ -143,14 +143,26 @@ export default function PixelTrail({
   color?: string;
   className?: string;
 }) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(([e]) => setVisible(e.isIntersecting), { threshold: 0.05 });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
   return (
-    <>
+    <div ref={wrapRef} style={{ width: '100%', height: '100%' }}>
       {gooeyFilter && <GooeyFilter id={gooeyFilter.id} strength={gooeyFilter.strength} />}
       <Canvas
         {...canvasProps}
         gl={glProps}
         className={`pixel-canvas ${className}`}
         style={gooeyFilter ? { filter: `url(#${gooeyFilter.id})` } : undefined}
+        frameloop={visible ? 'always' : 'demand'}
       >
         <Scene
           gridSize={gridSize}
@@ -161,6 +173,6 @@ export default function PixelTrail({
           pixelColor={color}
         />
       </Canvas>
-    </>
+    </div>
   );
 }

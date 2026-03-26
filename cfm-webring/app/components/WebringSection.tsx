@@ -12,6 +12,7 @@ interface WebringSectionProps {
   onVisibilityChange: (visible: boolean) => void;
   audioRef: RefObject<HTMLAudioElement | null>;
   reducedMotion?: boolean;
+  sectionRefOut?: RefObject<HTMLElement | null>;
 }
 
 interface WebringEntry {
@@ -22,7 +23,7 @@ interface WebringEntry {
   avatar?: string; // optional image path
 }
 
-const WEBRING_ENTRIES: WebringEntry[] = [
+const _BASE_ENTRIES: WebringEntry[] = [
   { name: 'Daniel Liu', url: 'https://danielwliu.com', description: 'SWE @ building things', cohort: '2029', avatar: '/images/avatars/daniel.png' },
   { name: 'Timothy Zheng', url: 'https://timothyzheng.ca', description: 'power trading', cohort: '2026', avatar: '/images/avatars/timothyz.png' },
   { name: 'Alice Chen', url: '#', description: 'quant dev in training', cohort: '2028' },
@@ -34,6 +35,19 @@ const WEBRING_ENTRIES: WebringEntry[] = [
   { name: 'Grace Kim', url: '#', description: 'data science', cohort: '2028' },
 ];
 
+// ── TEST: generate 300 entries for stress testing ──
+const _TEST_NAMES = ['Alex','Sam','Jordan','Taylor','Morgan','Casey','Riley','Quinn','Avery','Harper','Blake','Drew','Reese','Sage','Kai','Nova','Zion','Eden','Sky','River'];
+const _TEST_DESCS = ['frontend dev','backend eng','ML researcher','product designer','data analyst','devops','mobile dev','security eng','QA lead','full-stack'];
+const _TEST_COHORTS = ['2026','2027','2028','2029','2030'];
+const _TEST_SURNAMES = ['Wang','Lee','Kim','Chen','Liu','Zhao','Singh','Park','Wu','Li','Ng','Cho','Tan','Das','Xu','Hu','Ma','Ye','Gu','Lu'];
+const _GENERATED: WebringEntry[] = Array.from({ length: 292 }, (_, i) => ({
+  name: `${_TEST_NAMES[i % _TEST_NAMES.length]} ${_TEST_SURNAMES[i % _TEST_SURNAMES.length]}${i > 19 ? ` ${i}` : ''}`,
+  url: '#',
+  description: _TEST_DESCS[i % _TEST_DESCS.length],
+  cohort: _TEST_COHORTS[i % _TEST_COHORTS.length],
+}));
+const WEBRING_ENTRIES: WebringEntry[] = [..._BASE_ENTRIES, ..._GENERATED]; // ~300 total
+
 const ALL_COHORTS = [...new Set(WEBRING_ENTRIES.map(e => e.cohort))].sort();
 
 function seededRandom(seed: number) {
@@ -41,227 +55,288 @@ function seededRandom(seed: number) {
   return x - Math.floor(x);
 }
 
-// ── 3D Types ────────────────────────────────────────────────────────────────
+// ── Types ────────────────────────────────────────────────────────────────────
 
 interface Node {
-  x: number; y: number; z: number;
-  vx: number; vy: number; vz: number;
+  x: number; y: number; z: number; // world position (static after layout)
   entry: WebringEntry;
   index: number;
-  // Cached projection (updated each frame)
-  sx: number; sy: number; scale: number; depth: number;
-  hoverAnim: number; // 0 = not hovered, 1 = fully hovered (lerps smoothly)
+  sx: number; sy: number; scale: number; depth: number; screenR: number; // projection cache
+  hoverAnim: number;
   avatarImg: HTMLImageElement | null;
 }
 
 interface Edge { from: number; to: number; }
 
-
 interface Camera {
-  rotY: number;
-  rotVel: number;       // angular velocity (momentum)
+  tx: number; ty: number; tz: number; // orbit target
+  orbitTheta: number;  // azimuth
+  orbitPhi: number;    // elevation (clamped)
+  orbitDist: number;   // distance from target
+  orbitThetaVel: number; // momentum
   bobPhase: number;
-  zoom: number;
 }
 
-// ── Constants ───────────────────────────────────────────────────────────────
+interface FlyTo {
+  startTarget: [number, number, number];
+  endTarget: [number, number, number];
+  startDist: number;
+  endDist: number;
+  t: number;
+  duration: number;
+}
+
+interface BoundingSphere { cx: number; cy: number; cz: number; radius: number; }
+
+// ── Constants ────────────────────────────────────────────────────────────────
 
 const FOCAL = 800;
-const CAM_Z = 0;
-const FOG_NEAR = -400;
-const FOG_FAR = 800;
-const Z_BOUND = 200;
 const TAU = Math.PI * 2;
+const LOD_DOT = 4;
+const LOD_SIMPLE = 10;
 
-// ── Projection ──────────────────────────────────────────────────────────────
+// ── Math helpers ─────────────────────────────────────────────────────────────
 
-function project(wx: number, wy: number, wz: number, cam: Camera, cx: number, cy: number) {
-  // Translate to camera-relative (nodes are in screen coords centered at cx,cy)
-  let rx = wx - cx;
-  let ry = wy - cy;
-  let rz = wz;
-
-  // Rotate around Y
-  const cosR = Math.cos(cam.rotY);
-  const sinR = Math.sin(cam.rotY);
-  const rx2 = rx * cosR - rz * sinR;
-  const rz2 = rx * sinR + rz * cosR;
-  ry += Math.sin(cam.bobPhase) * 8;
-
-  // Perspective divide (zoom affects focal length)
-  const focalZoomed = FOCAL * cam.zoom;
-  const d = focalZoomed + rz2;
-  if (d < 50) return { sx: -9999, sy: -9999, scale: 0.01, depth: 9999 };
-  const scale = focalZoomed / d;
-  return {
-    sx: cx + rx2 * scale,
-    sy: cy + ry * scale,
-    scale,
-    depth: rz2,
-  };
+function easeInOutCubic(t: number) {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 }
 
-function depthFog(depth: number) {
-  return Math.max(0, Math.min(1, 1 - (depth - FOG_NEAR) / (FOG_FAR - FOG_NEAR)));
+function lerp(a: number, b: number, t: number) { return a + (b - a) * t; }
+
+// ── Camera helpers ───────────────────────────────────────────────────────────
+
+function getCameraEye(cam: Camera): [number, number, number] {
+  const sp = Math.sin(cam.orbitPhi);
+  const cp = Math.cos(cam.orbitPhi);
+  const st = Math.sin(cam.orbitTheta);
+  const ct = Math.cos(cam.orbitTheta);
+  return [
+    cam.tx + cam.orbitDist * sp * st,
+    cam.ty + cam.orbitDist * cp + Math.sin(cam.bobPhase) * 4,
+    cam.tz + cam.orbitDist * sp * ct,
+  ];
 }
 
-// ── Unproject (screen → world, pinning z) ───────────────────────────────────
-
-function unproject(sx: number, sy: number, nodeZ: number, cam: Camera, cx: number, cy: number) {
-  const C = Math.cos(cam.rotY);
-  const S = Math.sin(cam.rotY);
-  const F = FOCAL * cam.zoom;
-  const A = sx - cx;
-
-  // Exact closed-form: solve rx from the projection equation
-  // A = (rx*C - Z*S) * F / (F + rx*S + Z*C)
-  // → rx = (A*(F + Z*C) + Z*S*F) / (C*F - A*S)
-  const denom = C * F - A * S;
-  const rx = denom !== 0 ? (A * (F + nodeZ * C) + nodeZ * S * F) / denom : A;
-
-  // Now compute the actual rz2 and scale for accurate Y
-  const rz2 = rx * S + nodeZ * C;
-  const scale = F / (F + rz2);
-  const ry = (sy - cy) / scale - Math.sin(cam.bobPhase) * 8;
-
-  return { x: rx + cx, y: ry + cy };
+function getCameraBasis(eye: [number, number, number], target: [number, number, number], theta: number): {
+  fwd: [number, number, number]; right: [number, number, number]; up: [number, number, number];
+} {
+  let fx = target[0] - eye[0], fy = target[1] - eye[1], fz = target[2] - eye[2];
+  const fl = Math.sqrt(fx * fx + fy * fy + fz * fz) || 1;
+  fx /= fl; fy /= fl; fz /= fl;
+  // Choose up hint: worldUp unless looking nearly straight up/down (gimbal lock)
+  let hx = 0, hy = 1, hz = 0;
+  if (Math.abs(fy) > 0.99) {
+    // At poles — use theta-derived horizontal as up hint to avoid zero cross product
+    hx = Math.sin(theta); hy = 0; hz = Math.cos(theta);
+  }
+  // right = forward × upHint
+  let rx = fy * hz - fz * hy, ry = fz * hx - fx * hz, rz = fx * hy - fy * hx;
+  const rl = Math.sqrt(rx * rx + ry * ry + rz * rz) || 1;
+  rx /= rl; ry /= rl; rz /= rl;
+  // up = right × forward
+  const ux = ry * fz - rz * fy, uy = rz * fx - rx * fz, uz = rx * fy - ry * fx;
+  return { fwd: [fx, fy, fz], right: [rx, ry, rz], up: [ux, uy, uz] };
 }
 
-// ── Graph Construction ──────────────────────────────────────────────────────
+// ── Projection (look-at camera) ─────────────────────────────────────────────
 
-function buildGraph(entries: WebringEntry[], w: number, h: number) {
-  const padX = 60, padY = 60;
+function project(wx: number, wy: number, wz: number, eye: [number, number, number],
+  right: [number, number, number], up: [number, number, number], fwd: [number, number, number],
+  cx: number, cy: number) {
+  const dx = wx - eye[0], dy = wy - eye[1], dz = wz - eye[2];
+  const camX = dx * right[0] + dy * right[1] + dz * right[2];
+  const camY = dx * up[0] + dy * up[1] + dz * up[2];
+  const camZ = dx * fwd[0] + dy * fwd[1] + dz * fwd[2];
+  if (camZ < 1) return { sx: -9999, sy: -9999, scale: 0.001, depth: 9999 };
+  const scale = FOCAL / camZ;
+  return { sx: cx + camX * scale, sy: cy - camY * scale, scale, depth: camZ };
+}
+
+function depthFog(depth: number, orbitDist: number) {
+  const fogNear = -orbitDist * 0.3;
+  const fogFar = orbitDist * 2.5;
+  return Math.max(0, Math.min(1, 1 - (depth - fogNear) / (fogFar - fogNear)));
+}
+
+// ── Graph Construction (world-space) ─────────────────────────────────────────
+
+function buildGraph(entries: WebringEntry[]) {
+  const n = entries.length;
+  const span = 400 + n * 4;
+  const cols = Math.max(1, Math.ceil(Math.cbrt(n * 1.5)));
+  const rows = Math.max(1, Math.ceil(Math.cbrt(n * 1.5)));
+  const layers = Math.max(1, Math.ceil(n / (cols * rows)));
+  const cellSize = span / Math.max(cols, rows, layers);
+
   const nodes: Node[] = entries.map((entry, i) => {
-    const x = padX + seededRandom(i * 2) * (w - padX * 2);
-    const y = padY + seededRandom(i * 2 + 1) * (h - padY * 2);
-    const z = -Z_BOUND + seededRandom(i * 2 + 100) * Z_BOUND * 2;
+    const col = i % cols;
+    const row = Math.floor(i / cols) % rows;
+    const layer = Math.floor(i / (cols * rows));
+    const jx = (seededRandom(i * 2) - 0.5) * cellSize * 0.6;
+    const jy = (seededRandom(i * 2 + 1) - 0.5) * cellSize * 0.6;
+    const jz = (seededRandom(i * 2 + 100) - 0.5) * cellSize * 0.6;
+    const x = (col - cols / 2 + 0.5) * cellSize + jx;
+    const y = (row - rows / 2 + 0.5) * cellSize + jy;
+    const z = (layer - layers / 2 + 0.5) * cellSize + jz;
     let avatarImg: HTMLImageElement | null = null;
-    if (entry.avatar) {
-      avatarImg = new Image();
-      avatarImg.src = entry.avatar;
-    }
-    return { x, y, z, vx: 0, vy: 0, vz: 0, entry, index: i, sx: 0, sy: 0, scale: 1, depth: 0, hoverAnim: 0, avatarImg };
+    if (entry.avatar) { avatarImg = new Image(); avatarImg.src = entry.avatar; }
+    return { x, y, z, entry, index: i, sx: 0, sy: 0, scale: 1, depth: 0, screenR: 0, hoverAnim: 0, avatarImg };
   });
 
+  // Edges: ring + proximity
   const edges: Edge[] = [];
-  for (let i = 0; i < entries.length; i++)
-    edges.push({ from: i, to: (i + 1) % entries.length });
-  for (let i = 0; i < entries.length; i++) {
-    const jump = 2 + Math.floor(seededRandom(i * 7 + 3) * 3);
-    const target = (i + jump) % entries.length;
-    if (!edges.some(e => (e.from === i && e.to === target) || (e.from === target && e.to === i)))
-      edges.push({ from: i, to: target });
+  const hasEdge = (a: number, b: number) => edges.some(e => (e.from === a && e.to === b) || (e.from === b && e.to === a));
+  for (let i = 0; i < n; i++) edges.push({ from: i, to: (i + 1) % n });
+
+  if (n <= 20) {
+    for (let i = 0; i < n; i++) {
+      const jump = 2 + Math.floor(seededRandom(i * 7 + 3) * 3);
+      const target = (i + jump) % n;
+      if (!hasEdge(i, target)) edges.push({ from: i, to: target });
+    }
+  } else {
+    const maxExtra = Math.floor(n * 1.5);
+    let added = 0;
+    for (let i = 0; i < n && added < maxExtra; i++) {
+      let bestDist = Infinity, bestJ = -1;
+      for (let j = 0; j < n; j++) {
+        if (j === i || hasEdge(i, j)) continue;
+        const dx = nodes[j].x - nodes[i].x, dy = nodes[j].y - nodes[i].y, dz = nodes[j].z - nodes[i].z;
+        const d = dx * dx + dy * dy + dz * dz;
+        if (d < bestDist) { bestDist = d; bestJ = j; }
+      }
+      if (bestJ >= 0) { edges.push({ from: i, to: bestJ }); added++; }
+    }
   }
 
   return { nodes, edges };
 }
 
+// ── One-time layout computation ──────────────────────────────────────────────
 
-// ── 3D Physics ──────────────────────────────────────────────────────────────
+function computeLayout(nodes: Node[], edges: Edge[]) {
+  const n = nodes.length;
+  const span = 400 + n * 4;
+  const avgSpacing = Math.cbrt(span * span * span / Math.max(1, n));
+  const springLen = Math.max(60, 1.0 * avgSpacing);
+  const repulsion = 30000 * (springLen / 320) * (springLen / 320);
+  const spring = 0.002 * (320 / Math.max(30, springLen));
+  const damping = 0.85;
+  const maxVel = 10;
+  const cutoff = springLen * 4;
 
-function simulate3D(nodes: Node[], edges: Edge[], w: number, h: number, pinnedIndex = -1) {
-  const REPULSION = 30000;
-  const SPRING = 0.002;
-  const SPRING_LEN = 320;
-  const DAMPING = 0.84;
-  const PAD = 40;
+  // Temp velocity arrays
+  const vx = new Float64Array(n), vy = new Float64Array(n), vz = new Float64Array(n);
 
-  // Repulsion
-  for (let i = 0; i < nodes.length; i++) {
-    for (let j = i + 1; j < nodes.length; j++) {
-      const dx = nodes[j].x - nodes[i].x;
-      const dy = nodes[j].y - nodes[i].y;
-      const dz = nodes[j].z - nodes[i].z;
+  for (let iter = 0; iter < 400; iter++) {
+    // Repulsion
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 1; j < n; j++) {
+        const dx = nodes[j].x - nodes[i].x, dy = nodes[j].y - nodes[i].y, dz = nodes[j].z - nodes[i].z;
+        if (Math.abs(dx) + Math.abs(dy) + Math.abs(dz) > cutoff) continue;
+        const distSq = dx * dx + dy * dy + dz * dz;
+        const dist = Math.sqrt(distSq) || 1;
+        const f = repulsion / distSq;
+        const fx = (dx / dist) * f, fy = (dy / dist) * f, fz = (dz / dist) * f;
+        vx[i] -= fx; vy[i] -= fy; vz[i] -= fz;
+        vx[j] += fx; vy[j] += fy; vz[j] += fz;
+      }
+    }
+    // Springs
+    for (const edge of edges) {
+      const a = edge.from, b = edge.to;
+      const dx = nodes[b].x - nodes[a].x, dy = nodes[b].y - nodes[a].y, dz = nodes[b].z - nodes[a].z;
       const dist = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
-      const force = REPULSION / (dist * dist);
-      const fx = (dx / dist) * force;
-      const fy = (dy / dist) * force;
-      const fz = (dz / dist) * force;
-      nodes[i].vx -= fx; nodes[i].vy -= fy; nodes[i].vz -= fz;
-      nodes[j].vx += fx; nodes[j].vy += fy; nodes[j].vz += fz;
+      const f = (dist - springLen) * spring;
+      const fx = (dx / dist) * f, fy = (dy / dist) * f, fz = (dz / dist) * f;
+      vx[a] += fx; vy[a] += fy; vz[a] += fz;
+      vx[b] -= fx; vy[b] -= fy; vz[b] -= fz;
     }
-  }
-
-  // Springs
-  for (const edge of edges) {
-    const a = nodes[edge.from], b = nodes[edge.to];
-    const dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z;
-    const dist = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
-    const force = (dist - SPRING_LEN) * SPRING;
-    const fx = (dx / dist) * force, fy = (dy / dist) * force, fz = (dz / dist) * force;
-    a.vx += fx; a.vy += fy; a.vz += fz;
-    b.vx -= fx; b.vy -= fy; b.vz -= fz;
-  }
-
-  // Centering
-  const cx = w / 2, cy = h / 2;
-  for (const n of nodes) {
-    n.vx += (cx - n.x) * 0.00015;
-    n.vy += (cy - n.y) * 0.00015;
-    n.vz += (0 - n.z) * 0.0003;
-  }
-
-  // Integration + bounds
-  const MAX_VEL = 3;
-  for (const n of nodes) {
-    if (n.index === pinnedIndex) { n.vx = 0; n.vy = 0; n.vz = 0; continue; }
-    n.vx *= DAMPING; n.vy *= DAMPING; n.vz *= DAMPING;
-    // Hard velocity cap — prevents snapping
-    const speed = Math.sqrt(n.vx * n.vx + n.vy * n.vy + n.vz * n.vz);
-    if (speed > MAX_VEL) {
-      const s = MAX_VEL / speed;
-      n.vx *= s; n.vy *= s; n.vz *= s;
+    // Mild centering (just to prevent drift, not to constrain)
+    for (let i = 0; i < n; i++) {
+      vx[i] += (0 - nodes[i].x) * 0.0001;
+      vy[i] += (0 - nodes[i].y) * 0.0001;
+      vz[i] += (0 - nodes[i].z) * 0.0001;
     }
-    n.x += n.vx; n.y += n.vy; n.z += n.vz;
-    n.x = Math.max(PAD, Math.min(w - PAD, n.x));
-    n.y = Math.max(PAD, Math.min(h - PAD, n.y));
-    n.z = Math.max(-Z_BOUND, Math.min(Z_BOUND, n.z));
+    // Integration
+    let totalKE = 0;
+    for (let i = 0; i < n; i++) {
+      vx[i] *= damping; vy[i] *= damping; vz[i] *= damping;
+      const speed = Math.sqrt(vx[i] * vx[i] + vy[i] * vy[i] + vz[i] * vz[i]);
+      if (speed > maxVel) { const s = maxVel / speed; vx[i] *= s; vy[i] *= s; vz[i] *= s; }
+      nodes[i].x += vx[i]; nodes[i].y += vy[i]; nodes[i].z += vz[i];
+      totalKE += vx[i] * vx[i] + vy[i] * vy[i] + vz[i] * vz[i];
+    }
+    if (totalKE < 0.01 * n) break;
   }
 }
 
-// ── Component ───────────────────────────────────────────────────────────────
+function computeBoundingSphere(nodes: Node[]): BoundingSphere {
+  let sx = 0, sy = 0, sz = 0;
+  for (const n of nodes) { sx += n.x; sy += n.y; sz += n.z; }
+  const cx = sx / nodes.length, cy = sy / nodes.length, cz = sz / nodes.length;
+  let maxR = 0;
+  for (const n of nodes) {
+    const d = Math.sqrt((n.x - cx) ** 2 + (n.y - cy) ** 2 + (n.z - cz) ** 2);
+    if (d > maxR) maxR = d;
+  }
+  return { cx, cy, cz, radius: Math.max(maxR, 50) };
+}
 
-export default function WebringSection({ onVisibilityChange, audioRef, reducedMotion }: WebringSectionProps) {
+// ── Component ────────────────────────────────────────────────────────────────
+
+export default function WebringSection({ onVisibilityChange, audioRef, reducedMotion, sectionRefOut }: WebringSectionProps) {
   const sentinelRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [search, setSearch] = useState('');
   const [selectedCohorts, setSelectedCohorts] = useState<Set<string>>(new Set());
   const [hoveredNode, setHoveredNode] = useState(-1);
+  const [selectedNode, setSelectedNode] = useState(-1);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; entry: WebringEntry } | null>(null);
   const graphRef = useRef<{ nodes: Node[]; edges: Edge[] } | null>(null);
-  const cameraRef = useRef<Camera>({ rotY: 0, rotVel: 0.0008, bobPhase: 0, zoom: 1 });
+  const boundsRef = useRef<BoundingSphere>({ cx: 0, cy: 0, cz: 0, radius: 200 });
+  const cameraRef = useRef<Camera>({ tx: 0, ty: 0, tz: 0, orbitTheta: 0, orbitPhi: Math.PI * 0.45, orbitDist: 400, orbitThetaVel: 0.0008, bobPhase: 0 });
+  const flyToRef = useRef<FlyTo | null>(null);
   const rafRef = useRef(0);
+  const visibleRef = useRef(false);
+  const [sectionVisible, setSectionVisible] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
-  const settled = useRef(false);
-  const frameCount = useRef(0);
+  // Scroll-driven 360° rotation: progress 0→1 (0°→360°), releases at 1
+  // Scroll-driven tilt: progress 0→1 maps phi 0→2π (full 360° vertical orbit), releases at 1
+  const PHI_CLAMP_MIN = 0.1;  // interactive drag limits (not scroll-tilt)
+  const PHI_CLAMP_MAX = Math.PI - 0.1;
+  const setSectionRef = useCallback((el: HTMLElement | null) => {
+    (sectionRef as React.MutableRefObject<HTMLElement | null>).current = el;
+    if (sectionRefOut && 'current' in sectionRefOut) {
+      (sectionRefOut as React.MutableRefObject<HTMLElement | null>).current = el;
+    }
+  }, [sectionRefOut]);
 
-  const draggedNodeRef = useRef(-1);
-  const dragStartPosRef = useRef({ x: 0, y: 0 });
-  const dragOrigScreenRef = useRef({ sx: 0, sy: 0 });
-  const dragOrigDepthRef = useRef(0); // camera-relative depth (rz2) at drag start
-  const dragCamRotRef = useRef(0);
-  // Orbit dragging
-  const orbitDragRef = useRef<{ lastX: number; lastTime: number } | null>(null);
-  // Mouse position ref for hover-attract
+  // Orbit/pan drag state
+  const orbitDragRef = useRef<{ lastX: number; lastY: number; startX: number; startY: number; lastTime: number } | null>(null);
+  const panDragRef = useRef<{ lastX: number; lastY: number } | null>(null);
   const mousePosRef = useRef({ x: 0, y: 0 });
-  // Beat pulse — 0..1, decays each frame
+  // Beat
   const beatPulseRef = useRef(0);
   const lastBeatIdxRef = useRef(-1);
   const centerGlowRef = useRef<HTMLDivElement>(null);
+  // Last frame time for fly-to
+  const lastTimeRef = useRef(0);
+  // Cached depth-sorted node indices (avoids alloc+sort every frame)
+  const depthSortedRef = useRef<number[]>([]);
 
+  // Search panel state
   const panelRef = useRef<HTMLDivElement>(null);
   const [panelPos, setPanelPos] = useState({ x: 32, y: 80 });
   const [panelSize, setPanelSize] = useState({ w: 340, h: 420 });
   const [collapsed, setCollapsed] = useState(false);
   const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
   const resizeRef = useRef<{ startX: number; startY: number; origW: number; origH: number } | null>(null);
-  const panelRectRef = useRef({ x: 32, y: 80, w: 340, h: 420 });
 
   const toggleCohort = useCallback((cohort: string) => {
     setSelectedCohorts(prev => {
       const next = new Set(prev);
-      if (next.has(cohort)) next.delete(cohort);
-      else next.add(cohort);
+      if (next.has(cohort)) next.delete(cohort); else next.add(cohort);
       return next;
     });
   }, []);
@@ -270,7 +345,7 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
     const q = search.toLowerCase().trim();
     const set = new Set<number>();
     WEBRING_ENTRIES.forEach((e, i) => {
-      const matchesSearch = !q || e.name.toLowerCase().includes(q) || e.description.toLowerCase().includes(q) || e.cohort.includes(q);
+      const matchesSearch = !q || e.name.toLowerCase().includes(q) || e.description.toLowerCase().includes(q) || e.cohort.toLowerCase().includes(q);
       const matchesCohort = selectedCohorts.size === 0 || selectedCohorts.has(e.cohort);
       if (matchesSearch && matchesCohort) set.add(i);
     });
@@ -283,26 +358,17 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
     dragRef.current = { startX: e.clientX, startY: e.clientY, origX: panelPos.x, origY: panelPos.y };
     const onMove = (ev: MouseEvent) => {
       if (!dragRef.current) return;
-      const dx = ev.clientX - dragRef.current.startX;
-      const dy = ev.clientY - dragRef.current.startY;
+      const dx = ev.clientX - dragRef.current.startX, dy = ev.clientY - dragRef.current.startY;
       const section = sectionRef.current;
-      const pw = panelRectRef.current.w;
-      const ph = panelRectRef.current.h;
+      const pw = panelSize.w, ph = panelSize.h;
       const maxX = section ? section.clientWidth - pw : window.innerWidth - pw;
       const maxY = section ? section.clientHeight - ph : window.innerHeight - ph;
-      const newPos = {
-        x: Math.max(0, Math.min(maxX, dragRef.current.origX + dx)),
-        y: Math.max(0, Math.min(maxY, dragRef.current.origY + dy)),
-      };
-      setPanelPos(newPos);
-      panelRectRef.current = { ...panelRectRef.current, x: newPos.x, y: newPos.y };
-      settled.current = false;
-      frameCount.current = 100;
+      setPanelPos({ x: Math.max(0, Math.min(maxX, dragRef.current.origX + dx)), y: Math.max(0, Math.min(maxY, dragRef.current.origY + dy)) });
     };
     const onUp = () => { dragRef.current = null; window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
-  }, [panelPos]);
+  }, [panelPos, panelSize]);
 
   // Panel resize
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
@@ -310,12 +376,7 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
     resizeRef.current = { startX: e.clientX, startY: e.clientY, origW: panelSize.w, origH: panelSize.h };
     const onMove = (ev: MouseEvent) => {
       if (!resizeRef.current) return;
-      const dx = ev.clientX - resizeRef.current.startX;
-      const dy = ev.clientY - resizeRef.current.startY;
-      const newSize = { w: Math.max(280, resizeRef.current.origW + dx), h: Math.max(300, resizeRef.current.origH + dy) };
-      setPanelSize(newSize);
-      panelRectRef.current = { ...panelRectRef.current, w: newSize.w, h: newSize.h };
-      settled.current = false; frameCount.current = 100;
+      setPanelSize({ w: Math.max(280, resizeRef.current.origW + ev.clientX - resizeRef.current.startX), h: Math.max(300, resizeRef.current.origH + ev.clientY - resizeRef.current.startY) });
     };
     const onUp = () => { resizeRef.current = null; window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
     window.addEventListener('mousemove', onMove);
@@ -325,12 +386,32 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
   useEffect(() => {
     const el = sentinelRef.current;
     if (!el) return;
-    const observer = new IntersectionObserver(([entry]) => onVisibilityChange(entry.isIntersecting), { threshold: 0.1 });
+    const observer = new IntersectionObserver(([entry]) => { visibleRef.current = entry.isIntersecting; setSectionVisible(entry.isIntersecting); onVisibilityChange(entry.isIntersecting); }, { threshold: 0.1 });
     observer.observe(el);
-    return () => observer.disconnect();
+    return () => { observer.disconnect(); };
   }, [onVisibilityChange]);
 
-  // ── Canvas render loop ──────────────────────────────────────────────────
+
+  // ── Fly-to trigger ────────────────────────────────────────────────────────
+  const triggerFlyTo = useCallback((nodeIndex: number) => {
+    const graph = graphRef.current;
+    if (!graph || nodeIndex < 0 || nodeIndex >= graph.nodes.length) return;
+    const node = graph.nodes[nodeIndex];
+    const cam = cameraRef.current;
+    const dist = Math.sqrt((cam.tx - node.x) ** 2 + (cam.ty - node.y) ** 2 + (cam.tz - node.z) ** 2);
+    const duration = Math.max(0.5, Math.min(2.0, 0.5 + dist * 0.002));
+    flyToRef.current = {
+      startTarget: [cam.tx, cam.ty, cam.tz],
+      endTarget: [node.x, node.y, node.z],
+      startDist: cam.orbitDist,
+      endDist: Math.max(boundsRef.current.radius * 0.12, 250),
+      t: 0,
+      duration,
+    };
+    setSelectedNode(nodeIndex);
+  }, []);
+
+  // ── Canvas render loop ────────────────────────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -344,32 +425,74 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
     };
     resize();
 
-    const w = canvas.width / window.devicePixelRatio;
-    const h = canvas.height / window.devicePixelRatio;
-
-    if (!graphRef.current) graphRef.current = buildGraph(WEBRING_ENTRIES, w, h);
+    // Init graph + layout (one-time)
+    if (!graphRef.current) {
+      const graph = buildGraph(WEBRING_ENTRIES);
+      computeLayout(graph.nodes, graph.edges);
+      graphRef.current = graph;
+      const bounds = computeBoundingSphere(graph.nodes);
+      boundsRef.current = bounds;
+      // Set initial camera to overview
+      const cam = cameraRef.current;
+      cam.tx = bounds.cx; cam.ty = bounds.cy; cam.tz = bounds.cz;
+      cam.orbitDist = bounds.radius * 1.8;
+    }
 
     const ctx = canvas.getContext('2d')!;
     const dpr = window.devicePixelRatio;
-    const cam = cameraRef.current;
+    lastTimeRef.current = performance.now();
 
     const draw = () => {
+      const now = performance.now();
+      // Skip rendering when off-screen
+      if (!visibleRef.current) {
+        lastTimeRef.current = now;
+        rafRef.current = requestAnimationFrame(draw);
+        return;
+      }
+      // Throttle to ~30fps
+      const elapsed = now - lastTimeRef.current;
+      if (elapsed < 30) {
+        rafRef.current = requestAnimationFrame(draw);
+        return;
+      }
+      const dt = Math.min(elapsed / 1000, 0.05); // seconds, capped
+      lastTimeRef.current = now;
+
       const graph = graphRef.current!;
       const { nodes, edges } = graph;
-      const dragging = draggedNodeRef.current;
+      const cam = cameraRef.current;
+      const bounds = boundsRef.current;
+      const w = canvas.width / dpr, h = canvas.height / dpr;
       const cx = w / 2, cy = h / 2;
 
-      // Camera — momentum + friction + auto-rotate (paused during node drag)
-      if (!orbitDragRef.current && dragging < 0) {
-        cam.rotVel *= 0.97;
-        if (Math.abs(cam.rotVel) < 0.002) {
-          cam.rotVel += (0.0008 - cam.rotVel) * 0.01;
+      // ── Fly-to animation ──────────────────────────────────────────────
+      const ft = flyToRef.current;
+      if (ft) {
+        ft.t += dt / ft.duration;
+        if (ft.t >= 1) {
+          ft.t = 1;
+          flyToRef.current = null;
         }
-        cam.rotY += cam.rotVel;
+        const e = easeInOutCubic(Math.min(ft.t, 1));
+        cam.tx = lerp(ft.startTarget[0], ft.endTarget[0], e);
+        cam.ty = lerp(ft.startTarget[1], ft.endTarget[1], e);
+        cam.tz = lerp(ft.startTarget[2], ft.endTarget[2], e);
+        cam.orbitDist = lerp(ft.startDist, ft.endDist, e);
       }
-      if (dragging < 0) cam.bobPhase += 0.006;
 
-      // Beat detection from audio (disabled in reduced motion)
+      // ── Camera auto-rotate (when not interacting and not in scroll-rotation) ──
+      const srActive = false;
+      if (!reducedMotion && !orbitDragRef.current && !panDragRef.current && !ft && !srActive) {
+        cam.orbitThetaVel *= 0.97;
+        if (Math.abs(cam.orbitThetaVel) < 0.002) {
+          cam.orbitThetaVel += (0.0008 - cam.orbitThetaVel) * 0.01;
+        }
+        cam.orbitTheta += cam.orbitThetaVel;
+      }
+      if (!reducedMotion) cam.bobPhase += 0.006;
+
+      // ── Beat detection ────────────────────────────────────────────────
       if (audioRef.current && !audioRef.current.paused && !reducedMotion) {
         const t = audioRef.current.currentTime;
         const beatIdx = Math.floor((t - BEAT_OFFSET) / BEAT_INTERVAL);
@@ -379,190 +502,167 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
         }
       }
       if (reducedMotion) beatPulseRef.current = 0;
-      else beatPulseRef.current *= 0.96; // smooth decay
+      else beatPulseRef.current *= 0.96;
       const beat = beatPulseRef.current;
 
-      // Center glow — pulses on beat
       if (centerGlowRef.current) {
-        const glowOpacity = 0.02 + beat * 0.05;
-        const glowScale = 1 + beat * 0.06;
-        centerGlowRef.current.style.opacity = String(glowOpacity);
-        centerGlowRef.current.style.transform = `scale(${glowScale})`;
+        centerGlowRef.current.style.opacity = String(0.02 + beat * 0.05);
+        centerGlowRef.current.style.transform = `scale(${1 + beat * 0.06})`;
       }
 
-      // Physics
-      if (dragging >= 0) { settled.current = false; frameCount.current = 100; }
-      if (!settled.current) {
-        for (let i = 0; i < 3; i++) simulate3D(nodes, edges, w, h, dragging);
-        frameCount.current++;
-        if (frameCount.current > 200 && dragging < 0) settled.current = true;
-      } else {
-        for (const n of nodes) {
-          n.x += Math.sin(Date.now() * 0.0005 + n.index * 1.7) * 0.15;
-          n.y += Math.cos(Date.now() * 0.0004 + n.index * 2.3) * 0.1;
-          n.z += Math.sin(Date.now() * 0.0003 + n.index * 3.1) * 0.12;
-        }
-      }
+      // ── Camera basis ──────────────────────────────────────────────────
+      const eye = getCameraEye(cam);
+      const target: [number, number, number] = [cam.tx, cam.ty, cam.tz];
+      const { fwd, right, up } = getCameraBasis(eye, target, cam.orbitTheta);
+      const time = Date.now() * 0.001;
 
-      // Pin dragged node
-      if (dragging >= 0) {
-        const dn = nodes[dragging];
-        dn.vx = 0; dn.vy = 0; dn.vz = 0;
-      }
-
-      // Panel avoidance — direct position lerp, no velocity forces (prevents oscillation)
-      const pr = panelRectRef.current;
-      const PAD_PANEL = 25;
-      for (const node of nodes) {
-        if (dragging === node.index || hoveredNode === node.index) continue;
-        const p = project(node.x, node.y, node.z, cam, cx, cy);
-        const px1 = pr.x - PAD_PANEL, py1 = pr.y - PAD_PANEL;
-        const px2 = pr.x + pr.w + PAD_PANEL, py2 = pr.y + pr.h + PAD_PANEL;
-        if (p.sx > px1 && p.sx < px2 && p.sy > py1 && p.sy < py2) {
-          const dL = p.sx - px1, dR = px2 - p.sx, dT = p.sy - py1, dB = py2 - p.sy;
-          const minD = Math.min(dL, dR, dT, dB);
-          let targetSx = p.sx, targetSy = p.sy;
-          if (minD === dL) targetSx = px1 - 2;
-          else if (minD === dR) targetSx = px2 + 2;
-          else if (minD === dT) targetSy = py1 - 2;
-          else targetSy = py2 + 2;
-          const target = unproject(targetSx, targetSy, node.z, cam, cx, cy);
-          // Lerp position directly — no velocity, no bounce
-          node.x += (target.x - node.x) * 0.12;
-          node.y += (target.y - node.y) * 0.12;
-          node.vx *= 0.3; node.vy *= 0.3; // kill existing velocity
-        }
-      }
-
-
-      // Project all nodes + hard screen boundary
-      const SCREEN_PAD = 40;
+      // ── Project all nodes ─────────────────────────────────────────────
       for (const n of nodes) {
-        const p = project(n.x, n.y, n.z, cam, cx, cy);
+        // Idle drift (visual only — don't mutate positions)
+        const driftX = reducedMotion ? 0 : Math.sin(time * 0.5 + n.index * 1.7) * 2;
+        const driftY = reducedMotion ? 0 : Math.cos(time * 0.4 + n.index * 2.3) * 1.5;
+        const driftZ = reducedMotion ? 0 : Math.sin(time * 0.3 + n.index * 3.1) * 1.8;
+        const p = project(n.x + driftX, n.y + driftY, n.z + driftZ, eye, right, up, fwd, cx, cy);
         n.sx = p.sx; n.sy = p.sy; n.scale = p.scale; n.depth = p.depth;
-
-        // Hard clamp: if off-screen, snap world position to boundary and bounce
-        if (dragging !== n.index) {
-          const csx = Math.max(SCREEN_PAD, Math.min(w - SCREEN_PAD, p.sx));
-          const csy = Math.max(SCREEN_PAD, Math.min(h - SCREEN_PAD, p.sy));
-          if (csx !== p.sx || csy !== p.sy) {
-            const tgt = unproject(csx, csy, n.z, cam, cx, cy);
-            n.x = tgt.x; n.y = tgt.y;
-            // Bounce: reverse and dampen velocity
-            if (csx !== p.sx) n.vx *= -0.3;
-            if (csy !== p.sy) n.vy *= -0.3;
-            const p2 = project(n.x, n.y, n.z, cam, cx, cy);
-            n.sx = p2.sx; n.sy = p2.sy; n.scale = p2.scale; n.depth = p2.depth;
-          }
-        }
+        const beatSize = 1 + beat * 0.15;
+        n.screenR = (22 + n.hoverAnim * 8) * p.scale * beatSize;
       }
 
-      // ── Render ──────────────────────────────────────────────────────────
+      // ── Render ────────────────────────────────────────────────────────
       ctx.save();
       ctx.scale(dpr, dpr);
       ctx.clearRect(0, 0, w, h);
 
-      // Animate hoverAnim for each node (smooth lerp toward target)
+      // Animate hoverAnim
       for (const n of nodes) {
-        const target = hoveredNode === n.index ? 1 : 0;
-        n.hoverAnim += (target - n.hoverAnim) * 0.12;
-        if (Math.abs(n.hoverAnim - target) < 0.01) n.hoverAnim = target;
+        const t = (hoveredNode === n.index || selectedNode === n.index) ? 1 : 0;
+        n.hoverAnim += (t - n.hoverAnim) * 0.12;
+        if (Math.abs(n.hoverAnim - t) < 0.01) n.hoverAnim = t;
       }
 
-      const time = Date.now() * 0.001;
-
-      // Background is now rendered by Three.js (WebringBackground component)
-
-      // Edges
+      // ── Edges ─────────────────────────────────────────────────────────
       for (const edge of edges) {
         const a = nodes[edge.from], b = nodes[edge.to];
+        // Edge LOD: skip if both are dot-level and neither hovered
+        if (a.screenR < LOD_DOT && b.screenR < LOD_DOT && hoveredNode !== a.index && hoveredNode !== b.index) continue;
+
         const aMatch = matchingIndices.has(a.index), bMatch = matchingIndices.has(b.index);
         const bothMatch = aMatch && bMatch;
         const eitherHovered = hoveredNode === a.index || hoveredNode === b.index;
-        const avgFog = (depthFog(a.depth) + depthFog(b.depth)) / 2;
+        const avgFog = (depthFog(a.depth, cam.orbitDist) + depthFog(b.depth, cam.orbitDist)) / 2;
+        if (avgFog < 0.01) continue;
         const avgScale = (a.scale + b.scale) / 2;
 
         ctx.beginPath();
         ctx.moveTo(a.sx, a.sy);
         ctx.lineTo(b.sx, b.sy);
-
+        ctx.strokeStyle = '#fff';
         const beatEdge = beat * 0.25;
         if (eitherHovered) {
-          ctx.strokeStyle = `rgba(255,255,255,${0.6 * avgFog})`;
+          ctx.globalAlpha = 0.6 * avgFog;
           ctx.lineWidth = 2 * avgScale;
         } else if (bothMatch) {
-          ctx.strokeStyle = `rgba(255,255,255,${(0.12 + beatEdge) * avgFog})`;
-          ctx.lineWidth = Math.max(0.3, (1 + beat * 1) * avgScale);
+          ctx.globalAlpha = (0.12 + beatEdge) * avgFog;
+          ctx.lineWidth = Math.max(0.3, (1 + beat) * avgScale);
         } else {
-          ctx.strokeStyle = `rgba(255,255,255,${(0.03 + beatEdge) * avgFog})`;
+          ctx.globalAlpha = (0.03 + beatEdge) * avgFog;
           ctx.lineWidth = Math.max(0.2, (0.5 + beat * 0.8) * avgScale);
         }
         ctx.stroke();
+        ctx.globalAlpha = 1;
       }
 
-      // Data packets (3D interpolated)
+      // ── Data packets (with distance culling) ──────────────────────────
       for (const edge of edges) {
         const a = nodes[edge.from], b = nodes[edge.to];
         if (!matchingIndices.has(a.index) && !matchingIndices.has(b.index)) continue;
+        const avgDepth = (a.depth + b.depth) / 2;
+        if (avgDepth > cam.orbitDist * 1.5) continue;
         const t = ((time * 0.3 + edge.from * 0.5) % 1);
-        const px3 = a.x + (b.x - a.x) * t;
-        const py3 = a.y + (b.y - a.y) * t;
-        const pz3 = a.z + (b.z - a.z) * t;
-        const p = project(px3, py3, pz3, cam, cx, cy);
-        const fog = depthFog(p.depth);
+        const px3 = a.x + (b.x - a.x) * t, py3 = a.y + (b.y - a.y) * t, pz3 = a.z + (b.z - a.z) * t;
+        const p = project(px3, py3, pz3, eye, right, up, fwd, cx, cy);
+        const fog = depthFog(p.depth, cam.orbitDist);
         if (fog < 0.01) continue;
         ctx.beginPath();
         ctx.arc(p.sx, p.sy, Math.max(0.5, (1.5 + beat * 2) * p.scale), 0, TAU);
-        ctx.fillStyle = `rgba(255,255,255,${(0.5 + beat * 0.4) * fog})`;
+        ctx.globalAlpha = (0.5 + beat * 0.4) * fog;
+        ctx.fillStyle = '#fff';
         ctx.fill();
+        ctx.globalAlpha = 1;
       }
 
-      // Nodes — sort back to front, hovered node always rendered last (on top)
-      const sorted = [...nodes].sort((a, b) => {
-        if (hoveredNode === a.index) return 1;  // hovered always last
-        if (hoveredNode === b.index) return -1;
-        return b.depth - a.depth;
+      // ── Nodes (back to front, cached sort) ─────────────────────────────
+      const sortArr = depthSortedRef.current;
+      if (sortArr.length !== nodes.length) {
+        sortArr.length = 0;
+        for (let i = 0; i < nodes.length; i++) sortArr.push(i);
+      }
+      sortArr.sort((a, b) => {
+        if (hoveredNode === a) return 1;
+        if (hoveredNode === b) return -1;
+        return nodes[b].depth - nodes[a].depth;
       });
-      for (const node of sorted) {
+
+      for (const idx of sortArr) {
+        const node = nodes[idx];
         const isMatch = matchingIndices.has(node.index);
         const isHovered = hoveredNode === node.index;
-        const ha = node.hoverAnim; // 0→1 smooth
-        const effectiveScale = node.scale * (1 + ha * 0.4); // grows 40% on hover
-        const baseFog = depthFog(node.depth);
-        const fog = baseFog + (0.95 - baseFog) * ha; // brightens on hover
-        const beatSize = 1 + beat * 0.15; // pulse on beat
-        const r = (22 + ha * 8) * effectiveScale * beatSize;
-        if (fog < 0.01 || r < 1) continue;
+        const ha = node.hoverAnim;
+        const effectiveScale = node.scale * (1 + ha * 0.4);
+        const fog = depthFog(node.depth, cam.orbitDist);
+        const brightenedFog = fog + (0.95 - fog) * ha;
+        const r = node.screenR;
+        if (brightenedFog < 0.01 || r < 0.5) continue;
 
-        // Hover animation — expanding rings + glow burst (fades in with hoverAnim)
+        // ── LOD: Dot ────────────────────────────────────────────────────
+        if (r < LOD_DOT && !isHovered) {
+          ctx.beginPath();
+          ctx.arc(node.sx, node.sy, Math.max(1, r), 0, TAU);
+          ctx.fillStyle = `rgba(255,255,255,${(isMatch ? 0.5 : 0.15) * brightenedFog})`;
+          ctx.fill();
+          continue;
+        }
+
+        // ── LOD: Simple ─────────────────────────────────────────────────
+        if (r < LOD_SIMPLE && !isHovered) {
+          ctx.beginPath();
+          ctx.arc(node.sx, node.sy, r, 0, TAU);
+          ctx.fillStyle = `rgba(${isMatch ? 10 : 5},${isMatch ? 10 : 5},${isMatch ? 10 : 5},${brightenedFog})`;
+          ctx.fill();
+          ctx.strokeStyle = `rgba(255,255,255,${(isMatch ? 0.4 : 0.08) * brightenedFog})`;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+          continue;
+        }
+
+        // ── LOD: Full ───────────────────────────────────────────────────
+
+        // Hover rings + glow
         if (ha > 0.05) {
-          const t = Date.now() * 0.003;
-          // Outer expanding rings (3 concentric, staggered phase)
+          const t2 = Date.now() * 0.003;
           for (let ring = 0; ring < 3; ring++) {
-            const phase = (t + ring * 2.1) % 6.28;
+            const phase = (t2 + ring * 2.1) % 6.28;
             const ringR = r + 10 + Math.sin(phase) * 15 + ring * 12;
             const ringAlpha = (0.15 - ring * 0.04) * (0.5 + 0.5 * Math.cos(phase)) * ha;
             ctx.beginPath();
             ctx.arc(node.sx, node.sy, ringR * effectiveScale / 1.2, 0, TAU);
-            ctx.strokeStyle = `rgba(255,255,255,${ringAlpha * fog})`;
+            ctx.strokeStyle = `rgba(255,255,255,${ringAlpha * brightenedFog})`;
             ctx.lineWidth = 1.5 - ring * 0.3;
             ctx.stroke();
           }
-          // Glow burst
           const glowR = 55 * effectiveScale;
           const grad = ctx.createRadialGradient(node.sx, node.sy, 0, node.sx, node.sy, glowR);
-          grad.addColorStop(0, `rgba(255,255,255,${0.15 * fog * ha})`);
-          grad.addColorStop(0.4, `rgba(255,255,255,${0.06 * fog * ha})`);
+          grad.addColorStop(0, `rgba(255,255,255,${0.15 * brightenedFog * ha})`);
+          grad.addColorStop(0.4, `rgba(255,255,255,${0.06 * brightenedFog * ha})`);
           grad.addColorStop(1, 'rgba(255,255,255,0)');
           ctx.beginPath();
           ctx.arc(node.sx, node.sy, glowR, 0, TAU);
           ctx.fillStyle = grad;
           ctx.fill();
-        } else if (isMatch && fog > 0.1) {
-          // Normal glow halo
+        } else if (isMatch && brightenedFog > 0.1) {
           const glowR = 35 * effectiveScale;
           const grad = ctx.createRadialGradient(node.sx, node.sy, 0, node.sx, node.sy, glowR);
-          grad.addColorStop(0, `rgba(255,255,255,${0.06 * fog})`);
+          grad.addColorStop(0, `rgba(255,255,255,${0.06 * brightenedFog})`);
           grad.addColorStop(1, 'rgba(255,255,255,0)');
           ctx.beginPath();
           ctx.arc(node.sx, node.sy, glowR, 0, TAU);
@@ -570,59 +670,59 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
           ctx.fill();
         }
 
-        // Node circle — dark fill with border
-        ctx.beginPath();
-        ctx.arc(node.sx, node.sy, r, 0, TAU);
-        const fillBase = isMatch ? 10 : 5;
-        const fillVal = Math.round(fillBase + (30 - fillBase) * ha);
-        ctx.fillStyle = `rgba(${fillVal},${fillVal},${fillVal},${fog})`;
-        ctx.fill();
+        const hasAvatar = node.avatarImg && node.avatarImg.complete && node.avatarImg.naturalWidth > 0;
 
-        // Avatar image or initials inside the circle
+        // Circle fill — skip for avatar nodes so transparency shows through
+        if (!hasAvatar) {
+          ctx.beginPath();
+          ctx.arc(node.sx, node.sy, r, 0, TAU);
+          const fillBase = isMatch ? 10 : 5;
+          const fillVal = Math.round(fillBase + (30 - fillBase) * ha);
+          ctx.fillStyle = `rgba(${fillVal},${fillVal},${fillVal},${brightenedFog})`;
+          ctx.fill();
+        }
+
+        // Avatar / initials
         ctx.save();
         ctx.beginPath();
         ctx.arc(node.sx, node.sy, r - 1, 0, TAU);
         ctx.clip();
-
-        if (node.avatarImg && node.avatarImg.complete && node.avatarImg.naturalWidth > 0) {
-          // Draw avatar image clipped to circle
+        if (hasAvatar) {
           const imgSize = r * 2;
-          ctx.globalAlpha = fog * (0.6 + ha * 0.4);
-          ctx.drawImage(node.avatarImg, node.sx - r, node.sy - r, imgSize, imgSize);
+          ctx.globalAlpha = brightenedFog * (0.6 + ha * 0.4);
+          ctx.drawImage(node.avatarImg!, node.sx - r, node.sy - r, imgSize, imgSize);
           ctx.globalAlpha = 1;
         } else {
-          // Styled initials
           const fontSize = Math.max(8, Math.round((12 + ha * 4) * effectiveScale));
           ctx.font = `${fontSize}px ArcadeClassic, monospace`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          const textAlpha = isMatch ? (0.7 + ha * 0.3) : (0.2 + ha * 0.3);
-          ctx.fillStyle = `rgba(255,255,255,${textAlpha * fog})`;
+          ctx.fillStyle = `rgba(255,255,255,${(isMatch ? 0.7 + ha * 0.3 : 0.2 + ha * 0.3) * brightenedFog})`;
           ctx.fillText(node.entry.name.split(' ').map(w => w[0]).join(''), node.sx, node.sy + 1);
         }
         ctx.restore();
 
-        // Border ring — glows on hover + beat pulse
+        // Border
         const beatGlow = beat * 0.4;
         const strokeAlpha = (isMatch ? 0.5 : 0.1) + ha * 0.5 + beatGlow;
         ctx.beginPath();
         ctx.arc(node.sx, node.sy, r, 0, TAU);
-        ctx.strokeStyle = `rgba(255,255,255,${Math.min(1, strokeAlpha * fog)})`;
+        ctx.strokeStyle = `rgba(255,255,255,${Math.min(1, strokeAlpha * brightenedFog)})`;
         ctx.lineWidth = (1.5 + ha * 1.5 + beat * 1.5) * effectiveScale;
         ctx.stroke();
 
         // Beat pulse ring
-        if (beat > 0.1 && fog > 0.1) {
+        if (beat > 0.1 && brightenedFog > 0.1) {
           const pulseR = r + 8 * beat * effectiveScale;
           ctx.beginPath();
           ctx.arc(node.sx, node.sy, pulseR, 0, TAU);
-          ctx.strokeStyle = `rgba(255,255,255,${beat * 0.25 * fog})`;
+          ctx.strokeStyle = `rgba(255,255,255,${beat * 0.25 * brightenedFog})`;
           ctx.lineWidth = 1;
           ctx.stroke();
         }
 
-        // Glow on hover — fades in
-        if (ha > 0.1 && fog > 0.2) {
+        // Hover glow
+        if (ha > 0.1 && brightenedFog > 0.2) {
           ctx.shadowColor = '#fff';
           ctx.shadowBlur = 15 * effectiveScale * ha;
           ctx.beginPath();
@@ -631,14 +731,14 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
           ctx.shadowBlur = 0;
         }
 
-        // Name label below node on hover
+        // Name label
         if (ha > 0.3) {
           const labelY = node.sy + r + 12 * effectiveScale;
           const labelSize = Math.max(8, Math.round(10 * effectiveScale));
           ctx.font = `${labelSize}px ArcadeClassic, monospace`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'top';
-          ctx.fillStyle = `rgba(255,255,255,${ha * fog * 0.8})`;
+          ctx.fillStyle = `rgba(255,255,255,${ha * brightenedFog * 0.8})`;
           ctx.fillText(node.entry.name, node.sx, labelY);
         }
       }
@@ -648,110 +748,77 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
     };
 
     rafRef.current = requestAnimationFrame(draw);
+    window.addEventListener('resize', resize);
+    return () => { cancelAnimationFrame(rafRef.current); window.removeEventListener('resize', resize); };
+  }, [matchingIndices, hoveredNode, selectedNode, reducedMotion]);
 
-    const onResize = () => {
-      resize();
-      const newW = canvas.width / window.devicePixelRatio;
-      const newH = canvas.height / window.devicePixelRatio;
-      if (graphRef.current) {
-        graphRef.current = buildGraph(WEBRING_ENTRIES, newW, newH);
-        settled.current = false;
-        frameCount.current = 0;
-      }
-    };
-    window.addEventListener('resize', onResize);
-    return () => { cancelAnimationFrame(rafRef.current); window.removeEventListener('resize', onResize); };
-  }, [matchingIndices, hoveredNode]);
-
-  // ── Mouse interaction (uses projected coords) ───────────────────────────
-
+  // ── Hit testing ───────────────────────────────────────────────────────────
   const findNodeAt = useCallback((mx: number, my: number) => {
     const graph = graphRef.current;
     if (!graph) return -1;
-    // Front-to-back for correct occlusion
-    const sorted = [...graph.nodes].sort((a, b) => a.depth - b.depth);
-    let closest = -1, closestDist = Infinity;
-    for (const node of sorted) {
-      const hitR = 30 * node.scale;
+    // Pick frontmost (smallest depth) node under cursor — no sort needed
+    let closest = -1, closestDepth = Infinity;
+    for (const node of graph.nodes) {
+      const hitR = Math.max(15, 30 * node.scale);
       const dx = node.sx - mx, dy = node.sy - my;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < hitR && dist < closestDist) {
+      if (dx * dx + dy * dy < hitR * hitR && node.depth < closestDepth) {
         closest = node.index;
-        closestDist = dist;
+        closestDepth = node.depth;
       }
     }
     return closest;
   }, []);
 
+  // ── Canvas mouse handlers ─────────────────────────────────────────────────
   const handleCanvasMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
-    const graph = graphRef.current;
-    if (!canvas || !graph) return;
+    if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
     const mx = e.clientX - rect.left, my = e.clientY - rect.top;
     const cam = cameraRef.current;
-    const cx = (canvas.width / window.devicePixelRatio) / 2;
-    const cy = (canvas.height / window.devicePixelRatio) / 2;
 
-    // Orbit drag — track velocity from mouse delta
+    // Orbit drag — takes over from scroll-rotation
     if (orbitDragRef.current) {
       const dx = mx - orbitDragRef.current.lastX;
+      const dy = my - orbitDragRef.current.lastY;
       const dt = Math.max(1, Date.now() - orbitDragRef.current.lastTime);
-      cam.rotY -= dx * 0.004;
-      cam.rotVel = (-dx * 0.004) / Math.min(dt / 16, 3); // normalize to ~60fps
+      cam.orbitTheta -= dx * 0.005;
+      cam.orbitPhi = Math.max(PHI_CLAMP_MIN, Math.min(PHI_CLAMP_MAX, cam.orbitPhi - dy * 0.005));
+      cam.orbitThetaVel = (-dx * 0.005) / Math.min(dt / 16, 3);
       orbitDragRef.current.lastX = mx;
+      orbitDragRef.current.lastY = my;
       orbitDragRef.current.lastTime = Date.now();
+      flyToRef.current = null;
       return;
     }
 
-    // Node drag — move along camera-perpendicular plane (constant depth)
-    if (draggedNodeRef.current >= 0) {
-      const node = graph.nodes[draggedNodeRef.current];
-      const screenDx = mx - dragStartPosRef.current.x;
-      const screenDy = my - dragStartPosRef.current.y;
-      const PAD = 40;
-      const cw = canvas.width / window.devicePixelRatio;
-      const ch = canvas.height / window.devicePixelRatio;
-      const targetSx = Math.max(PAD, Math.min(cw - PAD, dragOrigScreenRef.current.sx + screenDx));
-      const targetSy = Math.max(PAD, Math.min(ch - PAD, dragOrigScreenRef.current.sy + screenDy));
-
-      // Camera-relative depth is constant → scale is constant
-      const rz2 = dragOrigDepthRef.current;
-      const F = FOCAL * cam.zoom;
-      const scale = F / (F + rz2);
-      const C = Math.cos(cam.rotY);
-      const S = Math.sin(cam.rotY);
-
-      // Screen → rotated coords
-      const rx2 = (targetSx - cx) / scale;
-      const ry = (targetSy - cy) / scale - Math.sin(cam.bobPhase) * 8;
-
-      // Inverse rotation with fixed rz2:
-      // rx2 = rx*C - rz*S, rz2 = rx*S + rz*C
-      // → rx = rx2*C + rz2*S, rz = rz2*C - rx2*S (but we use rz = (rz2 - rx*S)/C below)
-      const rx = rx2 * C + rz2 * S;
-      const rz = C !== 0 ? (rz2 - rx * S) / C : node.z;
-
-      node.x = rx + cx;
-      node.y = ry + cy;
-      node.z = rz;
-      node.vx = 0; node.vy = 0; node.vz = 0;
-      const p = project(node.x, node.y, node.z, cam, cx, cy);
-      node.sx = p.sx; node.sy = p.sy; node.scale = p.scale; node.depth = p.depth;
-      setTooltip({ x: node.sx, y: node.sy, entry: node.entry });
+    // Pan drag
+    if (panDragRef.current) {
+      const dx = mx - panDragRef.current.lastX;
+      const dy = my - panDragRef.current.lastY;
+      const eye = getCameraEye(cam);
+      const { right, up } = getCameraBasis(eye, [cam.tx, cam.ty, cam.tz], cam.orbitTheta);
+      const panScale = cam.orbitDist / FOCAL;
+      cam.tx -= right[0] * dx * panScale + up[0] * -dy * panScale;
+      cam.ty -= right[1] * dx * panScale + up[1] * -dy * panScale;
+      cam.tz -= right[2] * dx * panScale + up[2] * -dy * panScale;
+      panDragRef.current.lastX = mx;
+      panDragRef.current.lastY = my;
+      flyToRef.current = null;
       return;
     }
 
+    // Hover detection
     mousePosRef.current = { x: mx, y: my };
     const closest = findNodeAt(mx, my);
     setHoveredNode(closest);
-    if (closest >= 0) {
-      const node = graph.nodes[closest];
+    if (closest >= 0 && graphRef.current) {
+      const node = graphRef.current.nodes[closest];
       setTooltip({ x: node.sx, y: node.sy, entry: node.entry });
-      canvas.style.cursor = 'grab';
+      canvas.style.cursor = 'pointer';
     } else {
       setTooltip(null);
-      canvas.style.cursor = 'default';
+      canvas.style.cursor = 'grab';
     }
   }, [findNodeAt]);
 
@@ -760,99 +827,142 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
     const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-    const hit = findNodeAt(mx, my);
-    if (hit >= 0) {
-      // Drag node
-      draggedNodeRef.current = hit;
-      dragStartPosRef.current = { x: mx, y: my };
-      const hitNode = graphRef.current!.nodes[hit];
-      dragOrigScreenRef.current = { sx: hitNode.sx, sy: hitNode.sy };
-      // Store camera-relative depth: rz2 = rx*sin + z*cos
-      const cam = cameraRef.current;
-      const canvasCx = (canvas.width / window.devicePixelRatio) / 2;
-      const rx = hitNode.x - canvasCx;
-      dragOrigDepthRef.current = rx * Math.sin(cam.rotY) + hitNode.z * Math.cos(cam.rotY);
-      dragCamRotRef.current = cam.rotY;
-      canvas.style.cursor = 'grabbing';
-      setHoveredNode(hit);
-    } else {
-      // Orbit drag
-      orbitDragRef.current = { lastX: mx, lastTime: Date.now() };
-      cameraRef.current.rotVel = 0;
+
+    if (e.shiftKey || e.button === 1) {
+      // Pan
+      panDragRef.current = { lastX: mx, lastY: my };
       canvas.style.cursor = 'move';
+    } else {
+      // Orbit (also tracks start for click detection)
+      orbitDragRef.current = { lastX: mx, lastY: my, startX: mx, startY: my, lastTime: Date.now() };
+      cameraRef.current.orbitThetaVel = 0;
+      canvas.style.cursor = 'grabbing';
     }
-  }, [findNodeAt]);
+  }, []);
+
+  const handleResetView = useCallback(() => {
+    const bounds = boundsRef.current;
+    const cam = cameraRef.current;
+    flyToRef.current = {
+      startTarget: [cam.tx, cam.ty, cam.tz],
+      endTarget: [bounds.cx, bounds.cy, bounds.cz],
+      startDist: cam.orbitDist,
+      endDist: bounds.radius * 1.8,
+      t: 0,
+      duration: 1.2,
+    };
+    setSelectedNode(-1);
+  }, []);
+
+  const handleDeselect = useCallback(() => {
+    setSelectedNode(-1);
+    handleResetView();
+  }, [handleResetView]);
 
   const handleCanvasUp = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // End orbit drag — momentum carries from last velocity
-    if (orbitDragRef.current) {
-      orbitDragRef.current = null;
-      canvas.style.cursor = 'default';
+    // Pan end
+    if (panDragRef.current) {
+      panDragRef.current = null;
+      canvas.style.cursor = 'grab';
       return;
     }
 
-    // End node drag
-    if (draggedNodeRef.current >= 0) {
+    // Orbit end — check for click
+    if (orbitDragRef.current) {
       const rect = canvas.getBoundingClientRect();
       const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-      const dist = Math.sqrt((mx - dragStartPosRef.current.x) ** 2 + (my - dragStartPosRef.current.y) ** 2);
+      const dist = Math.sqrt((mx - orbitDragRef.current.startX) ** 2 + (my - orbitDragRef.current.startY) ** 2);
+      orbitDragRef.current = null;
+
       if (dist < 5) {
-        const entry = WEBRING_ENTRIES[draggedNodeRef.current];
-        if (entry.url !== '#') window.open(entry.url, '_blank', 'noopener,noreferrer');
+        // Click — hit test
+        const hit = findNodeAt(mx, my);
+        if (hit >= 0) {
+          if (selectedNode === hit) {
+            handleDeselect();
+          } else {
+            triggerFlyTo(hit);
+          }
+        } else {
+          setSelectedNode(-1);
+        }
       }
-      draggedNodeRef.current = -1;
-      canvas.style.cursor = 'default';
+      canvas.style.cursor = 'grab';
     }
-  }, []);
+  }, [findNodeAt, selectedNode, triggerFlyTo, handleDeselect]);
 
   const handleCanvasLeave = useCallback(() => {
-    draggedNodeRef.current = -1;
     orbitDragRef.current = null;
+    panDragRef.current = null;
     setHoveredNode(-1);
     setTooltip(null);
   }, []);
 
-  // Native wheel listener to prevent page scroll (React onWheel is passive)
+  // Wheel: pinch-to-zoom + horizontal swipe to rotate. Vertical scroll = page scroll (pass through).
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const onWheel = (e: WheelEvent) => {
       const cam = cameraRef.current;
+      const bounds = boundsRef.current;
+
       if (e.ctrlKey) {
-        // Pinch-to-zoom (trackpad) or Ctrl+scroll → zoom
+        // Pinch-to-zoom
         e.preventDefault();
         e.stopPropagation();
-        cam.zoom = Math.max(0.4, Math.min(2.5, cam.zoom - e.deltaY * 0.005));
+        flyToRef.current = null;
+        const minDist = Math.max(80, bounds.radius * 0.08);
+        const maxDist = bounds.radius * 3.5;
+        cam.orbitDist = Math.max(minDist, Math.min(maxDist, cam.orbitDist * (1 + e.deltaY * 0.005)));
       } else if (Math.abs(e.deltaX) > Math.abs(e.deltaY) * 0.5 && Math.abs(e.deltaX) > 3) {
         // Horizontal swipe → rotate
         e.preventDefault();
         e.stopPropagation();
-        cam.rotVel -= e.deltaX * 0.00008;
+        flyToRef.current = null;
+        cam.orbitTheta += e.deltaX * 0.003;
+        cam.orbitThetaVel = e.deltaX * 0.00008;
       }
-      // Regular vertical scroll → passes through to page
+      // Vertical scroll passes through to page
     };
     canvas.addEventListener('wheel', onWheel, { passive: false });
     return () => canvas.removeEventListener('wheel', onWheel);
   }, []);
 
-  // Sliders
+  // Slider sync
   const [sliderAngle, setSliderAngle] = useState(0);
-  const [sliderZoom, setSliderZoom] = useState(100);
+  const [sliderTilt, setSliderTilt] = useState(Math.round(cameraRef.current.orbitPhi * 180 / Math.PI));
+  const [sliderZoom, setSliderZoom] = useState(50);
   const sliderDraggingRef = useRef(false);
+  const tiltSliderDraggingRef = useRef(false);
   const zoomSliderDraggingRef = useRef(false);
 
   useEffect(() => {
     let id = 0;
+    let frameSkip = 0;
+    let lastAngle = -1, lastTilt = -1, lastZoom = -1;
     const sync = () => {
-      const cam = cameraRef.current;
-      if (!sliderDraggingRef.current) {
-        setSliderAngle(((cam.rotY * 180 / Math.PI) % 360 + 360) % 360);
-      }
-      if (!zoomSliderDraggingRef.current) {
-        setSliderZoom(Math.round(cam.zoom * 100));
+      if (!visibleRef.current) { id = requestAnimationFrame(sync); return; }
+      frameSkip++;
+      if (frameSkip % 3 === 0) {
+        const cam = cameraRef.current;
+        const bounds = boundsRef.current;
+        if (!sliderDraggingRef.current) {
+          const angle = Math.round(((cam.orbitTheta * 180 / Math.PI) % 360 + 360) % 360);
+          if (angle !== lastAngle) { lastAngle = angle; setSliderAngle(angle); }
+        }
+        if (!tiltSliderDraggingRef.current) {
+          const tilt = Math.round(((cam.orbitPhi * 180 / Math.PI) % 360 + 360) % 360);
+          if (tilt !== lastTilt) { lastTilt = tilt; setSliderTilt(tilt); }
+        }
+        if (!zoomSliderDraggingRef.current) {
+          const minDist = Math.max(80, bounds.radius * 0.08);
+          const maxDist = bounds.radius * 3.5;
+          const pct = Math.round(Math.max(0, Math.min(100, 100 - ((cam.orbitDist - minDist) / (maxDist - minDist)) * 100)));
+          if (pct !== lastZoom) { lastZoom = pct; setSliderZoom(pct); }
+        }
       }
       id = requestAnimationFrame(sync);
     };
@@ -864,29 +974,60 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
     const deg = parseFloat(e.target.value);
     setSliderAngle(deg);
     sliderDraggingRef.current = true;
-    cameraRef.current.rotY = deg * Math.PI / 180;
-    cameraRef.current.rotVel = 0;
+    cameraRef.current.orbitTheta = deg * Math.PI / 180;
+    cameraRef.current.orbitThetaVel = 0;
+    flyToRef.current = null;
   }, []);
 
   const handleSliderUp = useCallback(() => { sliderDraggingRef.current = false; }, []);
+
+  const handleTiltChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const deg = parseFloat(e.target.value);
+    setSliderTilt(deg);
+    tiltSliderDraggingRef.current = true;
+    cameraRef.current.orbitPhi = deg * Math.PI / 180;
+    flyToRef.current = null;
+  }, []);
+
+  const handleTiltUp = useCallback(() => { tiltSliderDraggingRef.current = false; }, []);
 
   const handleZoomChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const v = parseFloat(e.target.value);
     setSliderZoom(v);
     zoomSliderDraggingRef.current = true;
-    cameraRef.current.zoom = v / 100;
+    const bounds = boundsRef.current;
+    const minDist = Math.max(80, bounds.radius * 0.08);
+    const maxDist = bounds.radius * 3.5;
+    cameraRef.current.orbitDist = maxDist - (v / 100) * (maxDist - minDist);
+    flyToRef.current = null;
   }, []);
 
   const handleZoomUp = useCallback(() => { zoomSliderDraggingRef.current = false; }, []);
 
+  // List item click → fly to
+  const handleListClick = useCallback((e: React.MouseEvent, i: number) => {
+    e.preventDefault();
+    if (selectedNode === i) {
+      handleDeselect();
+    } else {
+      triggerFlyTo(i);
+    }
+  }, [selectedNode, triggerFlyTo]);
+
+  const handleListDoubleClick = useCallback((e: React.MouseEvent, i: number) => {
+    e.preventDefault();
+    const entry = WEBRING_ENTRIES[i];
+    if (entry.url !== '#') window.open(entry.url, '_blank', 'noopener,noreferrer');
+  }, []);
+
   const listMaxHeight = panelSize.h - 230;
 
   return (
-    <section ref={sectionRef} className="relative h-screen flex flex-col" style={{ zIndex: 10, background: '#000', overflow: 'hidden' }}>
+    <section ref={setSectionRef} className="relative h-screen flex flex-col" style={{ zIndex: 10, background: '#000', overflow: 'hidden' }}>
       <div ref={sentinelRef} className="absolute top-0 left-0 w-full h-24" />
 
       {/* Three.js background scene */}
-      <WebringBackground beatRef={beatPulseRef} paused={reducedMotion} />
+      <WebringBackground beatRef={beatPulseRef} paused={reducedMotion || !sectionVisible} />
 
       {/* Center glow — beat-synced radial pulse */}
       <div
@@ -900,13 +1041,13 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
         }}
       />
 
-      {/* Circular vignette — above canvas/3D, below search panel */}
+      {/* Circular vignette */}
       <div className="absolute inset-0 pointer-events-none" style={{
         zIndex: 15,
         background: 'radial-gradient(ellipse at 50% 50%, transparent 40%, rgba(0,0,0,0.3) 55%, rgba(0,0,0,0.7) 65%, rgba(0,0,0,0.95) 78%, black 88%)',
       }} />
 
-      {/* Draggable + resizable search panel */}
+      {/* Search panel */}
       <div
         ref={panelRef}
         className="absolute z-[60]"
@@ -946,12 +1087,7 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
               </span>
               <button
                 className="collapse-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setCollapsed(prev => !prev);
-                  panelRectRef.current = { ...panelRectRef.current, h: collapsed ? panelSize.h : 32 };
-                  settled.current = false; frameCount.current = 100;
-                }}
+                onClick={(e) => { e.stopPropagation(); setCollapsed(prev => !prev); }}
                 style={{ background: 'none', border: '1px solid #333', color: '#888', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 10, padding: '1px 6px', lineHeight: 1 }}
               >
                 {collapsed ? '+' : '−'}
@@ -993,30 +1129,41 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
             <div className="mt-3 flex flex-col gap-1 flex-1 overflow-y-auto" style={{ maxHeight: Math.max(80, listMaxHeight) }}>
               {WEBRING_ENTRIES.map((entry, i) => {
                 if (!matchingIndices.has(i)) return null;
+                const isSelected = selectedNode === i;
                 return (
-                  <a key={i} href={entry.url} target="_blank" rel="noopener noreferrer" className="block no-underline webring-item"
+                  <div key={i} className="block no-underline webring-item" role="button" tabIndex={0}
+                    onClick={(e) => handleListClick(e, i)}
+                    onDoubleClick={(e) => handleListDoubleClick(e, i)}
                     onMouseEnter={() => setHoveredNode(i)} onMouseLeave={() => setHoveredNode(-1)}
-                    style={{ padding: '6px 8px', background: hoveredNode === i ? 'rgba(255,255,255,0.08)' : 'transparent', border: `1px solid ${hoveredNode === i ? 'rgba(255,255,255,0.2)' : 'transparent'}`, transition: 'all 0.15s ease', flexShrink: 0 }}
+                    style={{ padding: '6px 8px', cursor: 'pointer', background: (hoveredNode === i || isSelected) ? 'rgba(255,255,255,0.08)' : 'transparent', border: `1px solid ${isSelected ? 'rgba(255,255,255,0.4)' : hoveredNode === i ? 'rgba(255,255,255,0.2)' : 'transparent'}`, transition: 'all 0.15s ease', flexShrink: 0 }}
                   >
                     <div className="flex items-center justify-between">
                       <span style={{ fontFamily: 'var(--font-arcade)', fontSize: 11, letterSpacing: '0.06em', color: '#fff' }}>{entry.name}</span>
                       <span style={{ fontFamily: 'var(--font-arcade)', fontSize: 9, color: '#444', letterSpacing: '0.08em' }}>{entry.cohort}</span>
                     </div>
                     <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#666', margin: 0, marginTop: 2 }}>{entry.description}</p>
-                  </a>
+                  </div>
                 );
               })}
               {matchingIndices.size === 0 && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: '#444', padding: '12px 0', textAlign: 'center' }}>no results found</p>}
             </div>
 
-            <div className="mt-3 pt-2" style={{ borderTop: '1px solid #222', flexShrink: 0 }}>
+            <div className="mt-3 pt-2 flex items-center gap-2" style={{ borderTop: '1px solid #222', flexShrink: 0 }}>
               <a href="https://github.com/DanielWLiu07/CFM" target="_blank" rel="noopener noreferrer"
                 className="inline-block no-underline cta-btn"
                 style={{ fontFamily: 'var(--font-arcade)', fontSize: 9, letterSpacing: '0.15em', color: '#fff', border: '2px solid #fff', boxShadow: '2px 2px 0 #000', padding: '5px 14px', background: 'transparent' }}
                 onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#fff'; (e.currentTarget as HTMLElement).style.color = '#000'; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#fff'; }}
               >ADD YOUR SITE</a>
-
+              {selectedNode >= 0 && (
+                <button
+                  onClick={handleDeselect}
+                  className="cta-btn"
+                  style={{ fontFamily: 'var(--font-arcade)', fontSize: 9, letterSpacing: '0.15em', color: '#888', border: '2px solid #555', boxShadow: '2px 2px 0 #000', padding: '5px 14px', background: 'transparent', cursor: 'pointer', transition: 'all 0.15s ease' }}
+                  onMouseEnter={e => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#fff'; }}
+                  onMouseLeave={e => { e.currentTarget.style.color = '#888'; e.currentTarget.style.borderColor = '#555'; }}
+                >DESELECT</button>
+              )}
             </div>
           </div>
 
@@ -1033,7 +1180,7 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
       </div>
 
       {tooltip && (
-        <div className="absolute z-30 pointer-events-none" style={{ left: tooltip.x, top: tooltip.y - 50, transform: 'translateX(-50%)' }}>
+        <div className="absolute z-30 pointer-events-none" style={{ left: Math.max(80, Math.min(tooltip.x, (sectionRef.current?.clientWidth ?? 1000) - 80)), top: Math.max(10, tooltip.y - 50), transform: 'translateX(-50%)' }}>
           <div style={{ background: 'rgba(0,0,0,0.95)', border: '2px solid #fff', boxShadow: '2px 2px 0 #000', padding: '6px 12px', whiteSpace: 'nowrap' }}>
             <p style={{ fontFamily: 'var(--font-arcade)', fontSize: 11, color: '#fff', margin: 0, letterSpacing: '0.08em' }}>{tooltip.entry.name}</p>
             <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#999', margin: 0, marginTop: 2 }}>{tooltip.entry.description}</p>
@@ -1047,7 +1194,7 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
         />
       </div>
 
-      {/* Controls bar — bottom center */}
+      {/* Controls bar */}
       <div
         className="absolute z-[60] flex items-center gap-5"
         style={{
@@ -1078,10 +1225,25 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
         <div style={{ width: 1, height: 14, background: '#333' }} />
         <div className="flex items-center gap-2">
           <span style={{ fontFamily: 'var(--font-arcade)', fontSize: 8, color: '#555', letterSpacing: '0.1em', whiteSpace: 'nowrap' }}>
+            TILT
+          </span>
+          <input
+            type="range" min="0" max="360" step="1"
+            value={sliderTilt} onChange={handleTiltChange}
+            onMouseUp={handleTiltUp} onTouchEnd={handleTiltUp}
+            style={{ width: 100, height: 2, appearance: 'none', background: '#333', outline: 'none', cursor: 'pointer', accentColor: '#fff' }}
+          />
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#444', width: 28, textAlign: 'right' }}>
+            {Math.round(sliderTilt)}°
+          </span>
+        </div>
+        <div style={{ width: 1, height: 14, background: '#333' }} />
+        <div className="flex items-center gap-2">
+          <span style={{ fontFamily: 'var(--font-arcade)', fontSize: 8, color: '#555', letterSpacing: '0.1em', whiteSpace: 'nowrap' }}>
             ZOOM
           </span>
           <input
-            type="range" min="40" max="250" step="1"
+            type="range" min="0" max="100" step="1"
             value={sliderZoom} onChange={handleZoomChange}
             onMouseUp={handleZoomUp} onTouchEnd={handleZoomUp}
             style={{ width: 100, height: 2, appearance: 'none', background: '#333', outline: 'none', cursor: 'pointer', accentColor: '#fff' }}
@@ -1090,6 +1252,13 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
             {sliderZoom}%
           </span>
         </div>
+        <div style={{ width: 1, height: 14, background: '#333' }} />
+        <button
+          onClick={handleResetView}
+          style={{ fontFamily: 'var(--font-arcade)', fontSize: 8, color: '#555', letterSpacing: '0.1em', background: 'none', border: '1px solid #333', padding: '3px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}
+          onMouseEnter={e => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#fff'; }}
+          onMouseLeave={e => { e.currentTarget.style.color = '#555'; e.currentTarget.style.borderColor = '#333'; }}
+        >RESET</button>
       </div>
     </section>
   );

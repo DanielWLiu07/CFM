@@ -10,11 +10,80 @@
   src: url('/fonts/ARCADECLASSIC.TTF') format('truetype');
   font-weight: normal;
   font-style: normal;
+  font-display: swap;
 }
 
-html, body {
+html {
   overflow-x: clip;
   scrollbar-gutter: stable;
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: auto;
+}
+
+body {
+  overflow-x: clip;
+  overscroll-behavior: none;
+}
+
+/* ── Scroll reveal base ─────────────────────────────────────────────── */
+.scroll-reveal {
+  opacity: 0;
+  visibility: hidden;
+}
+.scroll-reveal.revealed {
+  visibility: visible;
+}
+
+/* About — punchy scale slam: starts huge and transparent, slams into place with overshoot */
+.reveal-scale-up.revealed {
+  animation: reveal-slam 0.9s cubic-bezier(0.22, 1.5, 0.36, 1) forwards;
+}
+@keyframes reveal-slam {
+  0%   { opacity: 0; transform: scale(1.4) translateY(80px); }
+  50%  { opacity: 1; transform: scale(0.97) translateY(-5px); }
+  70%  { opacity: 1; transform: scale(1.02) translateY(2px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Class — glitch shake: rapid jittery entrance with transform-only (no clip-path repaints) */
+.reveal-glitch.revealed {
+  animation: reveal-glitch-in 0.8s steps(1) forwards;
+}
+@keyframes reveal-glitch-in {
+  0%   { opacity: 0; transform: translateX(30px) skewX(4deg); }
+  10%  { opacity: 1; transform: translateX(-15px) skewX(-3deg); }
+  20%  { opacity: 0.7; transform: translateX(12px) skewX(2deg); }
+  30%  { opacity: 1; transform: translateX(-8px) skewX(-2deg); }
+  40%  { opacity: 0.85; transform: translateX(6px) skewX(1deg); }
+  50%  { opacity: 1; transform: translateX(-4px) skewX(-0.5deg); }
+  60%  { transform: translateX(3px); }
+  70%  { transform: translateX(-2px) skewX(0.3deg); }
+  80%  { transform: translateX(1px); }
+  90%  { transform: translateX(-1px); }
+  100% { opacity: 1; transform: translateX(0) skewX(0); }
+}
+
+/* Webring — warp in from deep space: zooms from far away (no blur — GPU composited) */
+.reveal-blur-in.revealed {
+  animation: reveal-warp 1.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes reveal-warp {
+  0%   { opacity: 0; transform: scale(0.3) translateY(100px); }
+  30%  { opacity: 0.6; transform: scale(0.8) translateY(20px); }
+  60%  { opacity: 1; transform: scale(1.03) translateY(-8px); }
+  80%  { opacity: 1; transform: scale(0.99) translateY(2px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* GitHub — smooth rise with glow flash */
+.reveal-fade-up.revealed {
+  animation: reveal-fade-up 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes reveal-fade-up {
+  0%   { opacity: 0; transform: translateY(60px); }
+  40%  { opacity: 1; }
+  70%  { opacity: 1; transform: translateY(-4px); }
+  100% { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes ready-intro {
@@ -31,6 +100,7 @@ html, body {
   animation:
     ready-intro 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards,
     ready-pulse 2.4s ease-in-out 0.8s infinite;
+  will-change: opacity, transform;
 }
 
 @keyframes terminal-bob {
@@ -65,13 +135,6 @@ html, body {
   75%      { transform: translateY(-20px) rotate(-4deg); }
 }
 
-@keyframes webring-title-beat {
-  0%       { transform: translateX(-50%) translateY(0) scale(1); filter: drop-shadow(0 0 30px rgba(255,255,255,0.3)) drop-shadow(0 0 60px rgba(255,255,255,0.15)) brightness(1.1); }
-  8%       { transform: translateX(-50%) translateY(-10px) scale(1.08); filter: drop-shadow(0 0 80px rgba(255,255,255,0.7)) drop-shadow(0 0 120px rgba(255,255,255,0.4)) brightness(1.5); }
-  35%      { transform: translateX(-50%) translateY(2px) scale(0.99); filter: drop-shadow(0 0 30px rgba(255,255,255,0.3)) drop-shadow(0 0 60px rgba(255,255,255,0.15)) brightness(1.05); }
-  55%      { transform: translateX(-50%) translateY(-6px) scale(1.04); filter: drop-shadow(0 0 50px rgba(255,255,255,0.5)) drop-shadow(0 0 90px rgba(255,255,255,0.25)) brightness(1.3); }
-  100%     { transform: translateX(-50%) translateY(0) scale(1); filter: drop-shadow(0 0 30px rgba(255,255,255,0.3)) drop-shadow(0 0 60px rgba(255,255,255,0.15)) brightness(1.1); }
-}
 
 /* ── Reduced motion ────────────────────────────────────────────────────── */
 .reduced-motion *,
@@ -139,6 +202,77 @@ input[type="range"]::-webkit-slider-thumb:active {
   transform: translateX(4px);
 }
 
+/* Pause all animations inside content that's off-screen */
+.scroll-reveal:not(.revealed) * {
+  animation-play-state: paused !important;
+}
+
+/* Class section fade-in — simple opacity+transform only, no filter repaints */
+@keyframes class-fade-in {
+  0%   { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Class title 3D wrapper — fade in + glitch + jitter (no filter animations) */
+.class-title-3d-wrap {
+  animation:
+    class-fade-in 1.2s ease-out forwards,
+    title-glitch 8s steps(1) infinite,
+    title-8bit-jitter 6s steps(1) infinite;
+  /* Static glow — no animation, applied once */
+  filter:
+    drop-shadow(0 0 8px rgba(255,255,255,0.12))
+    drop-shadow(0 0 2px rgba(100,150,255,0.1));
+}
+
+@keyframes title-glitch {
+  0%, 100% { opacity: 1; transform: translate(0, 0); }
+  8%       { opacity: 0.85; transform: translate(2px, 0); }
+  8.3%     { opacity: 1; transform: translate(0, 0); }
+  24%      { opacity: 1; transform: translate(0, 0); }
+  24.2%    { opacity: 0.7; transform: translate(-3px, 1px); }
+  24.6%    { opacity: 1; transform: translate(0, 0); }
+  52%      { opacity: 1; }
+  52.15%   { opacity: 0.6; transform: translate(1px, -1px); }
+  52.4%    { opacity: 0.9; transform: translate(-1px, 0); }
+  52.6%    { opacity: 1; transform: translate(0, 0); }
+  78%      { opacity: 1; }
+  78.2%    { opacity: 0.8; }
+  78.4%    { opacity: 1; }
+}
+
+/* 8-bit pixel jitter — snappy 1px jumps like a retro CRT */
+@keyframes title-8bit-jitter {
+  0%, 100% { transform: translate(0, 0); }
+  10%  { transform: translate(0, 1px); }
+  10.5% { transform: translate(0, 0); }
+  33%  { transform: translate(1px, 0); }
+  33.5% { transform: translate(0, 0); }
+  55%  { transform: translate(-1px, 0); }
+  55.5% { transform: translate(0, 0); }
+  77%  { transform: translate(0, -1px); }
+  77.5% { transform: translate(0, 0); }
+  90%  { transform: translate(1px, 1px); }
+  90.3% { transform: translate(0, 0); }
+}
+
+/* 8-bit scanline overlay for title area — static, no animation */
+.class-title-3d-wrap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 3px,
+    rgba(0,0,0,0.04) 3px,
+    rgba(0,0,0,0.04) 4px
+  );
+  pointer-events: none;
+}
+
+
+
 /* Cohort filter chips */
 .cohort-chip {
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
@@ -181,5 +315,87 @@ input[type="range"]::-webkit-slider-thumb:active {
 
 .cta-btn:active {
   transform: translateY(0);
+}
+
+/* ── CRT TV turn-on/off effects ─────────────────────────────────────── */
+
+/* Hard stutter flicker — analog signal instability */
+@keyframes crt-flicker {
+  0%        { opacity: 1 }
+  8%        { opacity: 0 }
+  9%        { opacity: 1 }
+  22%       { opacity: 0.3 }
+  23%       { opacity: 1 }
+  38%       { opacity: 0 }
+  40%       { opacity: 0.8 }
+  41%       { opacity: 1 }
+  55%       { opacity: 0.2 }
+  56%       { opacity: 1 }
+  72%       { opacity: 0 }
+  73%       { opacity: 0.6 }
+  74%       { opacity: 1 }
+  100%      { opacity: 1 }
+}
+
+/* Rapid static noise position shift */
+@keyframes crt-noise {
+  0%   { background-position: 0 0 }
+  10%  { background-position: -50% -30% }
+  20%  { background-position: 20% 60% }
+  30%  { background-position: -70% -10% }
+  40%  { background-position: 40% -50% }
+  50%  { background-position: -20% 40% }
+  60%  { background-position: 60% -20% }
+  70%  { background-position: -40% 70% }
+  80%  { background-position: 30% -60% }
+  90%  { background-position: -60% 20% }
+  100% { background-position: 50% -40% }
+}
+
+/* Horizontal static band rolling up */
+@keyframes crt-band-scroll {
+  from { transform: translateY(120vh) }
+  to   { transform: translateY(-120vh) }
+}
+
+/* Vertical expansion with overshoot + settle */
+@keyframes crt-expand {
+  0%   { transform: scaleX(1) scaleY(0.008) }
+  30%  { transform: scaleX(1) scaleY(0.5) }
+  60%  { transform: scaleX(1) scaleY(1.04) }
+  80%  { transform: scaleX(1) scaleY(0.99) }
+  100% { transform: scaleX(1) scaleY(1) }
+}
+
+/* Horizontal jitter during expand — screen shakes */
+@keyframes crt-hjitter {
+  0%, 100% { transform: translateX(0) }
+  10%  { transform: translateX(-3px) }
+  20%  { transform: translateX(2px) }
+  30%  { transform: translateX(-1px) }
+  40%  { transform: translateX(4px) }
+  50%  { transform: translateX(-2px) }
+  60%  { transform: translateX(1px) }
+  70%  { transform: translateX(-3px) }
+  80%  { transform: translateX(2px) }
+  90%  { transform: translateX(-1px) }
+}
+
+/* Phosphor afterglow fade */
+@keyframes crt-afterglow {
+  0%   { opacity: 0.8; transform: scale(1) }
+  40%  { opacity: 0.4; transform: scale(0.7) }
+  100% { opacity: 0; transform: scale(0.3) }
+}
+
+/* Color separation glitch — RGB split */
+@keyframes crt-rgb-split {
+  0%, 100% { text-shadow: none; filter: none }
+  15%  { filter: hue-rotate(90deg); transform: translateX(2px) }
+  16%  { filter: none; transform: translateX(0) }
+  45%  { filter: hue-rotate(-60deg); transform: translateX(-1px) }
+  46%  { filter: none; transform: translateX(0) }
+  75%  { filter: hue-rotate(180deg); transform: translateX(3px) }
+  76%  { filter: none; transform: translateX(0) }
 }
 
