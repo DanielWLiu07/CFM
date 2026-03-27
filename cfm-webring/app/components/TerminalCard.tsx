@@ -72,14 +72,14 @@ const TerminalCard = forwardRef<HTMLDivElement, TerminalCardProps>(
 
           {/* Terminal title bar */}
           <div
-            className="flex items-center justify-between px-4 py-2"
+            className="flex items-center justify-between px-3 sm:px-4 py-2"
             style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)', background: 'rgba(0, 0, 0, 0.4)' }}
           >
             <div className="flex items-center gap-2">
               <span
                 style={{
                   fontFamily: 'var(--font-arcade)',
-                  fontSize: 14,
+                  fontSize: 'clamp(10px, 1.8vw, 14px)',
                   letterSpacing: '0.1em',
                   color: '#ccc',
                 }}
@@ -122,13 +122,14 @@ const TerminalCard = forwardRef<HTMLDivElement, TerminalCardProps>(
 
           {/* Terminal body */}
           <div
-            style={{ display: 'flex', flex: 1, overflow: 'visible' }}
+            className="flex flex-col sm:flex-row"
+            style={{ flex: 1, overflow: 'visible' }}
           >
             <div
-              className="p-5 md:p-6"
+              className="p-4 sm:p-5 md:p-6"
               style={{
                 fontFamily: 'var(--font-mono)',
-                fontSize: 13,
+                fontSize: 'clamp(11px, 1.6vw, 13px)',
                 lineHeight: 1.7,
                 color: '#e0e0e0',
                 overflowY: 'auto',
@@ -139,6 +140,7 @@ const TerminalCard = forwardRef<HTMLDivElement, TerminalCardProps>(
             </div>
             {image && (
               <div
+                className="hidden sm:block"
                 style={{
                   width: '28%',
                   flexShrink: 0,

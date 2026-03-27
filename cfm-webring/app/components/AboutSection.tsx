@@ -27,7 +27,7 @@ const CARDS = [
     image: '/images/uwaterloo-seal.svg',
     content: (
       <div className="space-y-2">
-        <p style={{ color: '#fff', fontFamily: 'var(--font-arcade)', fontSize: 15, letterSpacing: '0.05em' }}>
+        <p style={{ color: '#fff', fontFamily: 'var(--font-arcade)', fontSize: 'clamp(11px, 1.8vw, 15px)', letterSpacing: '0.05em' }}>
           Computing and Financial Management
         </p>
         <p style={{ color: '#333' }}>{'─'.repeat(50)}</p>
@@ -42,10 +42,10 @@ const CARDS = [
   },
   {
     title: 'CURRICULUM',
-    image: '/images/nav_bg.png',
+    image: '/images/nav_bg.webp',
     content: (
       <div className="space-y-2">
-        <p style={{ color: '#fff', fontFamily: 'var(--font-arcade)', fontSize: 15, letterSpacing: '0.05em' }}>
+        <p style={{ color: '#fff', fontFamily: 'var(--font-arcade)', fontSize: 'clamp(11px, 1.8vw, 15px)', letterSpacing: '0.05em' }}>
           Courses Across Three Departments
         </p>
         <p style={{ color: '#333' }}>{'─'.repeat(50)}</p>
@@ -59,10 +59,10 @@ const CARDS = [
   },
   {
     title: 'COOP  PROGRAM',
-    image: '/images/goose-ascii.png',
+    image: '/images/goose-ascii.webp',
     content: (
       <div className="space-y-2">
-        <p style={{ color: '#fff', fontFamily: 'var(--font-arcade)', fontSize: 15, letterSpacing: '0.05em' }}>
+        <p style={{ color: '#fff', fontFamily: 'var(--font-arcade)', fontSize: 'clamp(11px, 1.8vw, 15px)', letterSpacing: '0.05em' }}>
           World Leading Coop Program
         </p>
         <p style={{ color: '#333' }}>{'─'.repeat(50)}</p>
@@ -82,7 +82,7 @@ const CARDS = [
     image: '/images/waterloo-ascii.svg',
     content: (
       <div className="space-y-2">
-        <p style={{ color: '#fff', fontFamily: 'var(--font-arcade)', fontSize: 15, letterSpacing: '0.05em' }}>
+        <p style={{ color: '#fff', fontFamily: 'var(--font-arcade)', fontSize: 'clamp(11px, 1.8vw, 15px)', letterSpacing: '0.05em' }}>
           Where CFM Graduates End Up
         </p>
         <p style={{ color: '#333' }}>{'─'.repeat(50)}</p>
@@ -99,9 +99,10 @@ const CARDS = [
 
 // Slot positions for the card stack — front card is slot 0
 function getSlot(index: number, total: number) {
-  const CARD_DIST = 50;
-  const VERT_DIST = 30;
-  // slot 0 = front, slot 1 = behind-right, slot 2 = behind-further, etc.
+  // Reduce spread on narrow screens
+  const isNarrow = typeof window !== 'undefined' && window.innerWidth < 640;
+  const CARD_DIST = isNarrow ? 25 : 50;
+  const VERT_DIST = isNarrow ? 15 : 30;
   return {
     x: index * CARD_DIST,
     y: index * -VERT_DIST,
@@ -279,7 +280,7 @@ export default function AboutSection({ onVisibilityChange, audioRef, reducedMoti
 
   return (
     <section
-      className="relative min-h-screen pt-24 pb-15 flex flex-col items-center"
+      className="relative min-h-screen pt-16 sm:pt-24 pb-10 sm:pb-15 px-4 sm:px-6 flex flex-col items-center"
       style={{ backgroundColor: 'black', zIndex: 1, overflow: 'clip' }}
     >
       {/* Sentinel for intersection observer */}
@@ -288,7 +289,7 @@ export default function AboutSection({ onVisibilityChange, audioRef, reducedMoti
       {/* Centered spinning background image */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/images/about_bg.png"
+        src="/images/about_bg.webp"
         alt=""
         className="absolute pointer-events-none select-none"
         style={{
@@ -310,7 +311,7 @@ export default function AboutSection({ onVisibilityChange, audioRef, reducedMoti
       <div className="absolute inset-y-0 right-0 pointer-events-none z-[80]" style={{ width: '10%', background: 'linear-gradient(to left, black, transparent)' }} />
 
       {/* Section header */}
-      <div className="relative mb-20" style={{ zIndex: 85 }}>
+      <div className="relative mb-10 sm:mb-20" style={{ zIndex: 85 }}>
         {/* Glow behind title */}
         <div className="absolute inset-0 pointer-events-none" style={{
           background: 'radial-gradient(ellipse at center, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.03) 40%, transparent 70%)',
@@ -320,7 +321,7 @@ export default function AboutSection({ onVisibilityChange, audioRef, reducedMoti
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           ref={titleRef}
-          src="/images/about_title.png"
+          src="/images/about_title.webp"
           alt="ABOUT"
           className="relative w-auto"
           style={{ height: 'clamp(100px, 12vw, 160px)', maxWidth: 'none', opacity: 0 }}
@@ -332,8 +333,8 @@ export default function AboutSection({ onVisibilityChange, audioRef, reducedMoti
         ref={stackRef}
         className="relative cursor-pointer"
         style={{
-          width: 'clamp(500px, 55vw, 800px)',
-          minHeight: 500,
+          width: 'clamp(300px, 85vw, 800px)',
+          minHeight: 'clamp(360px, 50vw, 500px)',
           zIndex: 85,
           marginTop: stackPos.mt,
           perspective: 1200,
@@ -349,7 +350,7 @@ export default function AboutSection({ onVisibilityChange, audioRef, reducedMoti
             title={card.title}
             image={card.image}
             className="absolute top-0 left-0 w-full"
-            style={{ willChange: 'transform, opacity', minHeight: 500 }}
+            style={{ willChange: 'transform, opacity', minHeight: 'clamp(360px, 50vw, 500px)' }}
           >
             {card.content}
           </TerminalCard>
@@ -357,7 +358,7 @@ export default function AboutSection({ onVisibilityChange, audioRef, reducedMoti
       </div>
 
       {/* Navigation dots + hint */}
-      <div className="flex flex-col items-center mt-10" style={{ zIndex: 85 }}>
+      <div className="flex flex-col items-center mt-6 sm:mt-10" style={{ zIndex: 85 }}>
         <div className="flex gap-4">
           {CARDS.map((_, i) => (
             <button
@@ -392,8 +393,8 @@ export default function AboutSection({ onVisibilityChange, audioRef, reducedMoti
         </p>
       </div>
 
-      {/* Card stack position tuner */}
-      {!tunerOpen ? (
+      {/* Card stack position tuner — dev only */}
+      {process.env.NODE_ENV === 'development' && (!tunerOpen ? (
         <button
           onClick={() => setTunerOpen(true)}
           style={{
@@ -441,7 +442,7 @@ maxWidth: ${stackPos.w}
 height: ${stackPos.h}`}
           </div>
         </div>
-      )}
+      ))}
     </section>
   );
 }

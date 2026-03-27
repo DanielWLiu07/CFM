@@ -1,9 +1,8 @@
 "use client"
 
 import * as NavigationMenu from "@radix-ui/react-navigation-menu";
-import React from "react";
+import React, { useRef, useEffect, useCallback, useImperativeHandle, forwardRef } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 
 const links = [
   { href: "/", label: "Home" },
@@ -13,32 +12,53 @@ const links = [
   { href: "/github", label: "Github" },
 ];
 
-interface NavbarProps {
-  activeRoute?: string;
+export interface NavbarHandle {
+  setActiveRoute: (route: string) => void;
 }
 
-export default function Navbar({ activeRoute }: NavbarProps) {
-  const pathname = usePathname();
-  const currentRoute = activeRoute ?? pathname;
+const Navbar = forwardRef<NavbarHandle>(function Navbar(_, ref) {
+  const linkRefs = useRef<(HTMLAnchorElement | null)[]>([]);
+  const currentRouteRef = useRef('/');
+
+  const applyActive = useCallback((route: string) => {
+    linkRefs.current.forEach((el, i) => {
+      if (!el) return;
+      const isActive = links[i].href === route;
+      el.style.color = isActive ? '#fff' : '#000';
+      el.style.background = isActive ? '#000' : 'transparent';
+    });
+  }, []);
+
+  useImperativeHandle(ref, () => ({
+    setActiveRoute: (route: string) => {
+      if (route === currentRouteRef.current) return;
+      currentRouteRef.current = route;
+      applyActive(route);
+    },
+  }), [applyActive]);
+
+  // Apply initial state after mount
+  useEffect(() => {
+    applyActive(currentRouteRef.current);
+  }, [applyActive]);
 
   return (
     <NavigationMenu.Root className="relative z-10">
       <NavigationMenu.List
-        className="flex items-center m-0 list-none"
+        className="flex items-center m-0 list-none flex-wrap"
         style={{
           background: '#fff',
           border: '2px solid #000',
           boxShadow: '3px 3px 0 #000',
-          padding: '4px',
-          gap: '4px',
+          padding: '3px',
+          gap: '2px',
         }}
       >
-        {links.map(({ href, label, external }) => {
-          const isScrollTarget = href === '/' || href === '/about' || href === '/class' || href === '/webring' || href === '/github';
-          const isActive = currentRoute === href;
+        {links.map(({ href, label }, i) => {
+          const isScrollTarget = true;
 
           const handleClick = (e: React.MouseEvent) => {
-            if (!isScrollTarget || external) return;
+            if (!isScrollTarget) return;
             e.preventDefault();
             if (href === '/') {
               window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -51,29 +71,28 @@ export default function Navbar({ activeRoute }: NavbarProps) {
           return (
             <React.Fragment key={href}>
               <NavigationMenu.Item>
-                <NavigationMenu.Link asChild active={isActive}>
+                <NavigationMenu.Link asChild>
                   <Link
                     href={href}
-                    target={external ? '_blank' : undefined}
-                    rel={external ? 'noopener noreferrer' : undefined}
-                    onClick={isScrollTarget && !external ? handleClick : undefined}
-                    className="block no-underline select-none outline-none transition-colors"
+                    ref={el => { linkRefs.current[i] = el; }}
+                    onClick={handleClick}
+                    className="nav-link block no-underline select-none outline-none transition-colors"
                     style={{
                       fontFamily: 'var(--font-arcade)',
-                      fontSize: '18px',
+                      fontSize: 'clamp(11px, 2.2vw, 18px)',
                       letterSpacing: '0.08em',
-                      padding: '5px 16px',
-                      color: isActive ? '#fff' : '#000',
-                      background: isActive ? '#000' : 'transparent',
+                      padding: 'clamp(3px, 0.6vw, 5px) clamp(8px, 1.8vw, 16px)',
+                      color: '#000',
+                      background: 'transparent',
                     }}
                     onMouseEnter={e => {
-                      if (!isActive) {
+                      if (currentRouteRef.current !== href) {
                         (e.currentTarget as HTMLElement).style.background = '#000';
                         (e.currentTarget as HTMLElement).style.color = '#fff';
                       }
                     }}
                     onMouseLeave={e => {
-                      if (!isActive) {
+                      if (currentRouteRef.current !== href) {
                         (e.currentTarget as HTMLElement).style.background = 'transparent';
                         (e.currentTarget as HTMLElement).style.color = '#000';
                       }
@@ -89,4 +108,6 @@ export default function Navbar({ activeRoute }: NavbarProps) {
       </NavigationMenu.List>
     </NavigationMenu.Root>
   );
-}
+});
+
+export default Navbar;

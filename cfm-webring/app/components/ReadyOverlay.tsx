@@ -80,8 +80,9 @@ const CFM_CONFIG = [
   { wickTop: 72, wickBot: 12, depth: 22, baseY: -65 },  // M — highest, longest shadow
 ];
 
-export default function ReadyOverlay({ onStart, muted, onToggleMute, volume, onVolumeChange }: { onStart: () => void; muted: boolean; onToggleMute: () => void; volume: number; onVolumeChange: (v: number) => void }) {
+export default function ReadyOverlay({ onStart, muted, onToggleMute, volume, onVolumeChange, assetsReady, loadProgress }: { onStart: () => void; muted: boolean; onToggleMute: () => void; volume: number; onVolumeChange: (v: number) => void; assetsReady: boolean; loadProgress: number }) {
   const [leaving, setLeaving] = useState(false);
+  const progressBarRef = useRef<HTMLDivElement>(null);
 
   const wrapRef          = useRef<HTMLDivElement>(null);
   const contentRef       = useRef<HTMLDivElement>(null);
@@ -104,7 +105,7 @@ export default function ReadyOverlay({ onStart, muted, onToggleMute, volume, onV
   useEffect(() => {
     const tl = gsap.timeline();
 
-    gsap.set([subRef.current, labelTopRef.current, labelBotRef.current], { opacity: 0 });
+    gsap.set([labelTopRef.current, labelBotRef.current], { opacity: 0 });
     gsap.set(sealRef.current, { opacity: 0, scaleY: 0, transformOrigin: 'center bottom' });
     gsap.set(gooseRef.current, { opacity: 0, scaleY: 0, transformOrigin: 'center bottom' });
     gsap.set([lineLeftRef.current, lineRightRef.current, lineBotLeftRef.current, lineBotRightRef.current],
@@ -145,13 +146,12 @@ export default function ReadyOverlay({ onStart, muted, onToggleMute, volume, onV
       .to(labelBotRef.current,  { opacity: 0.4, duration: 0.5, ease: 'power2.out' }, afterAll)
       .to([lineBotLeftRef.current, lineBotRightRef.current],
         { scaleX: 1, opacity: 0.4, duration: 0.6, ease: 'power2.inOut' }, afterAll + 0.1)
-      .to(subRef.current, { opacity: 0.65, duration: 0.6 }, afterAll + 0.25)
+      // subRef (loading/start text) is managed by its own effect based on assetsReady
       .to(sealRef.current, { opacity: 0.55, scaleY: 1, duration: 0.45, ease: 'power2.out' }, 0.9 + 10 * 0.1)
       .to(gooseRef.current, { opacity: 0.55, scaleY: 1, duration: 0.45, ease: 'power2.out' }, 0.9 + 5 * 0.1);
 
-    const blinkTween = gsap.to(subRef.current, {
-      opacity: 0, duration: 0, repeat: -1, yoyo: true, repeatDelay: 0.7, delay: afterAll + 1.0,
-    });
+    // Blink tween is created separately and controlled by assetsReady
+    const blinkTween = { kill: () => {} } as gsap.core.Tween;
 
     // ── Idle loop — each element starts its loop immediately after its own spawn completes ──
     // Spawn timing: sequence = [...leftEls(0-5), ...charEls(6-8), ...rightEls(9-14)]
@@ -255,8 +255,26 @@ export default function ReadyOverlay({ onStart, muted, onToggleMute, volume, onV
     return () => { tl.kill(); blinkTween.kill(); idleTweens.forEach(t => t.kill()); };
   }, []);
 
+  // Blink "CLICK TO START" once assets are ready
+  useEffect(() => {
+    if (!assetsReady || !subRef.current) return;
+    // Quick flash to draw attention to the state change
+    gsap.fromTo(subRef.current, { opacity: 0 }, { opacity: 1, duration: 0.3 });
+    const blink = gsap.to(subRef.current, {
+      opacity: 0, duration: 0, repeat: -1, yoyo: true, repeatDelay: 0.7, delay: 0.8,
+    });
+    return () => { blink.kill(); };
+  }, [assetsReady]);
+
+  // Animate progress bar fill
+  useEffect(() => {
+    if (progressBarRef.current) {
+      progressBarRef.current.style.width = `${Math.round(loadProgress * 100)}%`;
+    }
+  }, [loadProgress]);
+
   const handleClick = () => {
-    if (leaving) return;
+    if (leaving || !assetsReady) return;
     setLeaving(true);
     const tl = gsap.timeline({ onComplete: onStart });
 
@@ -304,7 +322,7 @@ export default function ReadyOverlay({ onStart, muted, onToggleMute, volume, onV
     <div
       ref={wrapRef}
       onClick={handleClick}
-      className="fixed inset-0 z-[200] flex flex-col items-center justify-center cursor-pointer overflow-hidden bg-black"
+      className={`fixed inset-0 z-[200] flex flex-col items-center justify-center overflow-hidden bg-black ${assetsReady ? 'cursor-pointer' : 'cursor-default'}`}
     >
       <div className="absolute inset-0">
         <LetterGlitch glitchColors={['#2a2a2a', '#3a3a3a', '#4a4a4a', '#5a5a5a']} glitchSpeed={60} outerVignette smooth />
@@ -386,10 +404,31 @@ export default function ReadyOverlay({ onStart, muted, onToggleMute, volume, onV
           <div ref={lineBotRightRef} style={{ width: '60px', height: '1px', background: 'white' }} />
         </div>
 
-        <p ref={subRef} className="text-white text-center"
-          style={{ fontSize: '12px', letterSpacing: '0.4em', marginTop: '2rem' }}>
-          ▶&nbsp;&nbsp;CLICK TO START&nbsp;&nbsp;◀
-        </p>
+        {/* Loading / Ready prompt */}
+        <div className="text-white text-center" style={{ marginTop: '2rem' }}>
+          {!assetsReady ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+              <p ref={subRef} style={{ fontSize: '12px', letterSpacing: '0.4em', fontFamily: 'var(--font-arcade)', opacity: 0.5 }}>
+                LOADING...&nbsp;&nbsp;{Math.round(loadProgress * 100)}%
+              </p>
+              <div style={{ width: 200, height: 3, background: 'rgba(255,255,255,0.1)', overflow: 'hidden' }}>
+                <div
+                  ref={progressBarRef}
+                  style={{
+                    height: '100%',
+                    width: '0%',
+                    background: '#fff',
+                    transition: 'width 0.3s ease-out',
+                  }}
+                />
+              </div>
+            </div>
+          ) : (
+            <p ref={subRef} style={{ fontSize: '12px', letterSpacing: '0.4em', fontFamily: 'var(--font-arcade)' }}>
+              ▶&nbsp;&nbsp;CLICK TO START&nbsp;&nbsp;◀
+            </p>
+          )}
+        </div>
 
       </div>
 
@@ -397,7 +436,7 @@ export default function ReadyOverlay({ onStart, muted, onToggleMute, volume, onV
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         ref={gooseRef}
-        src="/images/goose-ascii.png"
+        src="/images/goose-ascii.webp"
         alt="UWaterloo Goose"
         className="absolute -left-20 z-[1] -top-20 pointer-events-none select-none w-auto h-[550px] rotate-6"
       />

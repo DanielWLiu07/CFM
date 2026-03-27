@@ -1,6 +1,13 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useMemo } from 'react';
+
+interface LetterData {
+  char: string;
+  r: number; g: number; b: number;
+  tr: number; tg: number; tb: number;
+  colorProgress: number;
+}
 
 const LetterGlitch = ({
   glitchColors = ['#1a1a1a', '#2a2a2a', '#ffffff'],
@@ -21,89 +28,96 @@ const LetterGlitch = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>(0);
-  const letters = useRef<{ char: string; color: string; targetColor: string; colorProgress: number }[]>([]);
+  const letters = useRef<LetterData[]>([]);
   const grid = useRef({ columns: 0, rows: 0 });
   const context = useRef<CanvasRenderingContext2D | null>(null);
-  const lastGlitchTime = useRef(Date.now());
+  const lastGlitchTime = useRef(0);
+  const canvasSizeRef = useRef({ w: 0, h: 0 });
 
-  const lettersAndSymbols = Array.from(characters);
+  const lettersAndSymbols = useMemo(() => Array.from(characters), [characters]);
+
+  // Pre-parse colors to RGB once — avoids regex every frame
+  const parsedColors = useMemo(() => {
+    return glitchColors.map(hex => {
+      hex = hex.replace(/^#?([a-f\d])([a-f\d])([a-f\d])$/i, (_, r, g, b) => r+r+g+g+b+b);
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : { r: 0, g: 0, b: 0 };
+    });
+  }, [glitchColors]);
+
   const fontSize = 16;
   const charWidth = 10;
   const charHeight = 20;
+  const fontStr = `${fontSize}px monospace`;
 
   const getRandomChar = () => lettersAndSymbols[Math.floor(Math.random() * lettersAndSymbols.length)];
-  const getRandomColor = () => glitchColors[Math.floor(Math.random() * glitchColors.length)];
-
-  const hexToRgb = (hex: string) => {
-    hex = hex.replace(/^#?([a-f\d])([a-f\d])([a-f\d])$/i, (_, r, g, b) => r+r+g+g+b+b);
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : null;
-  };
-
-  const interpolateColor = (start: {r:number;g:number;b:number}, end: {r:number;g:number;b:number}, factor: number) => {
-    return `rgb(${Math.round(start.r+(end.r-start.r)*factor)},${Math.round(start.g+(end.g-start.g)*factor)},${Math.round(start.b+(end.b-start.b)*factor)})`;
-  };
+  const getRandomColorRgb = () => parsedColors[Math.floor(Math.random() * parsedColors.length)];
 
   const initializeLetters = (columns: number, rows: number) => {
     grid.current = { columns, rows };
-    letters.current = Array.from({ length: columns * rows }, () => ({
-      char: getRandomChar(),
-      color: getRandomColor(),
-      targetColor: getRandomColor(),
-      colorProgress: 1
-    }));
+    const len = columns * rows;
+    const arr = new Array<LetterData>(len);
+    for (let i = 0; i < len; i++) {
+      const c = getRandomColorRgb();
+      const tc = getRandomColorRgb();
+      arr[i] = { char: getRandomChar(), r: c.r, g: c.g, b: c.b, tr: tc.r, tg: tc.g, tb: tc.b, colorProgress: 1 };
+    }
+    letters.current = arr;
   };
 
   const drawLetters = () => {
-    if (!context.current || !canvasRef.current || letters.current.length === 0) return;
     const ctx = context.current;
-    const { width, height } = canvasRef.current.getBoundingClientRect();
-    ctx.clearRect(0, 0, width, height);
-    ctx.font = `${fontSize}px monospace`;
+    const arr = letters.current;
+    if (!ctx || arr.length === 0) return;
+    const { w, h } = canvasSizeRef.current;
+    ctx.clearRect(0, 0, w, h);
+    ctx.font = fontStr;
     ctx.textBaseline = 'top';
-    letters.current.forEach((letter, index) => {
-      const x = (index % grid.current.columns) * charWidth;
-      const y = Math.floor(index / grid.current.columns) * charHeight;
-      ctx.fillStyle = letter.color;
-      ctx.fillText(letter.char, x, y);
-    });
+    const cols = grid.current.columns;
+    for (let i = 0, len = arr.length; i < len; i++) {
+      const letter = arr[i];
+      ctx.fillStyle = `rgb(${letter.r},${letter.g},${letter.b})`;
+      ctx.fillText(letter.char, (i % cols) * charWidth, ((i / cols) | 0) * charHeight);
+    }
   };
 
   const updateLetters = () => {
-    if (!letters.current.length) return;
-    const updateCount = Math.max(1, Math.floor(letters.current.length * 0.05));
+    const arr = letters.current;
+    if (!arr.length) return;
+    const updateCount = Math.max(1, (arr.length * 0.05) | 0);
     for (let i = 0; i < updateCount; i++) {
-      const index = Math.floor(Math.random() * letters.current.length);
-      if (!letters.current[index]) continue;
-      letters.current[index].char = getRandomChar();
-      letters.current[index].targetColor = getRandomColor();
+      const index = Math.floor(Math.random() * arr.length);
+      const letter = arr[index];
+      letter.char = getRandomChar();
+      const tc = getRandomColorRgb();
+      letter.tr = tc.r; letter.tg = tc.g; letter.tb = tc.b;
       if (!smooth) {
-        letters.current[index].color = letters.current[index].targetColor;
-        letters.current[index].colorProgress = 1;
+        letter.r = tc.r; letter.g = tc.g; letter.b = tc.b;
+        letter.colorProgress = 1;
       } else {
-        letters.current[index].colorProgress = 0;
+        letter.colorProgress = 0;
       }
     }
   };
 
   const handleSmoothTransitions = () => {
+    const arr = letters.current;
     let needsRedraw = false;
-    letters.current.forEach(letter => {
+    for (let i = 0, len = arr.length; i < len; i++) {
+      const letter = arr[i];
       if (letter.colorProgress < 1) {
         letter.colorProgress = Math.min(1, letter.colorProgress + 0.05);
-        const startRgb = hexToRgb(letter.color);
-        const endRgb = hexToRgb(letter.targetColor);
-        if (startRgb && endRgb) {
-          letter.color = interpolateColor(startRgb, endRgb, letter.colorProgress);
-          needsRedraw = true;
-        }
+        const f = letter.colorProgress;
+        letter.r = (letter.r + (letter.tr - letter.r) * f) | 0;
+        letter.g = (letter.g + (letter.tg - letter.g) * f) | 0;
+        letter.b = (letter.b + (letter.tb - letter.b) * f) | 0;
+        needsRedraw = true;
       }
-    });
+    }
     if (needsRedraw) drawLetters();
   };
 
-  const animate = () => {
-    const now = Date.now();
+  const animate = (now: number) => {
     if (now - lastGlitchTime.current >= glitchSpeed) {
       updateLetters();
       drawLetters();
@@ -124,6 +138,7 @@ const LetterGlitch = ({
     canvas.height = rect.height * dpr;
     canvas.style.width = `${rect.width}px`;
     canvas.style.height = `${rect.height}px`;
+    canvasSizeRef.current = { w: rect.width, h: rect.height };
     if (context.current) context.current.setTransform(dpr, 0, 0, dpr, 0, 0);
     const columns = Math.ceil(rect.width / charWidth);
     const rows = Math.ceil(rect.height / charHeight);
@@ -136,14 +151,14 @@ const LetterGlitch = ({
     if (!canvas) return;
     context.current = canvas.getContext('2d');
     resizeCanvas();
-    animate();
+    animationRef.current = requestAnimationFrame(animate);
     let resizeTimeout: ReturnType<typeof setTimeout>;
     const handleResize = () => {
       clearTimeout(resizeTimeout);
       resizeTimeout = setTimeout(() => {
         cancelAnimationFrame(animationRef.current);
         resizeCanvas();
-        animate();
+        animationRef.current = requestAnimationFrame(animate);
       }, 100);
     };
     window.addEventListener('resize', handleResize);
