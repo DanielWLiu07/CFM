@@ -285,10 +285,7 @@ export default function GithubSection({ onVisibilityChange, audioRef, reducedMot
   const [ghStats, setGhStats] = useState<{ stars: number; forks: number; commits: number } | null>(null);
   const [catPos, setCatPos] = useState({ left: -415, bottom: -95, size: 435, rotate: 13 });
   const [gearPos, setGearPos] = useState({ right: -490, bottom: -280, size: 830 });
-  const [gearTunerOpen, setGearTunerOpen] = useState(false);
-  const [titlePos, setTitlePos] = useState({ height: 715, mt: -50, mb: 20 });
-  const [titleTunerOpen, setTitleTunerOpen] = useState(false);
-  const [catTunerOpen, setCatTunerOpen] = useState(false);
+  const [titlePos] = useState({ height: 715, mt: -50, mb: 20 });
 
   // Fetch live GitHub stats
   useEffect(() => {
@@ -745,148 +742,19 @@ export default function GithubSection({ onVisibilityChange, audioRef, reducedMot
         BUILT BY CFM STUDENTS  //  2026
       </div>
 
-      {/* Cat position tuner */}
-      {!catTunerOpen ? (
-        <button
-          onClick={() => setCatTunerOpen(true)}
-          style={{
-            position: 'fixed', bottom: 10, right: 10, zIndex: 9999,
-            background: '#222', color: '#fff', border: '1px solid #555',
-            padding: '4px 10px', fontSize: 11, fontFamily: 'monospace', cursor: 'pointer',
-          }}
-        >CAT</button>
-      ) : (
-        <div style={{
-          position: 'fixed', bottom: 10, right: 10, zIndex: 9999,
-          background: '#111', border: '1px solid #555', padding: 12,
-          fontFamily: 'monospace', fontSize: 11, color: '#fff', width: 250,
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-            <strong>CAT TUNER</strong>
-            <button onClick={() => setCatTunerOpen(false)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}>X</button>
-          </div>
-          {([
-            { key: 'left' as const, min: -1500, max: 1500, step: 5, label: 'left' },
-            { key: 'bottom' as const, min: -1000, max: 1000, step: 5, label: 'bottom' },
-            { key: 'size' as const, min: 50, max: 2000, step: 5, label: 'size' },
-            { key: 'rotate' as const, min: -360, max: 360, step: 1, label: 'rotate' },
-          ]).map(({ key, min, max, step, label }) => (
-            <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-              <span style={{ width: 50 }}>{label}</span>
-              <input
-                type="range" min={min} max={max} step={step}
-                value={catPos[key]}
-                onChange={e => setCatPos(prev => ({ ...prev, [key]: parseFloat(e.target.value) }))}
-                style={{ flex: 1 }}
-              />
-              <span style={{ width: 40, textAlign: 'right' }}>{catPos[key]}</span>
-            </div>
-          ))}
-          <button
-            onClick={() => navigator.clipboard.writeText(`left: ${catPos.left}, bottom: ${catPos.bottom}, size: ${catPos.size}, rotate: ${catPos.rotate}`)}
-            style={{ background: '#333', border: '1px solid #555', color: '#fff', padding: '2px 8px', fontSize: 10, cursor: 'pointer', marginTop: 4 }}
-          >COPY VALUES</button>
-        </div>
-      )}
-
-      {/* Gear position tuner */}
-      {!gearTunerOpen ? (
-        <button
-          onClick={() => setGearTunerOpen(true)}
-          style={{
-            position: 'fixed', bottom: 10, right: 80, zIndex: 9999,
-            background: '#222', color: '#fff', border: '1px solid #555',
-            padding: '4px 10px', fontSize: 11, fontFamily: 'monospace', cursor: 'pointer',
-          }}
-        >GEAR</button>
-      ) : (
-        <div style={{
-          position: 'fixed', bottom: 10, right: 80, zIndex: 9999,
-          background: '#111', border: '1px solid #555', padding: 12,
-          fontFamily: 'monospace', fontSize: 11, color: '#fff', width: 250,
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-            <strong>GEAR TUNER</strong>
-            <button onClick={() => setGearTunerOpen(false)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}>X</button>
-          </div>
-          {([
-            { key: 'right' as const, min: -1500, max: 1500, step: 5, label: 'right' },
-            { key: 'bottom' as const, min: -1000, max: 1000, step: 5, label: 'bottom' },
-            { key: 'size' as const, min: 50, max: 2000, step: 10, label: 'size' },
-          ]).map(({ key, min, max, step, label }) => (
-            <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-              <span style={{ width: 50 }}>{label}</span>
-              <input
-                type="range" min={min} max={max} step={step}
-                value={gearPos[key]}
-                onChange={e => setGearPos(prev => ({ ...prev, [key]: parseFloat(e.target.value) }))}
-                style={{ flex: 1 }}
-              />
-              <span style={{ width: 40, textAlign: 'right' }}>{gearPos[key]}</span>
-            </div>
-          ))}
-          <button
-            onClick={() => navigator.clipboard.writeText(`right: ${gearPos.right}, bottom: ${gearPos.bottom}, size: ${gearPos.size}`)}
-            style={{ background: '#333', border: '1px solid #555', color: '#fff', padding: '2px 8px', fontSize: 10, cursor: 'pointer', marginTop: 4 }}
-          >COPY VALUES</button>
-        </div>
-      )}
-
-      {/* Title tuner */}
-      {!titleTunerOpen ? (
-        <button
-          onClick={() => setTitleTunerOpen(true)}
-          style={{
-            position: 'fixed', bottom: 10, right: 150, zIndex: 9999,
-            background: '#222', color: '#fff', border: '1px solid #555',
-            padding: '4px 10px', fontSize: 11, fontFamily: 'monospace', cursor: 'pointer',
-          }}
-        >TITLE</button>
-      ) : (
-        <div style={{
-          position: 'fixed', bottom: 10, right: 150, zIndex: 9999,
-          background: '#111', border: '1px solid #555', padding: 12,
-          fontFamily: 'monospace', fontSize: 11, color: '#fff', width: 250,
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-            <strong>TITLE TUNER</strong>
-            <button onClick={() => setTitleTunerOpen(false)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}>X</button>
-          </div>
-          {([
-            { key: 'height' as const, min: 50, max: 2000, step: 5, label: 'width' },
-            { key: 'mt' as const, min: -500, max: 500, step: 2, label: 'margin-t' },
-            { key: 'mb' as const, min: -500, max: 500, step: 2, label: 'margin-b' },
-          ]).map(({ key, min, max, step, label }) => (
-            <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-              <span style={{ width: 60 }}>{label}</span>
-              <input
-                type="range" min={min} max={max} step={step}
-                value={titlePos[key]}
-                onChange={e => setTitlePos(prev => ({ ...prev, [key]: parseFloat(e.target.value) }))}
-                style={{ flex: 1 }}
-              />
-              <span style={{ width: 40, textAlign: 'right' }}>{titlePos[key]}</span>
-            </div>
-          ))}
-          <button
-            onClick={() => navigator.clipboard.writeText(`height: ${titlePos.height}, mt: ${titlePos.mt}, mb: ${titlePos.mb}`)}
-            style={{ background: '#333', border: '1px solid #555', color: '#fff', padding: '2px 8px', fontSize: 10, cursor: 'pointer', marginTop: 4 }}
-          >COPY VALUES</button>
-        </div>
-      )}
 
       <style>{`
         /* Intro animations */
         @keyframes github-title-drop {
-          0%   { opacity: 0; transform: translateY(-40px) scale(1.1); filter: blur(6px) brightness(2) drop-shadow(0 0 30px rgba(255,255,255,0.3)) drop-shadow(0 0 60px rgba(255,255,255,0.15)); }
-          60%  { opacity: 1; transform: translateY(4px) scale(0.98); filter: blur(0) brightness(1.2) drop-shadow(0 0 30px rgba(255,255,255,0.3)) drop-shadow(0 0 60px rgba(255,255,255,0.15)); }
-          100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0) brightness(1.1) drop-shadow(0 0 30px rgba(255,255,255,0.3)) drop-shadow(0 0 60px rgba(255,255,255,0.15)); }
+          0%   { opacity: 0; transform: translateY(-40px) scale(1.1); }
+          60%  { opacity: 1; transform: translateY(4px) scale(0.98); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
         }
         @keyframes github-terminal-rise {
-          0%   { opacity: 0; transform: translateY(50px); filter: brightness(0.4); }
-          50%  { opacity: 1; filter: brightness(1.3); }
-          75%  { transform: translateY(-3px); filter: brightness(1.05); }
-          100% { opacity: 1; transform: translateY(0); filter: brightness(1); }
+          0%   { opacity: 0; transform: translateY(50px); }
+          50%  { opacity: 1; }
+          75%  { opacity: 1; transform: translateY(-3px); }
+          100% { opacity: 1; transform: translateY(0); }
         }
         @keyframes github-cat-enter {
           0%   { opacity: 0; transform: translateX(-80px) rotate(25deg); }
@@ -987,7 +855,6 @@ export default function GithubSection({ onVisibilityChange, audioRef, reducedMot
         }
         .star-icon-wrap {
           animation: star-spin 3s linear infinite;
-          filter: drop-shadow(0 0 4px rgba(255,215,0,0.4));
         }
         .star-text {
           text-shadow: 0 0 8px rgba(0,230,118,0.3);
@@ -1001,7 +868,6 @@ export default function GithubSection({ onVisibilityChange, audioRef, reducedMot
         }
         .github-cta-group:hover .star-icon-wrap {
           animation: star-spin 1.5s linear infinite;
-          filter: drop-shadow(0 0 12px rgba(255,215,0,1)) drop-shadow(0 0 24px rgba(255,215,0,0.6));
         }
         .github-cta-group:hover .star-text {
           color: #39ff7f;

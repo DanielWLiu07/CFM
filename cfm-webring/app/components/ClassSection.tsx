@@ -3,12 +3,15 @@
 import { useRef, useEffect, useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { DEFAULT_CONFIG } from './ClassTitle3D';
+import membersData from '../../data/members.json';
 
 const ClassCards3D = dynamic(() => import('./ClassCards3D'), { ssr: false });
 const ClassTitle3D = dynamic(() => import('./ClassTitle3D'), { ssr: false });
+const ClassBackground = dynamic(() => import('./ClassBackground'), { ssr: false });
 
 interface ClassSectionProps {
   onVisibilityChange: (visible: boolean) => void;
+  beatRef?: React.RefObject<number>;
 }
 
 interface Social {
@@ -26,25 +29,18 @@ interface ClassMember {
   year: string;
   avatar?: string;
   socials?: Social[];
+  hobbies?: string[];
+  experiences?: string[];
 }
 
-const MEMBERS: ClassMember[] = [
-  { name: 'Daniel Liu', url: 'https://danielwliu.com', role: 'Software Engineer', location: 'Windsor, ON', school: 'Massey Secondary', blurb: 'Full-stack dev. Loves React, Three.js, and making pixels dance.', year: '26', avatar: '/images/avatars/daniel.png', socials: [{ type: 'github', url: 'https://github.com/DanielWLiu07' }, { type: 'linkedin', url: 'https://linkedin.com/in/danielwliu' }, { type: 'website', url: 'https://danielwliu.com' }] },
-  { name: 'Timothy Zheng', url: 'https://timothyzheng.ca', role: 'Alumni', location: 'Waterloo, ON', school: 'UWaterloo', blurb: 'Power trading.', year: '26', avatar: '/images/avatars/timothyz.png' },
-  { name: 'Aadya Khanna', url: '#', role: 'Backend Engineer', location: 'Waterloo, ON', school: 'Cameron Heights CI', blurb: 'API whisperer. Flask, FastAPI, and too many databases.', year: '26', avatar: '/images/avatars/aadya.svg', socials: [{ type: 'github', url: '#' }, { type: 'linkedin', url: '#' }] },
-  { name: 'Marcus Chen', url: '#', role: 'Quant Developer', location: 'Vancouver, BC', school: 'Point Grey SS', blurb: 'Turning market noise into signal. Python + C++ daily.', year: '26', avatar: '/images/avatars/marcus.svg', socials: [{ type: 'github', url: '#' }, { type: 'twitter', url: '#' }] },
-  { name: 'Priya Sharma', url: '#', role: 'ML Engineer', location: 'Mississauga, ON', school: 'John Fraser SS', blurb: 'Training transformers and fine-tuning everything in sight.', year: '25', avatar: '/images/avatars/priya.svg', socials: [{ type: 'github', url: '#' }, { type: 'linkedin', url: '#' }, { type: 'website', url: '#' }] },
-  { name: 'Jordan Park', url: '#', role: 'Systems Engineer', location: 'Calgary, AB', school: 'Western Canada HS', blurb: 'Low-level tinkerer. Rust, kernels, and bare metal.', year: '25', avatar: '/images/avatars/jordan.svg', socials: [{ type: 'github', url: '#' }] },
-  { name: 'Sophie Wang', url: '#', role: 'Data Scientist', location: 'Toronto, ON', school: 'Marc Garneau CI', blurb: 'Finding patterns where others see noise. Stats + viz.', year: '25', avatar: '/images/avatars/sophie.svg', socials: [{ type: 'linkedin', url: '#' }, { type: 'twitter', url: '#' }] },
-  { name: 'Ethan Zhao', url: '#', role: 'Product Designer', location: 'Ottawa, ON', school: 'Colonel By SS', blurb: 'Designing interfaces people actually want to use.', year: '25', avatar: '/images/avatars/ethan.svg', socials: [{ type: 'github', url: '#' }, { type: 'website', url: '#' }] },
-  { name: 'Nina Patel', url: '#', role: 'DevOps / Infra', location: 'Brampton, ON', school: 'Heart Lake SS', blurb: 'Terraform, K8s, CI/CD. If it deploys, it\'s her fault.', year: '26', avatar: '/images/avatars/nina.svg', socials: [{ type: 'github', url: '#' }, { type: 'linkedin', url: '#' }] },
-];
+const MEMBERS: ClassMember[] = membersData as ClassMember[];
 
 const YEARS = ['ALL', ...Array.from(new Set(MEMBERS.map(m => m.year))).sort()];
 
 
-export default function ClassSection({ onVisibilityChange }: ClassSectionProps) {
+export default function ClassSection({ onVisibilityChange, beatRef }: ClassSectionProps) {
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const [sectionVisible, setSectionVisible] = useState(false);
   const [selectedYear, setSelectedYear] = useState('ALL');
   const [search, setSearch] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
@@ -60,25 +56,6 @@ export default function ClassSection({ onVisibilityChange }: ClassSectionProps) 
     document.addEventListener('mousedown', close);
     return () => document.removeEventListener('mousedown', close);
   }, [dropdownOpen]);
-  // Animate title_bg in sync with 3D text swap
-  const prevYearRef = useRef(selectedYear);
-  useEffect(() => {
-    if (prevYearRef.current === selectedYear) return;
-    prevYearRef.current = selectedYear;
-    const bg = document.getElementById('class-title-bg') as HTMLElement | null;
-    if (!bg) return;
-    // Exit: scale down + fade out
-    bg.style.transition = 'opacity 0.35s ease-in, transform 0.35s ease-in';
-    bg.style.opacity = '0';
-    bg.style.transform = 'translate(-50%, -50%) scale(0.85)';
-    // Enter: scale up + fade in (timed to match 3D letter enter phase)
-    const timer = setTimeout(() => {
-      bg.style.transition = 'opacity 0.4s ease-out, transform 0.4s cubic-bezier(0.16,1,0.3,1)';
-      bg.style.opacity = String(DEFAULT_CONFIG.bgOpacity);
-      bg.style.transform = 'translate(-50%, -50%) scale(1)';
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [selectedYear]);
 
   const [bgScale, setBgScale] = useState(DEFAULT_CONFIG.bgScale);
   const [bgOpacity, setBgOpacity] = useState(DEFAULT_CONFIG.bgOpacity);
@@ -91,7 +68,7 @@ export default function ClassSection({ onVisibilityChange }: ClassSectionProps) 
     const el = sentinelRef.current;
     if (!el) return;
     const observer = new IntersectionObserver(
-      ([entry]) => onVisibilityChange(entry.isIntersecting),
+      ([entry]) => { setSectionVisible(entry.isIntersecting); onVisibilityChange(entry.isIntersecting); },
       { threshold: 0.1 }
     );
     observer.observe(el);
@@ -117,9 +94,12 @@ export default function ClassSection({ onVisibilityChange }: ClassSectionProps) 
   return (
     <section
       className="relative min-h-screen py-6 sm:py-10 px-4 sm:px-6 md:px-12 lg:px-20 flex flex-col items-center"
-      style={{ backgroundColor: 'transparent' }}
+      style={{ backgroundColor: 'transparent', transformStyle: 'flat' as const }}
     >
       <div ref={sentinelRef} className="absolute top-0 left-0 w-full h-24" />
+
+      {/* Three.js background decoration */}
+      <ClassBackground beatRef={beatRef} paused={!sectionVisible} />
 
       {/* ── Title — full 3D "CLASS OF 26" ── */}
       <div
@@ -131,7 +111,7 @@ export default function ClassSection({ onVisibilityChange }: ClassSectionProps) 
           transform: `translateY(${titleConfig.titleY}px)`,
         }}
       >
-        <ClassTitle3D year={selectedYear === 'ALL' ? 'CFM' : selectedYear} config={titleConfig} />
+        <ClassTitle3D year={selectedYear === 'ALL' ? 'CFM' : selectedYear} config={titleConfig} beatRef={beatRef} />
       </div>
 
       {/* ── Filter bar ── */}
@@ -319,123 +299,45 @@ export default function ClassSection({ onVisibilityChange }: ClassSectionProps) 
 
       {/* Empty state */}
       {filtered.length === 0 && (
-        <p
-          style={{
-            fontFamily: 'var(--font-arcade)',
-            fontSize: 13,
-            color: '#555',
-            letterSpacing: '0.1em',
-            zIndex: 20,
-          }}
-        >
-          NO  MEMBERS  FOUND
-        </p>
-      )}
-
-      {/* Dev-only BG tuner — draggable */}
-      {process.env.NODE_ENV === 'development' && (
         <div
-          ref={(el) => {
-            if (!el || el.dataset.dragInit) return;
-            el.dataset.dragInit = '1';
-            let dragging = false, ox = 0, oy = 0;
-            const handle = el.querySelector('[data-drag-handle]') as HTMLElement;
-            (handle || el).addEventListener('mousedown', (e: MouseEvent) => {
-              if ((e.target as HTMLElement).tagName === 'INPUT') return;
-              dragging = true;
-              ox = e.clientX - el.offsetLeft;
-              oy = e.clientY - el.offsetTop;
-              e.preventDefault();
-            });
-            document.addEventListener('mousemove', (e: MouseEvent) => {
-              if (!dragging) return;
-              el.style.left = `${e.clientX - ox}px`;
-              el.style.top = `${e.clientY - oy}px`;
-              el.style.bottom = 'auto';
-            });
-            document.addEventListener('mouseup', () => { dragging = false; });
-          }}
           style={{
-            position: 'fixed',
-            bottom: 12,
-            left: 12,
-            zIndex: 99999,
-            background: 'rgba(0,0,0,0.85)',
-            border: '1px solid #333',
-            padding: '10px 14px',
-            fontFamily: 'monospace',
-            fontSize: 11,
-            color: '#aaa',
+            zIndex: 20,
             display: 'flex',
             flexDirection: 'column',
-            gap: 6,
-            borderRadius: 4,
-            cursor: 'grab',
+            alignItems: 'center',
+            gap: 12,
+            marginTop: 'clamp(40px, 8vw, 80px)',
+            marginBottom: 'clamp(40px, 8vw, 80px)',
           }}
         >
-          <span data-drag-handle="" style={{ color: '#666', fontSize: 10, letterSpacing: '0.1em', cursor: 'grab' }}>TITLE BG ⠿</span>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            SCALE
-            <input
-              type="range" min={20} max={300} step={5} value={bgScale}
-              onChange={e => {
-                const v = Number(e.target.value);
-                setBgScale(v);
-                const el = document.getElementById('class-title-bg') as HTMLElement | null;
-                if (el) el.style.width = `${v}%`;
-              }}
-              style={{ width: 100 }}
-            />
-            <span style={{ color: '#fff', minWidth: 36 }}>{bgScale}%</span>
-          </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            OPACITY
-            <input
-              type="range" min={0} max={100} step={1} value={Math.round(bgOpacity * 100)}
-              onChange={e => {
-                const v = Number(e.target.value) / 100;
-                setBgOpacity(v);
-                const el = document.getElementById('class-title-bg') as HTMLElement | null;
-                if (el) el.style.opacity = String(v);
-              }}
-              style={{ width: 100 }}
-            />
-            <span style={{ color: '#fff', minWidth: 36 }}>{(bgOpacity * 100).toFixed(0)}%</span>
-          </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            Y
-            <input
-              type="range" min={-200} max={500} step={5} value={bgY}
-              onChange={e => {
-                const v = Number(e.target.value);
-                setBgY(v);
-                const el = document.getElementById('class-title-bg') as HTMLElement | null;
-                if (el) el.style.top = `${v}px`;
-              }}
-              style={{ width: 100 }}
-            />
-            <span style={{ color: '#fff', minWidth: 36 }}>{bgY}px</span>
-          </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            TITLE Y
-            <input
-              type="range" min={-200} max={200} step={5} value={titleY}
-              onChange={e => setTitleY(Number(e.target.value))}
-              style={{ width: 100 }}
-            />
-            <span style={{ color: '#fff', minWidth: 36 }}>{titleY}px</span>
-          </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            SEARCH Y
-            <input
-              type="range" min={-200} max={200} step={5} value={searchY}
-              onChange={e => setSearchY(Number(e.target.value))}
-              style={{ width: 100 }}
-            />
-            <span style={{ color: '#fff', minWidth: 36 }}>{searchY}px</span>
-          </label>
+          <p
+            style={{
+              fontFamily: 'var(--font-arcade)',
+              fontSize: 'clamp(28px, 4vw, 48px)',
+              color: '#000',
+              WebkitTextStroke: '1.5px #fff',
+              paintOrder: 'stroke fill',
+              letterSpacing: '0.12em',
+              margin: 0,
+              textAlign: 'center',
+            }}
+          >
+            NO MEMBERS FOUND
+          </p>
+          <p
+            style={{
+              fontFamily: 'var(--font-arcade)',
+              fontSize: 'clamp(10px, 1.4vw, 14px)',
+              color: '#666',
+              letterSpacing: '0.15em',
+              margin: 0,
+            }}
+          >
+            TRY A DIFFERENT SEARCH
+          </p>
         </div>
       )}
+
     </section>
   );
 }

@@ -21,77 +21,68 @@ function Dim({ children }: { children: React.ReactNode }) {
   return <span style={{ color: '#555' }}>{children}</span>;
 }
 
+
 const CARDS = [
   {
     title: 'WHAT  IS  CFM',
     image: '/images/uwaterloo-seal.svg',
     content: (
-      <div className="space-y-2">
-        <p style={{ color: '#fff', fontFamily: 'var(--font-arcade)', fontSize: 'clamp(11px, 1.8vw, 15px)', letterSpacing: '0.05em' }}>
+      <div className="space-y-1">
+        <p style={{ color: '#fff', fontFamily: 'var(--font-arcade)', fontSize: 'clamp(11px, 1.8vw, 15px)', letterSpacing: '0.05em', borderBottom: '1px solid #333', paddingBottom: 6, marginBottom: 2 }}>
           Computing and Financial Management
         </p>
-        <p style={{ color: '#333' }}>{'─'.repeat(50)}</p>
-        <p><Dim>{'>'} </Dim>The <G>only program of its kind in Canada</G> combining computer science and finance into a single interdisciplinary degree.</p>
-        <p><Dim>{'>'} </Dim>Degree: <G>Bachelor of Computing and Financial Management (BCFM)</G></p>
-        <p><Dim>{'>'} </Dim>Duration: <G>5 years</G> (co-op only)</p>
-        <p><Dim>{'>'} </Dim>Faculties: <G>Mathematics</G> + <G>Accounting and Finance</G></p>
-        <p style={{ color: '#333' }}>{'─'.repeat(50)}</p>
-        <p><Dim>{'>'} </Dim><G>86%</G> graduation rate. <G>90%+</G> employed within 6 months of graduating.</p>
+        <p><Dim>{'>'} </Dim>CFM is a <G>5-year co-operative education degree</G> offered at the University of Waterloo. It is the only undergraduate program in Canada that fully integrates computer science with accounting and finance into a single interdisciplinary degree.</p>
+        <p><Dim>{'>'} </Dim>Students graduate with a <G>Bachelor of Computing and Financial Management (BCFM)</G>. The program is offered jointly by the <G>Faculty of Mathematics</G> and the <G>School of Accounting and Finance</G>, meaning students take the same core courses as students in both Computer Science and Accounting/Financial Management.</p>
+        <p><Dim>{'>'} </Dim>Each incoming class is around <G>~50 students</G>. Admission is competitive and requires strong grades in mathematics, English, and computer science or related courses.</p>
       </div>
     ),
   },
   {
-    title: 'CURRICULUM',
+    title: 'WHAT  YOU  LEARN',
     image: '/images/nav_bg.webp',
     content: (
-      <div className="space-y-2">
-        <p style={{ color: '#fff', fontFamily: 'var(--font-arcade)', fontSize: 'clamp(11px, 1.8vw, 15px)', letterSpacing: '0.05em' }}>
-          Courses Across Three Departments
+      <div className="space-y-1">
+        <p style={{ color: '#fff', fontFamily: 'var(--font-arcade)', fontSize: 'clamp(11px, 1.8vw, 15px)', letterSpacing: '0.05em', borderBottom: '1px solid #333', paddingBottom: 6, marginBottom: 2 }}>
+          Computer Science + Finance
         </p>
-        <p style={{ color: '#333' }}>{'─'.repeat(50)}</p>
-        <p><Dim>{'>'} </Dim><G>Computer Science</G> — CS 135/136, algorithms, AI/ML, systems design, software analysis</p>
-        <p><Dim>{'>'} </Dim><G>Accounting and Finance</G> — Financial reporting, derivative securities, fixed income, financial data analytics</p>
-        <p><Dim>{'>'} </Dim><G>Mathematics</G> — Algebra, calculus, linear algebra, statistics, quantitative methods</p>
-        <p style={{ color: '#333' }}>{'─'.repeat(50)}</p>
-        <p><Dim>{'>'} </Dim>Spotlight: <G>CFM 101</G> — Introduction to Financial Markets and Data Analytics</p>
+        <p><Dim>{'// '}computer science</Dim></p>
+        <p><Dim>{'>'} </Dim>The CS side covers <G>programming fundamentals</G>, <G>data structures and algorithms</G>, <G>software engineering</G>, <G>operating systems</G>, <G>databases</G>, and electives in areas like artificial intelligence, machine learning, and distributed systems. These are the same CS courses taken by students in the regular Computer Science program.</p>
+        <p><Dim>{'// '}accounting and finance</Dim></p>
+        <p><Dim>{'>'} </Dim>The finance side covers <G>financial accounting</G>, <G>corporate finance</G>, <G>derivative securities</G>, <G>fixed income analysis</G>, <G>portfolio management</G>, and <G>financial data analytics</G>. Students also take courses in managerial accounting, tax, and audit from the School of Accounting and Finance.</p>
+        <p><Dim>{'>'} </Dim>This is not a minor or elective track. Both the CS and finance components are full course sequences that run across all five years of the program.</p>
       </div>
     ),
   },
   {
-    title: 'COOP  PROGRAM',
+    title: 'CO-OP',
     image: '/images/goose-ascii.webp',
     content: (
-      <div className="space-y-2">
-        <p style={{ color: '#fff', fontFamily: 'var(--font-arcade)', fontSize: 'clamp(11px, 1.8vw, 15px)', letterSpacing: '0.05em' }}>
-          World Leading Coop Program
+      <div className="space-y-1">
+        <p style={{ color: '#fff', fontFamily: 'var(--font-arcade)', fontSize: 'clamp(11px, 1.8vw, 15px)', letterSpacing: '0.05em', borderBottom: '1px solid #333', paddingBottom: 6, marginBottom: 2 }}>
+          6 Work Terms Over 5 Years
         </p>
-        <p style={{ color: '#333' }}>{'─'.repeat(50)}</p>
-        <p><Dim>{'>'} </Dim><G>6 work terms</G> — 2 full years of paid experience, starting after Year 1</p>
-        <p><Dim>{'>'} </Dim>Alternate 4-month study and work blocks throughout the program</p>
-        <p style={{ color: '#333' }}>{'─'.repeat(50)}</p>
-        <p><Dim>{'// '}where CFM students work</Dim></p>
-        <p><Dim>{'>'} </Dim>[<G> Tech    </G>] Google, Meta, Amazon, Shopify</p>
-        <p><Dim>{'>'} </Dim>[<G> Finance </G>] RBC, TD, BMO, CIBC, Manulife</p>
-        <p><Dim>{'>'} </Dim>[<G> Fintech </G>] Stripe, Plaid, Wealthsimple</p>
-        <p><Dim>{'>'} </Dim>[<G> Quant   </G>] Citadel, Jane Street, HRT</p>
+        <p><Dim>{'>'} </Dim>Co-op is a mandatory part of the CFM program. Students alternate between <G>4-month academic terms</G> and <G>4-month paid work terms</G> beginning after first year. By the time they graduate, students have completed <G>6 separate work placements</G>, totaling 2 full years of professional experience.</p>
+        <p><Dim>{'>'} </Dim>Waterloo's co-op system is the largest of its kind in the world, with connections to over 7,000 employers. CFM students in particular are recruited across both the technology and financial services industries.</p>
+        <p><Dim>{'// '}where CFM students have worked</Dim></p>
+        <p><Dim>{'>'} </Dim>[<G> Tech      </G>] Google, Meta, Amazon, Apple, Microsoft, Shopify, Uber, Databricks, Palantir</p>
+        <p><Dim>{'>'} </Dim>[<G> Finance   </G>] RBC, TD, BMO, CIBC, Scotiabank, Manulife, Sun Life, CPP Investments, OTPP</p>
+        <p><Dim>{'>'} </Dim>[<G> Fintech   </G>] Stripe, Plaid, Wealthsimple, Block, Coinbase, Robinhood</p>
+        <p><Dim>{'>'} </Dim>[<G> Quant     </G>] Citadel, Jane Street, HRT, Two Sigma, DE Shaw, DRW, IMC, Optiver, Jump Trading</p>
+        <p><Dim>{'>'} </Dim>[<G> Consulting</G>] Deloitte, PwC, EY, KPMG, McKinsey, Accenture</p>
       </div>
     ),
   },
   {
-    title: 'CAREERS',
+    title: 'AFTER  GRADUATION',
     image: '/images/waterloo-ascii.svg',
     content: (
-      <div className="space-y-2">
-        <p style={{ color: '#fff', fontFamily: 'var(--font-arcade)', fontSize: 'clamp(11px, 1.8vw, 15px)', letterSpacing: '0.05em' }}>
-          Where CFM Graduates End Up
+      <div className="space-y-1">
+        <p style={{ color: '#fff', fontFamily: 'var(--font-arcade)', fontSize: 'clamp(11px, 1.8vw, 15px)', letterSpacing: '0.05em', borderBottom: '1px solid #333', paddingBottom: 6, marginBottom: 2 }}>
+          Career Paths
         </p>
-        <p style={{ color: '#333' }}>{'─'.repeat(50)}</p>
-        <p><Dim>{'>'} </Dim><G>Investment Analyst</G> · <G>Software Engineer</G> · <G>Quantitative Developer</G></p>
-        <p><Dim>{'>'} </Dim><G>Fintech Engineer</G> · <G>Trading / Portfolio Management</G></p>
-        <p><Dim>{'>'} </Dim><G>Data Science / ML Engineering</G></p>
-        <p style={{ color: '#333' }}>{'─'.repeat(50)}</p>
-        <p><Dim>{'>'} </Dim>Direct pathway to the <G>CFA</G> designation.</p>
-        <p><Dim>{'>'} </Dim>Graduate with <G>2 years of experience</G> and a degree that bridges both worlds.</p>
+        <p><Dim>{'>'} </Dim>CFM graduates enter a wide range of roles that span technology and finance. Common career paths include <G>software engineering</G>, <G>quantitative development</G>, <G>investment banking</G>, <G>trading</G>, <G>data science</G>, <G>product management</G>, and <G>fintech engineering</G>. The combination of technical and financial skills makes graduates especially well-suited for roles that sit at the intersection of the two industries.</p>
+        <p><Dim>{'>'} </Dim>The program satisfies the educational requirements for the <G>CFA (Chartered Financial Analyst)</G> designation, and covers material relevant to the <G>CPA</G> pathway as well. Graduates who want to pursue further credentials in finance or accounting are well-positioned to do so.</p>
+        <p><Dim>{'>'} </Dim>Because co-op is built into the program, every CFM graduate leaves with <G>2 years of professional work experience</G> on their resume before they even start their full-time career.</p>
       </div>
     ),
   },
@@ -393,56 +384,6 @@ export default function AboutSection({ onVisibilityChange, audioRef, reducedMoti
         </p>
       </div>
 
-      {/* Card stack position tuner — dev only */}
-      {process.env.NODE_ENV === 'development' && (!tunerOpen ? (
-        <button
-          onClick={() => setTunerOpen(true)}
-          style={{
-            position: 'fixed', top: 10, right: 100, zIndex: 9999,
-            background: '#222', color: '#fff', border: '1px solid #555',
-            padding: '6px 12px', cursor: 'pointer', fontFamily: 'monospace', fontSize: 12,
-          }}
-        >
-          CARDS
-        </button>
-      ) : (
-        <div style={{
-          position: 'fixed', top: 10, right: 100, zIndex: 9999,
-          background: 'rgba(0,0,0,0.95)', border: '1px solid #333',
-          padding: '12px 16px', fontFamily: 'monospace', fontSize: 11,
-          color: '#fff', width: 340,
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-            <strong>CARD STACK</strong>
-            <button onClick={() => setTunerOpen(false)} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer' }}>X</button>
-          </div>
-          {[
-            { label: 'margin-left %', key: 'ml', min: -30, max: 50, step: 1, suffix: '%' },
-            { label: 'margin-top px', key: 'mt', min: -200, max: 200, step: 5, suffix: 'px' },
-            { label: 'rotateY deg', key: 'rot', min: -15, max: 15, step: 0.5, suffix: 'deg' },
-            { label: 'rotateZ deg', key: 'rotZ', min: -15, max: 15, step: 0.5, suffix: 'deg' },
-            { label: 'width px', key: 'w', min: 300, max: 800, step: 10, suffix: 'px' },
-            { label: 'height px', key: 'h', min: 200, max: 700, step: 10, suffix: 'px' },
-          ].map(c => (
-            <label key={c.key} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <span style={{ width: 90 }}>{c.label}</span>
-              <input type="range" min={c.min} max={c.max} step={c.step}
-                value={stackPos[c.key as keyof typeof stackPos]}
-                onChange={e => setStackPos(prev => ({ ...prev, [c.key]: +e.target.value }))}
-                style={{ flex: 1 }} />
-              <span style={{ width: 55, textAlign: 'right' }}>{stackPos[c.key as keyof typeof stackPos]}{c.suffix}</span>
-            </label>
-          ))}
-          <div style={{ background: '#111', border: '1px solid #333', padding: 6, fontSize: 10, whiteSpace: 'pre', color: '#ccc', marginTop: 6 }}>
-{`marginLeft: '${stackPos.ml}%'
-marginTop: ${stackPos.mt}
-rotateY: ${stackPos.rot}deg
-rotateZ: ${stackPos.rotZ}deg
-maxWidth: ${stackPos.w}
-height: ${stackPos.h}`}
-          </div>
-        </div>
-      ))}
     </section>
   );
 }
