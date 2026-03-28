@@ -71,37 +71,18 @@ function AutoCamera({ textWidth }: { textWidth: number }) {
 
 // Character width lookup for the arcade classic font
 const CHAR_WIDTH: Record<string, number> = {
-  C: 764, L: 580, A: 764, S: 764, O: 764, F: 620, M: 764,
-  '0': 764, '1': 764, '2': 764, '3': 764, '4': 764,
+  C: 764, L: 460, A: 764, S: 764, O: 764, F: 500, T: 480, M: 764,
+  '0': 764, '1': 460, '2': 764, '3': 764, '4': 764,
   '5': 764, '6': 764, '7': 764, '8': 764, '9': 764,
   ' ': 178,
 };
 
 // Single component that manages ALL letters in one useFrame
-function AllLetters({ year, config, twoLine }: { year: string; config: ClassTitle3DConfig; twoLine: boolean }) {
+function AllLetters({ year, config, twoLine, beatRef }: { year: string; config: ClassTitle3DConfig; twoLine: boolean; beatRef?: React.RefObject<number> }) {
   const groupRef = useRef<THREE.Group>(null);
   const letterRefs = useRef<THREE.Group[]>([]);
-  // Animation state: 'idle' | 'exit' | 'enter'
-  const animState = useRef<'idle' | 'exit' | 'enter'>('enter');
-  const animT = useRef(0); // 0→1 progress through current phase
-  const prevYear = useRef(year);
-  const pendingYear = useRef<string | null>(null);
-  const [displayYear, setDisplayYear] = useState(year);
-
-  // Trigger exit animation when year changes
-  useEffect(() => {
-    if (prevYear.current !== year) {
-      prevYear.current = year;
-      // If already exiting, just update the pending target
-      if (animState.current === 'exit') {
-        pendingYear.current = year;
-        return;
-      }
-      pendingYear.current = year;
-      animState.current = 'exit';
-      animT.current = 0;
-    }
-  }, [year]);
+  // No internal animation — CSS wrapper handles fade transitions
+  const displayYear = year;
 
   // Simple bright white — MeshStandardMaterial is MUCH cheaper than Physical
   const frontMat = useMemo(() => new THREE.MeshStandardMaterial({
@@ -123,9 +104,10 @@ function AllLetters({ year, config, twoLine }: { year: string; config: ClassTitl
   const materials = useMemo(() => [frontMat, sideMat], [frontMat, sideMat]);
 
   const layoutLines = useMemo(() => {
+    const yearLabel = displayYear;
     const lines = twoLine
-      ? ['CLASS', `OF ${displayYear}`]
-      : [`CLASS OF ${displayYear}`];
+      ? ['CLASS', `OF ${yearLabel}`]
+      : [`CLASS OF ${yearLabel}`];
 
     return lines.map((line, lineIdx) => {
       const chars = line.split('');
@@ -156,35 +138,20 @@ function AllLetters({ year, config, twoLine }: { year: string; config: ClassTitl
     if (el) letterRefs.current[idx] = el;
   }, []);
 
+  const beatLocal = useRef(0);
+  const prevBeat = useRef(0);
+
   // Single useFrame for ALL letters
   useFrame(({ clock }) => {
     const t = clock.getElapsedTime();
-    const state = animState.current;
-    const speed = 0.045; // animation speed per frame
 
-    // Advance animation progress
-    if (state !== 'idle') {
-      animT.current = Math.min(1, animT.current + speed);
-
-      // Exit complete → swap text → start enter
-      if (state === 'exit' && animT.current >= 1) {
-        if (pendingYear.current) {
-          setDisplayYear(pendingYear.current);
-          pendingYear.current = null;
-        }
-        animState.current = 'enter';
-        animT.current = 0;
-        return; // skip this frame, new layout will render next frame
-      }
-
-      // Enter complete → idle
-      if (state === 'enter' && animT.current >= 1) {
-        animState.current = 'idle';
-        animT.current = 0;
-      }
+    // Read beat from ref and decay locally
+    if (beatRef?.current && beatRef.current > prevBeat.current + 0.5) {
+      beatLocal.current = 1;
     }
-
-    const p = animT.current;
+    prevBeat.current = beatRef?.current ?? 0;
+    beatLocal.current *= 0.9;
+    const beat = beatLocal.current;
 
     for (let i = 0; i < layoutLines.length; i++) {
       const ref = letterRefs.current[i];
@@ -193,7 +160,6 @@ function AllLetters({ year, config, twoLine }: { year: string; config: ClassTitl
       const seed = d.index * 137.5;
       const np = d.normalizedPos;
 
-      // Base splay
       const splayY = np * 0.35;
       const splayX = Math.abs(np) * 0.08;
       const zBase = -Math.abs(np) * 1.8;
@@ -203,39 +169,20 @@ function AllLetters({ year, config, twoLine }: { year: string; config: ClassTitl
       const rawFloat = Math.sin(t * (0.5 + (d.index % 4) * 0.08) + seed) * 0.1;
       const quantFloat = Math.round(rawFloat / stepSize) * stepSize;
 
-      let offX = 0, offY = 0, offZ = 0, rotX = 0, rotY = 0, scale = 1;
+      // Beat pulse — scale bump + upward push, staggered per letter
+      const beatDelay = Math.sin(seed * 0.2) * 0.15;
+      const b = Math.max(0, beat - beatDelay);
+      const beatScale = 1 + b * 0.06;
+      const beatY = b * 0.4;
 
-      if (state === 'exit') {
-        // Letters fall down and scatter outward — eased acceleration
-        const ease = p * p; // accelerate
-        const dir = np >= 0 ? 1 : -1;
-        offX = ease * dir * (3 + Math.abs(np) * 4);
-        offY = ease * (-8 - Math.abs(Math.sin(seed * 0.3)) * 4);
-        offZ = ease * -8;
-        rotX = ease * Math.sin(seed * 0.4) * 2;
-        rotY = ease * Math.cos(seed * 0.6) * 2;
-        scale = Math.max(0.01, 1 - ease);
-      } else if (state === 'enter') {
-        // Letters rise up from below — staggered by position, decelerated
-        const stagger = Math.max(0, p - i * 0.03);
-        const ease = 1 - Math.pow(1 - Math.min(1, stagger * 1.4), 3); // ease-out cubic
-        const dir = np >= 0 ? 1 : -1;
-        offX = (1 - ease) * dir * 3;
-        offY = (1 - ease) * -6;
-        offZ = (1 - ease) * -5;
-        rotX = (1 - ease) * 0.5;
-        rotY = (1 - ease) * dir * 0.8;
-        scale = Math.max(0.01, ease);
-      }
+      ref.position.x = d.x;
+      ref.position.y = d.y + quantFloat + beatY;
+      ref.position.z = zBase;
 
-      ref.position.x = d.x + offX;
-      ref.position.y = d.y + quantFloat + offY;
-      ref.position.z = zBase + offZ;
+      ref.rotation.x = splayX;
+      ref.rotation.y = splayY;
 
-      ref.rotation.x = splayX + rotX;
-      ref.rotation.y = splayY + rotY;
-
-      ref.scale.setScalar(scale);
+      ref.scale.setScalar(beatScale);
     }
   });
 
@@ -271,12 +218,15 @@ function AllLetters({ year, config, twoLine }: { year: string; config: ClassTitl
 interface ClassTitle3DProps {
   year?: string;
   config?: ClassTitle3DConfig;
+  beatRef?: React.RefObject<number>;
 }
 
-export default function ClassTitle3D({ year = '26', config = DEFAULT_CONFIG }: ClassTitle3DProps) {
+export default function ClassTitle3D({ year = '26', config = DEFAULT_CONFIG, beatRef }: ClassTitle3DProps) {
   const [screenW, setScreenW] = useState(1200);
   const [visible, setVisible] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const [displayedYear, setDisplayedYear] = useState(year);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const update = () => setScreenW(window.innerWidth);
@@ -292,6 +242,39 @@ export default function ClassTitle3D({ year = '26', config = DEFAULT_CONFIG }: C
     obs.observe(el);
     return () => obs.disconnect();
   }, []);
+
+  // When year prop changes, fade out canvas → swap text → fade in canvas
+  // Target the canvas div (child), NOT the wrapper (which has CSS animations that override opacity)
+  useEffect(() => {
+    if (year === displayedYear) return;
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+
+    const wrap = wrapRef.current;
+    const canvas = wrap?.querySelector('div') as HTMLElement | null;
+    if (!canvas) { setDisplayedYear(year); return; }
+
+    // Fade out
+    canvas.style.transition = 'opacity 0.25s steps(6)';
+    requestAnimationFrame(() => {
+      canvas.style.opacity = '0';
+
+      // After fade out, swap text and fade in
+      timeoutRef.current = setTimeout(() => {
+        setDisplayedYear(year);
+        canvas.style.transition = 'opacity 0.3s steps(6)';
+
+        requestAnimationFrame(() => {
+          canvas.style.opacity = '1';
+
+          timeoutRef.current = setTimeout(() => {
+            canvas.style.transition = '';
+          }, 350);
+        });
+      }, 280);
+    });
+
+    return () => { if (timeoutRef.current) clearTimeout(timeoutRef.current); };
+  }, [year, displayedYear]);
 
   const isMobile = screenW < 640;
 
@@ -312,7 +295,6 @@ export default function ClassTitle3D({ year = '26', config = DEFAULT_CONFIG }: C
         zIndex: 70,
         pointerEvents: 'none',
         imageRendering: 'pixelated',
-        transform: 'none',
       }}
     >
       <Canvas
@@ -323,8 +305,8 @@ export default function ClassTitle3D({ year = '26', config = DEFAULT_CONFIG }: C
           background: 'transparent',
           imageRendering: 'pixelated',
         }}
-        dpr={config.dpr}
         className="class-title-canvas"
+        dpr={config.dpr}
         frameloop={visible ? 'always' : 'demand'}
       >
         <AutoCamera textWidth={textWidth} />
@@ -334,7 +316,7 @@ export default function ClassTitle3D({ year = '26', config = DEFAULT_CONFIG }: C
         <directionalLight position={[-12, 4, 6]} intensity={0.6} color="#4488ff" />
         <directionalLight position={[12, -2, 6]} intensity={0.4} color="#ffaa44" />
         <directionalLight position={[0, 2, -10]} intensity={0.3} color="#7766ff" />
-        <AllLetters year={year} config={config} twoLine={isMobile} />
+        <AllLetters year={displayedYear} config={config} twoLine={isMobile} beatRef={beatRef} />
       </Canvas>
     </div>
   );

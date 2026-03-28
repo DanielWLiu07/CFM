@@ -2,6 +2,7 @@
 
 import { useRef, useEffect, useState, useCallback, useMemo, type RefObject } from 'react';
 import dynamic from 'next/dynamic';
+import membersData from '../../data/members.json';
 
 const WebringBackground = dynamic(() => import('./WebringBackground'), { ssr: false });
 
@@ -15,38 +16,40 @@ interface WebringSectionProps {
   sectionRefOut?: RefObject<HTMLElement | null>;
 }
 
+interface Social {
+  type: string;
+  url: string;
+}
+
 interface WebringEntry {
   name: string;
   url: string;
   description: string;
   cohort: string;
-  avatar?: string; // optional image path
+  avatar?: string;
+  websiteImage?: string;
+  role?: string;
+  location?: string;
+  school?: string;
+  blurb?: string;
+  year?: string;
+  socials?: Social[];
 }
 
-const _BASE_ENTRIES: WebringEntry[] = [
-  { name: 'Daniel Liu', url: 'https://danielwliu.com', description: 'SWE @ building things', cohort: '2029', avatar: '/images/avatars/daniel.png' },
-  { name: 'Timothy Zheng', url: 'https://timothyzheng.ca', description: 'power trading', cohort: '2026', avatar: '/images/avatars/timothyz.png' },
-  { name: 'Alice Chen', url: '#', description: 'quant dev in training', cohort: '2028' },
-  { name: 'Bob Zhang', url: '#', description: 'full-stack fintech', cohort: '2029' },
-  { name: 'Carol Wu', url: '#', description: 'ML + markets', cohort: '2027' },
-  { name: 'David Park', url: '#', description: 'systems engineer', cohort: '2028' },
-  { name: 'Eve Singh', url: '#', description: 'crypto & distributed', cohort: '2029' },
-  { name: 'Frank Li', url: '#', description: 'product & design', cohort: '2027' },
-  { name: 'Grace Kim', url: '#', description: 'data science', cohort: '2028' },
-];
-
-// ── TEST: generate 300 entries for stress testing ──
-const _TEST_NAMES = ['Alex','Sam','Jordan','Taylor','Morgan','Casey','Riley','Quinn','Avery','Harper','Blake','Drew','Reese','Sage','Kai','Nova','Zion','Eden','Sky','River'];
-const _TEST_DESCS = ['frontend dev','backend eng','ML researcher','product designer','data analyst','devops','mobile dev','security eng','QA lead','full-stack'];
-const _TEST_COHORTS = ['2026','2027','2028','2029','2030'];
-const _TEST_SURNAMES = ['Wang','Lee','Kim','Chen','Liu','Zhao','Singh','Park','Wu','Li','Ng','Cho','Tan','Das','Xu','Hu','Ma','Ye','Gu','Lu'];
-const _GENERATED: WebringEntry[] = Array.from({ length: 292 }, (_, i) => ({
-  name: `${_TEST_NAMES[i % _TEST_NAMES.length]} ${_TEST_SURNAMES[i % _TEST_SURNAMES.length]}${i > 19 ? ` ${i}` : ''}`,
-  url: '#',
-  description: _TEST_DESCS[i % _TEST_DESCS.length],
-  cohort: _TEST_COHORTS[i % _TEST_COHORTS.length],
+const WEBRING_ENTRIES: WebringEntry[] = membersData.map(m => ({
+  name: m.name,
+  url: m.url,
+  description: m.description,
+  cohort: m.cohort,
+  avatar: m.avatar,
+  websiteImage: (m as Record<string, unknown>).websiteImage as string | undefined,
+  role: (m as Record<string, unknown>).role as string | undefined,
+  location: (m as Record<string, unknown>).location as string | undefined,
+  school: (m as Record<string, unknown>).school as string | undefined,
+  blurb: (m as Record<string, unknown>).blurb as string | undefined,
+  year: (m as Record<string, unknown>).year as string | undefined,
+  socials: (m as Record<string, unknown>).socials as Social[] | undefined,
 }));
-const WEBRING_ENTRIES: WebringEntry[] = [..._BASE_ENTRIES, ..._GENERATED]; // ~300 total
 
 const ALL_COHORTS = [...new Set(WEBRING_ENTRIES.map(e => e.cohort))].sort();
 
@@ -58,7 +61,11 @@ function seededRandom(seed: number) {
 // ── Types ────────────────────────────────────────────────────────────────────
 
 interface Node {
-  x: number; y: number; z: number; // world position (static after layout)
+  x: number; y: number; z: number; // world position (animated toward target)
+  targetX: number; targetY: number; targetZ: number; // layout target
+  transitionT: number; // 0→1 progress
+  nodeOpacity: number; // 0→1, for fade in/out
+  removing: boolean;
   entry: WebringEntry;
   index: number;
   sx: number; sy: number; scale: number; depth: number; screenR: number; // projection cache
@@ -67,7 +74,7 @@ interface Node {
   lod: 0 | 1 | 2; // 0=dot, 1=simple, 2=full — persists to prevent flicker
 }
 
-interface Edge { from: number; to: number; }
+interface Edge { from: number; to: number; hoverAnim: number; }
 
 interface Camera {
   tx: number; ty: number; tz: number; // orbit target
@@ -83,6 +90,10 @@ interface FlyTo {
   endTarget: [number, number, number];
   startDist: number;
   endDist: number;
+  startTheta?: number;
+  endTheta?: number;
+  startPhi?: number;
+  endPhi?: number;
   t: number;
   duration: number;
 }
@@ -161,7 +172,7 @@ function depthFog(depth: number, orbitDist: number) {
 
 // ── Graph Construction (world-space) ─────────────────────────────────────────
 
-function buildGraph(entries: WebringEntry[]) {
+function buildGraph(entries: WebringEntry[], originalIndices?: number[]) {
   const n = entries.length;
   const span = 400 + n * 4;
   const cols = Math.max(1, Math.ceil(Math.cbrt(n * 1.5)));
@@ -181,19 +192,20 @@ function buildGraph(entries: WebringEntry[]) {
     const z = (layer - layers / 2 + 0.5) * cellSize + jz;
     let avatarImg: HTMLImageElement | null = null;
     if (entry.avatar) { avatarImg = new Image(); avatarImg.src = entry.avatar; }
-    return { x, y, z, entry, index: i, sx: 0, sy: 0, scale: 1, depth: 0, screenR: 0, hoverAnim: 0, avatarImg, lod: 1 as const };
+    const idx = originalIndices ? originalIndices[i] : i;
+    return { x, y, z, targetX: x, targetY: y, targetZ: z, transitionT: 1, nodeOpacity: 1, removing: false, entry, index: idx, sx: 0, sy: 0, scale: 1, depth: 0, screenR: 0, hoverAnim: 0, avatarImg, lod: 1 as const };
   });
 
   // Edges: ring + proximity
   const edges: Edge[] = [];
   const hasEdge = (a: number, b: number) => edges.some(e => (e.from === a && e.to === b) || (e.from === b && e.to === a));
-  for (let i = 0; i < n; i++) edges.push({ from: i, to: (i + 1) % n });
+  for (let i = 0; i < n; i++) edges.push({ from: i, to: (i + 1) % n, hoverAnim: 0 });
 
   if (n <= 20) {
     for (let i = 0; i < n; i++) {
       const jump = 2 + Math.floor(seededRandom(i * 7 + 3) * 3);
       const target = (i + jump) % n;
-      if (!hasEdge(i, target)) edges.push({ from: i, to: target });
+      if (!hasEdge(i, target)) edges.push({ from: i, to: target, hoverAnim: 0 });
     }
   } else {
     const maxExtra = Math.floor(n * 1.5);
@@ -206,7 +218,7 @@ function buildGraph(entries: WebringEntry[]) {
         const d = dx * dx + dy * dy + dz * dz;
         if (d < bestDist) { bestDist = d; bestJ = j; }
       }
-      if (bestJ >= 0) { edges.push({ from: i, to: bestJ }); added++; }
+      if (bestJ >= 0) { edges.push({ from: i, to: bestJ, hoverAnim: 0 }); added++; }
     }
   }
 
@@ -294,6 +306,35 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
   const [hoveredNode, setHoveredNode] = useState(-1);
   const [selectedNode, setSelectedNode] = useState(-1);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; entry: WebringEntry } | null>(null);
+  const lastEntryRef = useRef<WebringEntry | null>(null);
+
+  // Right panel state
+  const rightPanelRef = useRef<HTMLDivElement>(null);
+  const [rightDragged, setRightDragged] = useState(false);
+  const [rightPos, setRightPos] = useState({ x: 0, y: 0 });
+  const [rightCollapsed, setRightCollapsed] = useState(false);
+  const rightDragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
+
+  const handleRightDragStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    // On first drag, snapshot the current computed position
+    const el = rightPanelRef.current;
+    const startX = el ? el.getBoundingClientRect().left - (sectionRef.current?.getBoundingClientRect().left ?? 0) : rightPos.x;
+    const startY = el ? el.getBoundingClientRect().top - (sectionRef.current?.getBoundingClientRect().top ?? 0) : rightPos.y;
+    if (!rightDragged) { setRightDragged(true); setRightPos({ x: startX, y: startY }); }
+    rightDragRef.current = { startX: e.clientX, startY: e.clientY, origX: startX, origY: startY };
+    const onMove = (ev: MouseEvent) => {
+      if (!rightDragRef.current) return;
+      const dx = ev.clientX - rightDragRef.current.startX, dy = ev.clientY - rightDragRef.current.startY;
+      const section = sectionRef.current;
+      const maxX = section ? section.clientWidth - 300 : window.innerWidth - 300;
+      const maxY = section ? section.clientHeight - 200 : window.innerHeight - 200;
+      setRightPos({ x: Math.max(0, Math.min(maxX, rightDragRef.current.origX + dx)), y: Math.max(0, Math.min(maxY, rightDragRef.current.origY + dy)) });
+    };
+    const onUp = () => { rightDragRef.current = null; window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, [rightPos, rightDragged]);
   const graphRef = useRef<{ nodes: Node[]; edges: Edge[] } | null>(null);
   const boundsRef = useRef<BoundingSphere>({ cx: 0, cy: 0, cz: 0, radius: 200 });
   const cameraRef = useRef<Camera>({ tx: 0, ty: 0, tz: 0, orbitTheta: 0, orbitPhi: Math.PI * 0.45, orbitDist: 400, orbitThetaVel: 0.0008, bobPhase: 0 });
@@ -328,7 +369,12 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
 
   // Search panel state
   const panelRef = useRef<HTMLDivElement>(null);
-  const [panelPos, setPanelPos] = useState({ x: 32, y: 80 });
+  const [panelPos, setPanelPos] = useState({ x: 32, y: 200 });
+
+  // Center panel vertically on mount
+  useEffect(() => {
+    setPanelPos(prev => ({ ...prev, y: Math.max(80, (window.innerHeight - 500) / 2) }));
+  }, []);
   const [panelSize, setPanelSize] = useState({ w: 340, h: 420 });
   const [collapsed, setCollapsed] = useState(false);
   const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
@@ -393,11 +439,90 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
   }, [onVisibilityChange]);
 
 
+  // ── Rebuild graph when filters change — reconcile nodes for smooth animation
+  useEffect(() => {
+    const filteredEntries: WebringEntry[] = [];
+    const originalIndices: number[] = [];
+    WEBRING_ENTRIES.forEach((e, i) => {
+      if (matchingIndices.has(i)) { filteredEntries.push(e); originalIndices.push(i); }
+    });
+
+    // Build new layout to get target positions
+    const newGraph = buildGraph(filteredEntries, originalIndices);
+    computeLayout(newGraph.nodes, newGraph.edges);
+
+    const oldGraph = graphRef.current;
+    if (!oldGraph || oldGraph.nodes.length === 0) {
+      // First build — no animation needed
+      graphRef.current = newGraph;
+      const bounds = computeBoundingSphere(newGraph.nodes);
+      boundsRef.current = bounds;
+      const cam = cameraRef.current;
+      cam.tx = bounds.cx; cam.ty = bounds.cy; cam.tz = bounds.cz;
+      cam.orbitDist = bounds.radius * 1.8;
+      depthSortedRef.current = [];
+      return;
+    }
+
+    // Reconcile: keep existing nodes, update targets, add/remove as needed
+    const oldByIndex = new Map<number, Node>();
+    for (const n of oldGraph.nodes) oldByIndex.set(n.index, n);
+
+    const reconciledNodes: Node[] = [];
+    const newIndices = new Set(newGraph.nodes.map(n => n.index));
+
+    // Nodes staying or entering
+    for (const nn of newGraph.nodes) {
+      const existing = oldByIndex.get(nn.index);
+      if (existing) {
+        // Keep existing, animate to new target
+        existing.targetX = nn.x; existing.targetY = nn.y; existing.targetZ = nn.z;
+        existing.transitionT = 0;
+        existing.removing = false;
+        reconciledNodes.push(existing);
+      } else {
+        // New node — start at center, fade in
+        const bounds = boundsRef.current;
+        nn.x = bounds.cx; nn.y = bounds.cy; nn.z = bounds.cz;
+        nn.transitionT = 0;
+        nn.nodeOpacity = 0;
+        reconciledNodes.push(nn);
+      }
+    }
+
+    // Nodes leaving — mark for removal
+    for (const on of oldGraph.nodes) {
+      if (!newIndices.has(on.index) && !on.removing) {
+        on.removing = true;
+        on.transitionT = 0;
+        reconciledNodes.push(on);
+      }
+    }
+
+    graphRef.current = { nodes: reconciledNodes, edges: newGraph.edges };
+
+    // Smooth camera to new bounds
+    const bounds = computeBoundingSphere(newGraph.nodes.length > 0 ? newGraph.nodes : reconciledNodes);
+    boundsRef.current = bounds;
+    const cam = cameraRef.current;
+    flyToRef.current = {
+      startTarget: [cam.tx, cam.ty, cam.tz],
+      endTarget: [bounds.cx, bounds.cy, bounds.cz],
+      startDist: cam.orbitDist,
+      endDist: bounds.radius * 1.8,
+      t: 0, duration: 0.6,
+    };
+
+    if (selectedNode >= 0 && !matchingIndices.has(selectedNode)) setSelectedNode(-1);
+    depthSortedRef.current = [];
+  }, [matchingIndices]);
+
   // ── Fly-to trigger ────────────────────────────────────────────────────────
   const triggerFlyTo = useCallback((nodeIndex: number) => {
     const graph = graphRef.current;
-    if (!graph || nodeIndex < 0 || nodeIndex >= graph.nodes.length) return;
-    const node = graph.nodes[nodeIndex];
+    if (!graph) return;
+    const node = graph.nodes.find(n => n.index === nodeIndex);
+    if (!node) return;
     const cam = cameraRef.current;
     const dist = Math.sqrt((cam.tx - node.x) ** 2 + (cam.ty - node.y) ** 2 + (cam.tz - node.z) ** 2);
     const duration = Math.max(0.5, Math.min(2.0, 0.5 + dist * 0.002));
@@ -426,18 +551,7 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
     };
     resize();
 
-    // Init graph + layout (one-time)
-    if (!graphRef.current) {
-      const graph = buildGraph(WEBRING_ENTRIES);
-      computeLayout(graph.nodes, graph.edges);
-      graphRef.current = graph;
-      const bounds = computeBoundingSphere(graph.nodes);
-      boundsRef.current = bounds;
-      // Set initial camera to overview
-      const cam = cameraRef.current;
-      cam.tx = bounds.cx; cam.ty = bounds.cy; cam.tz = bounds.cz;
-      cam.orbitDist = bounds.radius * 1.8;
-    }
+    // Graph is built/rebuilt by the matchingIndices effect
 
     const ctx = canvas.getContext('2d')!;
     const dpr = window.devicePixelRatio;
@@ -480,6 +594,8 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
         cam.ty = lerp(ft.startTarget[1], ft.endTarget[1], e);
         cam.tz = lerp(ft.startTarget[2], ft.endTarget[2], e);
         cam.orbitDist = lerp(ft.startDist, ft.endDist, e);
+        if (ft.startTheta != null && ft.endTheta != null) cam.orbitTheta = lerp(ft.startTheta, ft.endTheta, e);
+        if (ft.startPhi != null && ft.endPhi != null) cam.orbitPhi = lerp(ft.startPhi, ft.endPhi, e);
       }
 
       // ── Camera auto-rotate (when not interacting and not in scroll-rotation) ──
@@ -517,6 +633,28 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
       const { fwd, right, up } = getCameraBasis(eye, target, cam.orbitTheta);
       const time = Date.now() * 0.001;
 
+      // ── Animate node positions + opacity toward targets ──────────────
+      for (let i = nodes.length - 1; i >= 0; i--) {
+        const n = nodes[i];
+        if (n.transitionT < 1) {
+          n.transitionT = Math.min(1, n.transitionT + dt * 2.0);
+          const e = easeInOutCubic(n.transitionT);
+          if (!n.removing) {
+            n.x = lerp(n.x, n.targetX, e * 0.15);
+            n.y = lerp(n.y, n.targetY, e * 0.15);
+            n.z = lerp(n.z, n.targetZ, e * 0.15);
+            n.nodeOpacity = Math.min(1, n.nodeOpacity + dt * 2.5);
+          } else {
+            n.nodeOpacity = Math.max(0, n.nodeOpacity - dt * 3);
+            if (n.nodeOpacity <= 0) { nodes.splice(i, 1); depthSortedRef.current = []; continue; }
+          }
+        } else if (!n.removing) {
+          // Snap to target
+          n.x = n.targetX; n.y = n.targetY; n.z = n.targetZ;
+          n.nodeOpacity = 1;
+        }
+      }
+
       // ── Project all nodes ─────────────────────────────────────────────
       for (const n of nodes) {
         // Idle drift (visual only — don't mutate positions)
@@ -546,16 +684,25 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
         if (Math.abs(n.hoverAnim - t) < 0.01) n.hoverAnim = t;
       }
 
+      // Animate edge hoverAnim
+      for (const edge of edges) {
+        const eitherHovered = hoveredNode === edge.from || hoveredNode === edge.to;
+        const t = eitherHovered ? 1 : 0;
+        edge.hoverAnim += (t - edge.hoverAnim) * 0.10;
+        if (Math.abs(edge.hoverAnim - t) < 0.01) edge.hoverAnim = t;
+      }
+
       // ── Edges ─────────────────────────────────────────────────────────
       for (const edge of edges) {
         const a = nodes[edge.from], b = nodes[edge.to];
         // Edge LOD: skip if both are dot-level and neither hovered
-        if (a.screenR < LOD_DOT && b.screenR < LOD_DOT && hoveredNode !== a.index && hoveredNode !== b.index) continue;
+        if (a.screenR < LOD_DOT && b.screenR < LOD_DOT && edge.hoverAnim < 0.01) continue;
 
         const aMatch = matchingIndices.has(a.index), bMatch = matchingIndices.has(b.index);
         const bothMatch = aMatch && bMatch;
-        const eitherHovered = hoveredNode === a.index || hoveredNode === b.index;
-        const avgFog = (depthFog(a.depth, cam.orbitDist) + depthFog(b.depth, cam.orbitDist)) / 2;
+        const eh = edge.hoverAnim;
+        const edgeOpacity = Math.min(a.nodeOpacity, b.nodeOpacity);
+        const avgFog = (depthFog(a.depth, cam.orbitDist) + depthFog(b.depth, cam.orbitDist)) / 2 * edgeOpacity;
         if (avgFog < 0.01) continue;
         const avgScale = (a.scale + b.scale) / 2;
 
@@ -564,16 +711,11 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
         ctx.lineTo(b.sx, b.sy);
         ctx.strokeStyle = '#fff';
         const beatEdge = beat * 0.25;
-        if (eitherHovered) {
-          ctx.globalAlpha = 0.6 * avgFog;
-          ctx.lineWidth = 2 * avgScale;
-        } else if (bothMatch) {
-          ctx.globalAlpha = (0.12 + beatEdge) * avgFog;
-          ctx.lineWidth = Math.max(0.3, (1 + beat) * avgScale);
-        } else {
-          ctx.globalAlpha = (0.03 + beatEdge) * avgFog;
-          ctx.lineWidth = Math.max(0.2, (0.5 + beat * 0.8) * avgScale);
-        }
+        // Blend between base state and hovered state using edge.hoverAnim
+        const baseAlpha = bothMatch ? (0.12 + beatEdge) : (0.03 + beatEdge);
+        const baseWidth = bothMatch ? Math.max(0.3, (1 + beat) * avgScale) : Math.max(0.2, (0.5 + beat * 0.8) * avgScale);
+        ctx.globalAlpha = (baseAlpha + (0.6 - baseAlpha) * eh) * avgFog;
+        ctx.lineWidth = baseWidth + (2 * avgScale - baseWidth) * eh;
         ctx.stroke();
         ctx.globalAlpha = 1;
       }
@@ -616,7 +758,7 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
         const ha = node.hoverAnim;
         const effectiveScale = node.scale * (1 + ha * 0.4);
         const fog = depthFog(node.depth, cam.orbitDist);
-        const brightenedFog = fog + (0.95 - fog) * ha;
+        const brightenedFog = (fog + (0.95 - fog) * ha) * node.nodeOpacity;
         const r = node.screenR;
         if (brightenedFog < 0.01 || r < 0.5) continue;
 
@@ -694,9 +836,14 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
         ctx.arc(node.sx, node.sy, r - 1, 0, TAU);
         ctx.clip();
         if (hasAvatar) {
+          const img = node.avatarImg!;
           const imgSize = r * 2;
+          // Crop from center — maintain aspect ratio
+          const iw = img.naturalWidth, ih = img.naturalHeight;
+          const cropSize = Math.min(iw, ih);
+          const sx = (iw - cropSize) / 2, sy = (ih - cropSize) / 2;
           ctx.globalAlpha = brightenedFog * (0.6 + ha * 0.4);
-          ctx.drawImage(node.avatarImg!, node.sx - r, node.sy - r, imgSize, imgSize);
+          ctx.drawImage(img, sx, sy, cropSize, cropSize, node.sx - r, node.sy - r, imgSize, imgSize);
           ctx.globalAlpha = 1;
         } else {
           const fontSize = Math.max(8, Math.round((12 + ha * 4) * effectiveScale));
@@ -849,15 +996,22 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
   const handleResetView = useCallback(() => {
     const bounds = boundsRef.current;
     const cam = cameraRef.current;
+    cam.orbitThetaVel = 0.0008;
+    // Animate everything back to defaults
     flyToRef.current = {
       startTarget: [cam.tx, cam.ty, cam.tz],
       endTarget: [bounds.cx, bounds.cy, bounds.cz],
       startDist: cam.orbitDist,
       endDist: bounds.radius * 1.8,
+      startTheta: cam.orbitTheta,
+      endTheta: 0,
+      startPhi: cam.orbitPhi,
+      endPhi: Math.PI * 0.45,
       t: 0,
       duration: 1.2,
     };
     setSelectedNode(-1);
+    setHoveredNode(-1);
   }, []);
 
   const handleDeselect = useCallback(() => {
@@ -1032,6 +1186,9 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
     <section ref={setSectionRef} className="relative h-screen flex flex-col" style={{ zIndex: 10, background: '#000', overflow: 'hidden' }}>
       <div ref={sentinelRef} className="absolute top-0 left-0 w-full h-24" />
 
+      {/* Top fade — black→transparent so 3D content doesn't cut abruptly */}
+      <div className="absolute top-0 left-0 w-full pointer-events-none" style={{ zIndex: 50, height: '120px', background: 'linear-gradient(to bottom, #000 0%, transparent 100%)' }} />
+
       {/* Three.js background scene */}
       <WebringBackground beatRef={beatPulseRef} paused={reducedMotion || !sectionVisible} />
 
@@ -1092,9 +1249,9 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
                 {matchingIndices.size}/{WEBRING_ENTRIES.length}
               </span>
               <button
-                className="collapse-btn"
+                className="cta-btn"
                 onClick={(e) => { e.stopPropagation(); setCollapsed(prev => !prev); }}
-                style={{ background: 'transparent', border: '2px solid #fff', color: '#fff', cursor: 'pointer', fontFamily: 'var(--font-arcade)', fontSize: 9, padding: '2px 7px', lineHeight: 1, letterSpacing: '0.1em', transition: 'all 0.15s ease' }}
+                style={{ background: 'transparent', border: '2px solid #fff', boxShadow: '2px 2px 0 #000', color: '#fff', cursor: 'pointer', fontFamily: 'var(--font-arcade)', fontSize: 9, padding: '2px 7px', lineHeight: 1, letterSpacing: '0.1em' }}
                 onMouseEnter={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#000'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#fff'; }}
               >
@@ -1131,7 +1288,12 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
                   >{cohort}</button>
                 );
               })}
-              {selectedCohorts.size > 0 && <button onClick={() => setSelectedCohorts(new Set())} style={{ fontFamily: 'var(--font-mono)', fontSize: 9, padding: '3px 8px', border: '1px solid #333', background: 'transparent', color: '#666', cursor: 'pointer' }}>clear</button>}
+              {selectedCohorts.size > 0 && <button
+  onClick={() => setSelectedCohorts(new Set())}
+  style={{ fontFamily: 'var(--font-arcade)', fontSize: 9, padding: '3px 8px', border: '2px solid #fff', background: 'transparent', color: '#fff', cursor: 'pointer', letterSpacing: '0.1em', transition: 'all 0.15s ease' }}
+  onMouseEnter={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#000'; }}
+  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#fff'; }}
+>CLEAR</button>}
             </div>
 
             <div className="mt-3 flex flex-col gap-1 flex-1 overflow-y-auto" style={{ maxHeight: Math.max(80, listMaxHeight) }}>
@@ -1163,15 +1325,6 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
                 onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#fff'; (e.currentTarget as HTMLElement).style.color = '#000'; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#fff'; }}
               >ADD YOUR SITE</a>
-              {selectedNode >= 0 && (
-                <button
-                  onClick={handleDeselect}
-                  className="cta-btn"
-                  style={{ fontFamily: 'var(--font-arcade)', fontSize: 9, letterSpacing: '0.15em', color: '#fff', border: '2px solid #fff', boxShadow: '2px 2px 0 #000', padding: '5px 14px', background: 'transparent', cursor: 'pointer', transition: 'all 0.15s ease' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#000'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#fff'; }}
-                >DESELECT</button>
-              )}
             </div>
           </div>
 
@@ -1187,14 +1340,156 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
         </div>
       </div>
 
-      {tooltip && (
-        <div className="absolute z-30 pointer-events-none" style={{ left: Math.max(80, Math.min(tooltip.x, (sectionRef.current?.clientWidth ?? 1000) - 80)), top: Math.max(10, tooltip.y - 50), transform: 'translateX(-50%)' }}>
-          <div style={{ background: 'rgba(0,0,0,0.95)', border: '2px solid #fff', boxShadow: '2px 2px 0 #000', padding: '6px 12px', whiteSpace: 'nowrap' }}>
-            <p style={{ fontFamily: 'var(--font-arcade)', fontSize: 11, color: '#fff', margin: 0, letterSpacing: '0.08em' }}>{tooltip.entry.name}</p>
-            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#999', margin: 0, marginTop: 2 }}>{tooltip.entry.description}</p>
+      {/* Right-side profile panel — draggable + resizable, matches left panel */}
+      {(() => {
+        const selectedGraphNode = selectedNode >= 0 && graphRef.current ? graphRef.current.nodes.find(n => n.index === selectedNode) : null;
+        const isOpen = !!selectedGraphNode;
+        if (isOpen) lastEntryRef.current = selectedGraphNode!.entry;
+        const entry = lastEntryRef.current;
+        return (
+          <div
+            ref={rightPanelRef}
+            className="absolute z-[60]"
+            style={{
+              ...(rightDragged
+                ? { top: rightPos.y, left: rightPos.x }
+                : { top: '50%', right: 24, transform: isOpen ? 'translateY(-50%)' : 'translateY(-50%) translateX(30px)' }
+              ),
+              width: 280,
+              opacity: isOpen ? 1 : 0,
+              pointerEvents: isOpen ? 'auto' : 'none',
+              transition: 'transform 0.35s cubic-bezier(0.16,1,0.3,1), opacity 0.3s ease, width 0.25s ease',
+              userSelect: 'none',
+            }}
+          >
+            <div style={{
+              border: '2px solid #000', background: 'rgba(0,0,0,1)', boxShadow: '3px 3px 0 #000',
+              display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative',
+              height: rightCollapsed ? 'auto' : undefined,
+            }}>
+              {/* Scanlines */}
+              <div className="absolute inset-0 pointer-events-none" style={{
+                background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.015) 2px, rgba(255,255,255,0.015) 4px)',
+                zIndex: 3,
+              }} />
+
+              {/* Title bar — draggable */}
+              <div
+                onMouseDown={handleRightDragStart}
+                className="flex items-center justify-between px-4 py-2 relative z-10"
+                style={{ borderBottom: '1px solid #222', background: '#0a0a0a', flexShrink: 0, cursor: 'grab' }}
+              >
+                <div className="flex items-center gap-2">
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff', display: 'inline-block', boxShadow: '0 0 6px rgba(255,255,255,0.5)' }} />
+                  <span style={{ fontFamily: 'var(--font-arcade)', fontSize: 12, letterSpacing: '0.1em', color: '#fff' }}>PROFILE</span>
+                  <span style={{ display: 'inline-block', width: 7, height: 12, background: '#fff', animation: 'terminal-cursor-blink 1s step-end infinite' }} />
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setRightCollapsed(prev => !prev); }}
+                    className="cta-btn"
+                    style={{ background: 'transparent', border: '2px solid #fff', boxShadow: '2px 2px 0 #000', color: '#fff', cursor: 'pointer', fontFamily: 'var(--font-arcade)', fontSize: 9, padding: '2px 7px', lineHeight: 1, letterSpacing: '0.1em' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#000'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#fff'; }}
+                  >
+                    {rightCollapsed ? '+' : '−'}
+                  </button>
+                  <button
+                    onClick={handleDeselect}
+                    className="cta-btn"
+                    style={{ background: 'transparent', border: '2px solid #fff', boxShadow: '2px 2px 0 #000', color: '#fff', cursor: 'pointer', fontFamily: 'var(--font-arcade)', fontSize: 9, padding: '2px 7px', lineHeight: 1, letterSpacing: '0.1em' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#000'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#fff'; }}
+                  >
+                    X
+                  </button>
+                </div>
+              </div>
+
+              {entry && (
+                <div
+                  className="flex flex-col relative z-10"
+                  style={{
+                    maxHeight: rightCollapsed ? 0 : 600,
+                    opacity: rightCollapsed ? 0 : 1,
+                    overflow: 'hidden',
+                    transition: 'max-height 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease',
+                  }}
+                >
+                  {/* Website screenshot or avatar fallback */}
+                  {(entry.websiteImage || entry.avatar) && (
+                    <div style={{ width: '100%', height: 160, overflow: 'hidden', borderBottom: '1px solid #222', position: 'relative', flexShrink: 0 }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={entry.websiteImage || entry.avatar!} alt={`${entry.name}'s website`}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', display: 'block' }} />
+                    </div>
+                  )}
+
+                  {/* Info */}
+                  <div style={{ padding: '14px 16px' }}>
+                    <div className="flex items-center gap-2">
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: '#888' }}>&gt;</span>
+                      <span style={{ fontFamily: 'var(--font-arcade)', fontSize: 14, color: '#fff', letterSpacing: '0.1em' }}>{entry.name}</span>
+                    </div>
+
+                    {entry.role && (
+                      <p style={{ fontFamily: 'var(--font-arcade)', fontSize: 10, color: '#888', margin: 0, marginTop: 4, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                        {entry.role}
+                      </p>
+                    )}
+
+                    <p style={{ fontFamily: 'var(--font-arcade)', fontSize: 9, color: '#555', margin: 0, marginTop: 4, letterSpacing: '0.1em' }}>
+                      // CLASS OF &apos;{entry.year || entry.cohort}
+                    </p>
+
+                    {(entry.location || entry.school) && (
+                      <p style={{ fontFamily: 'var(--font-arcade)', fontSize: 9, color: '#555', margin: 0, marginTop: 2, letterSpacing: '0.06em' }}>
+                        {entry.location}{entry.location && entry.school ? '  //  ' : ''}{entry.school}
+                      </p>
+                    )}
+
+                    {entry.blurb && (
+                      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: '#e0e0e0', margin: 0, marginTop: 10, lineHeight: 1.7 }}>
+                        &ldquo;{entry.blurb}&rdquo;
+                      </p>
+                    )}
+
+                    {/* Socials (website filtered out — shown as VISIT button) */}
+                    {entry.socials && entry.socials.filter(s => s.type !== 'website').length > 0 && (
+                      <div className="flex gap-2 mt-3">
+                        {entry.socials.filter(s => s.type !== 'website').map((s, i) => (
+                          <a key={i} href={s.url} target="_blank" rel="noopener noreferrer"
+                            className="cta-btn"
+                            style={{ color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, border: '2px solid #fff', boxShadow: '2px 2px 0 #000', background: 'transparent', textDecoration: 'none', transition: 'all 0.15s ease' }}
+                            onMouseEnter={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#000'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#fff'; }}
+                            dangerouslySetInnerHTML={{ __html:
+                              s.type === 'github' ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>'
+                              : s.type === 'linkedin' ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>'
+                              : s.type === 'twitter' ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l11.733 16h4.267l-11.733 -16z"/><path d="M4 20l6.768 -6.768m2.46 -2.46l6.772 -6.772"/></svg>'
+                              : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>'
+                            }}
+                          />
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Visit */}
+                    <div className="flex items-center gap-2" style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid #222' }}>
+                      <a href={entry.url} target="_blank" rel="noopener noreferrer" className="cta-btn"
+                        style={{ fontFamily: 'var(--font-arcade)', fontSize: 9, letterSpacing: '0.15em', color: '#fff', border: '2px solid #fff', boxShadow: '2px 2px 0 #000', padding: '5px 14px', background: 'transparent', textDecoration: 'none' }}
+                        onMouseEnter={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#000'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#fff'; }}
+                      >VISIT &rarr;</a>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       <div className="absolute inset-0" style={{ zIndex: 1 }}>
         <canvas ref={canvasRef} className="w-full h-full" style={{ background: 'transparent' }}
@@ -1263,9 +1558,9 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
         <div style={{ width: 1, height: 14, background: '#333' }} />
         <button
           onClick={handleResetView}
-          style={{ fontFamily: 'var(--font-arcade)', fontSize: 8, color: '#555', letterSpacing: '0.1em', background: 'none', border: '1px solid #333', padding: '3px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}
-          onMouseEnter={e => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#fff'; }}
-          onMouseLeave={e => { e.currentTarget.style.color = '#555'; e.currentTarget.style.borderColor = '#333'; }}
+          style={{ fontFamily: 'var(--font-arcade)', fontSize: 8, color: '#fff', letterSpacing: '0.1em', background: 'transparent', border: '2px solid #fff', padding: '3px 10px', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s ease' }}
+          onMouseEnter={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#000'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#fff'; }}
         >RESET</button>
       </div>
     </section>

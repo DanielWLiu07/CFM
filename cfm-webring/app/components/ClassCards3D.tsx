@@ -20,6 +20,8 @@ interface ClassMember {
   year: string;
   avatar?: string;
   socials?: Social[];
+  hobbies?: string[];
+  experiences?: string[];
 }
 
 interface ClassCards3DProps {
@@ -315,6 +317,7 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
       baseYRef.current = [];
 
       const containerW = containerWidth || container.clientWidth;
+      if (containerW < 100) return; // wait for layout
       if (members.length === 0) { renderer.setSize(containerW, 0); container.style.height = '0px'; renderer.render(scene, camera); return; }
 
       const responsiveCols = containerW >= 900 ? COLS : containerW >= 550 ? 2 : 1;
@@ -352,13 +355,14 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
           setTimeout(() => setPhase('done'), 600);
         });
 
-        // Start invisible for fade-in
+        // Start invisible for staggered fade-in
         el.style.opacity = '0';
         el.style.transition = 'opacity 0.3s ease';
 
         const obj = new CSS3DObject(el);
         const x = (col - (cols - 1) / 2) * (cardW + COL_GAP);
-        const y = -((row - (rows - 1) / 2) * (cardH + ROW_GAP));
+        // Top-aligned: row 0 at top of grid, subsequent rows below
+        const y = (totalH / 2 - PAD) - row * (cardH + ROW_GAP) - cardH / 2;
         const isMiddle = cols >= 3 && col > 0 && col < cols - 1;
 
         obj.position.set(x, y, isMiddle ? -20 : 0);
@@ -375,12 +379,11 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
 
       renderer.render(scene, camera);
 
-      // Fade in new cards staggered
+      // Staggered fade-in
       requestAnimationFrame(() => {
         objectsRef.current.forEach((obj, i) => {
-          setTimeout(() => { obj.element.style.opacity = '1'; }, i * 40);
+          setTimeout(() => { obj.element.style.opacity = '1'; }, 60 + i * 50);
         });
-        // Re-render after fade starts
         setTimeout(() => renderer.render(scene, camera), 20);
       });
     };
@@ -392,7 +395,7 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
         obj.element.style.opacity = '0';
       });
       renderer.render(scene, camera);
-      swapTimeoutRef.current = setTimeout(buildNewCards, 220);
+      swapTimeoutRef.current = setTimeout(buildNewCards, 240);
     } else {
       buildNewCards();
     }
@@ -417,12 +420,12 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
     const url = new URL(window.location.href);
     url.searchParams.delete('member');
     window.history.pushState({}, '', url.toString());
-    // flash → shrink → dotout → afterglow → idle
+    // CRT turn-off: flash → shrink → dotout → afterglow → idle
     setPhase('flash');
-    setTimeout(() => setPhase('shrink'), 70);
-    setTimeout(() => setPhase('dotout'), 320);
-    setTimeout(() => setPhase('afterglow'), 520);
-    setTimeout(() => { setPhase('idle'); setExpandedMember(null); }, 900);
+    setTimeout(() => setPhase('shrink'), 100);
+    setTimeout(() => setPhase('dotout'), 400);
+    setTimeout(() => setPhase('afterglow'), 600);
+    setTimeout(() => { setPhase('idle'); setExpandedMember(null); }, 1050);
   };
 
   // Open from URL on mount (e.g. ?member=daniel-liu)
@@ -470,6 +473,19 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
       window.removeEventListener('keydown', onKey);
     };
   }, [phase]);
+
+  // Trigger ink noise reveal SVG animations when content becomes visible
+  useEffect(() => {
+    if (phase !== 'done') return;
+    const timer = setTimeout(() => {
+      const svg = document.getElementById('ink-reveal-svg');
+      if (!svg) return;
+      svg.querySelectorAll('animate').forEach((anim) => {
+        try { (anim as SVGAnimateElement).beginElement(); } catch {}
+      });
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [phase, expandedMember]);
 
   return (
     <>
@@ -596,13 +612,244 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
                 </>
               )}
 
-              {/* ── SCANLINES — always visible on the CRT surface ── */}
-              {(phase === 'expand' || phase === 'done' || phase === 'flash') && (
+              {/* ── SCANLINES — visible on the CRT surface including close phases ── */}
+              {(phase === 'expand' || phase === 'done' || phase === 'flash' || phase === 'shrink') && (
                 <div style={{
                   position: 'absolute', inset: 0, zIndex: 6,
                   background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px)',
                   pointerEvents: 'none',
                 }} />
+              )}
+
+              {/* ── MEMBER CONTENT — left: avatar, right: info ── */}
+              {(phase === 'done' || phase === 'flash' || phase === 'shrink') && expandedMember && (
+                <div style={{
+                  position: 'absolute', inset: 0, zIndex: 8,
+                  display: 'flex', flexDirection: 'row',
+                  opacity: phase === 'flash' || phase === 'shrink' ? 0.6 : 1,
+                  transition: 'opacity 0.1s ease',
+                }}>
+                  {/* Left — profile image */}
+                  <div style={{
+                    width: '40%', height: '100%', flexShrink: 0,
+                    borderRight: '2px solid rgba(255,255,255,0.1)',
+                    overflow: 'hidden', position: 'relative',
+                    animation: phase === 'done' ? 'panel-slide-left 0.4s cubic-bezier(0.16,1,0.3,1) both' : 'none',
+                  }}>
+                    {expandedMember.avatar && (
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={expandedMember.avatar}
+                          alt={expandedMember.name}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
+                        />
+                        {/* CRT scanline overlay on image */}
+                        <div style={{
+                          position: 'absolute', inset: 0,
+                          background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.12) 2px, rgba(0,0,0,0.12) 4px)',
+                          pointerEvents: 'none',
+                        }} />
+                      </>
+                    )}
+                    {!expandedMember.avatar && (
+                      <div style={{
+                        width: '100%', height: '100%',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: '#0a0a0a',
+                        fontFamily: 'var(--font-arcade)', fontSize: 48, color: '#222', letterSpacing: '0.1em',
+                      }}>
+                        {expandedMember.name.split(' ').map(w => w[0]).join('')}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right — info panel */}
+                  <div style={{
+                    flex: 1, padding: '30px 28px', overflowY: 'auto',
+                    display: 'flex', flexDirection: 'column', gap: 16,
+                    animation: phase === 'done' ? 'panel-slide-right 0.45s cubic-bezier(0.16,1,0.3,1) 0.08s both' : 'none',
+                  }}>
+                    {/* Name */}
+                    <div>
+                      <h2 style={{
+                        fontFamily: 'var(--font-arcade)', fontSize: 'clamp(20px, 3vw, 28px)',
+                        color: '#fff', letterSpacing: '0.12em', margin: 0,
+                        textShadow: '2px 2px 0 #000',
+                      }}>
+                        {expandedMember.name}
+                      </h2>
+                      <p style={{
+                        fontFamily: 'var(--font-arcade)', fontSize: 11, color: '#888',
+                        letterSpacing: '0.15em', margin: '4px 0 0', textTransform: 'uppercase',
+                      }}>
+                        {expandedMember.role}
+                      </p>
+                    </div>
+
+                    {/* Info */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <p style={{ fontFamily: 'var(--font-arcade)', fontSize: 9, color: '#555', letterSpacing: '0.1em', margin: 0 }}>
+                        {expandedMember.location}  //  {expandedMember.school}
+                      </p>
+                      <p style={{ fontFamily: 'var(--font-arcade)', fontSize: 9, color: '#555', letterSpacing: '0.1em', margin: 0 }}>
+                        CLASS OF &apos;{expandedMember.year}
+                      </p>
+                    </div>
+
+                    {/* Blurb */}
+                    <p style={{
+                      fontFamily: 'var(--font-mono)', fontSize: 13, color: '#ccc',
+                      lineHeight: 1.7, margin: 0, fontStyle: 'italic',
+                    }}>
+                      &ldquo;{expandedMember.blurb}&rdquo;
+                    </p>
+
+                    {/* Hobbies */}
+                    {expandedMember.hobbies && expandedMember.hobbies.length > 0 && (
+                      <div>
+                        <p style={{ fontFamily: 'var(--font-arcade)', fontSize: 9, color: '#666', letterSpacing: '0.15em', margin: '0 0 6px', textTransform: 'uppercase' }}>
+                          HOBBIES
+                        </p>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                          {expandedMember.hobbies.map((h, i) => (
+                            <span key={i} style={{
+                              fontFamily: 'var(--font-arcade)', fontSize: 9, letterSpacing: '0.08em',
+                              padding: '3px 10px', border: '1px solid #333', color: '#aaa',
+                            }}>
+                              {h}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Experiences */}
+                    {expandedMember.experiences && expandedMember.experiences.length > 0 && (
+                      <div>
+                        <p style={{ fontFamily: 'var(--font-arcade)', fontSize: 9, color: '#666', letterSpacing: '0.15em', margin: '0 0 6px', textTransform: 'uppercase' }}>
+                          EXPERIENCE
+                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          {expandedMember.experiences.map((exp, i) => (
+                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span style={{ color: '#555', fontFamily: 'var(--font-mono)', fontSize: 11 }}>&gt;</span>
+                              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: '#ccc' }}>{exp}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Socials + Visit */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 'auto', paddingTop: 12, borderTop: '1px solid #222' }}>
+                      {expandedMember.socials?.map((s, i) => (
+                        <a key={i} href={s.url} target="_blank" rel="noopener noreferrer"
+                          style={{
+                            color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            width: 30, height: 30, border: '2px solid #fff', background: 'transparent',
+                            textDecoration: 'none', transition: 'all 0.15s ease',
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#000'; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#fff'; }}
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <span style={{ fontSize: 12 }}>{s.type === 'github' ? 'GH' : s.type === 'linkedin' ? 'LI' : s.type === 'twitter' ? 'X' : '🌐'}</span>
+                        </a>
+                      ))}
+                      {expandedMember.url && expandedMember.url !== '#' && (
+                        <a href={expandedMember.url} target="_blank" rel="noopener noreferrer"
+                          style={{
+                            fontFamily: 'var(--font-arcade)', fontSize: 10, letterSpacing: '0.15em',
+                            color: '#fff', border: '2px solid #fff', padding: '5px 14px',
+                            background: 'transparent', textDecoration: 'none', transition: 'all 0.15s ease', marginLeft: 'auto',
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#000'; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#fff'; }}
+                          onClick={e => e.stopPropagation()}
+                        >
+                          VISIT →
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── WHITE FLASH on close — CRT brightness spike ── */}
+              {phase === 'flash' && (
+                <div style={{
+                  position: 'absolute', inset: 0, zIndex: 10,
+                  background: '#fff',
+                  opacity: 0.8,
+                  animation: 'crt-flicker 0.07s steps(1) 1',
+                  pointerEvents: 'none',
+                }} />
+              )}
+
+              {/* ── TV BACKGROUND — faded person_tv + glitch effects (visible during done + close phases) ── */}
+              {(phase === 'done' || phase === 'flash' || phase === 'shrink') && (
+                <>
+                  {/* Faded TV background — fades in with stepped animation + color bleed loop */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/images/person_tv.webp"
+                    alt=""
+                    style={{
+                      position: 'absolute', inset: 0, zIndex: 0,
+                      width: '100%', height: '100%',
+                      objectFit: 'cover',
+                      imageRendering: 'pixelated' as React.CSSProperties['imageRendering'],
+                      pointerEvents: 'none',
+                      animation: 'tv-bg-in 0.8s steps(6) forwards, tv-color-bleed 6s ease-in-out infinite 0.8s',
+                    }}
+                  />
+
+                  {/* Horizontal glitch tears — looping intermittent tears over the bg */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/images/person_tv.webp"
+                    alt=""
+                    style={{
+                      position: 'absolute', inset: 0, zIndex: 0,
+                      width: '100%', height: '100%',
+                      objectFit: 'cover',
+                      opacity: 0.05,
+                      filter: 'grayscale(1) contrast(2) brightness(1.5)',
+                      imageRendering: 'pixelated' as React.CSSProperties['imageRendering'],
+                      pointerEvents: 'none',
+                      animation: 'tv-glitch 3s steps(1) infinite',
+                    }}
+                  />
+
+                  {/* Persistent TV static noise */}
+                  <div style={{
+                    position: 'absolute', inset: 0, zIndex: 1,
+                    opacity: 0.035,
+                    backgroundImage: `
+                      repeating-conic-gradient(#aaa 0% 25%, transparent 0% 50%),
+                      repeating-conic-gradient(#999 0% 25%, transparent 0% 50%)
+                    `,
+                    backgroundSize: '3px 3px, 5px 5px',
+                    backgroundPosition: '0 0, 1px 1px',
+                    animation: 'crt-noise 50ms steps(8) infinite',
+                    pointerEvents: 'none',
+                    mixBlendMode: 'overlay',
+                  }} />
+
+                  {/* Rolling interference band — slow loop */}
+                  <div style={{
+                    position: 'absolute', inset: 0, zIndex: 1,
+                    overflow: 'hidden', pointerEvents: 'none',
+                  }}>
+                    <div style={{
+                      width: '100%', height: '10vh',
+                      background: 'linear-gradient(transparent 0%, rgba(255,255,255,0.02) 20%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0.02) 80%, transparent 100%)',
+                      animation: 'tv-band-slow 5s linear infinite',
+                    }} />
+                  </div>
+
+                </>
               )}
 
             </div>
