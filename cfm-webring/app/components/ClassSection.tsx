@@ -60,6 +60,26 @@ export default function ClassSection({ onVisibilityChange }: ClassSectionProps) 
     document.addEventListener('mousedown', close);
     return () => document.removeEventListener('mousedown', close);
   }, [dropdownOpen]);
+  // Animate title_bg in sync with 3D text swap
+  const prevYearRef = useRef(selectedYear);
+  useEffect(() => {
+    if (prevYearRef.current === selectedYear) return;
+    prevYearRef.current = selectedYear;
+    const bg = document.getElementById('class-title-bg') as HTMLElement | null;
+    if (!bg) return;
+    // Exit: scale down + fade out
+    bg.style.transition = 'opacity 0.35s ease-in, transform 0.35s ease-in';
+    bg.style.opacity = '0';
+    bg.style.transform = 'translate(-50%, -50%) scale(0.85)';
+    // Enter: scale up + fade in (timed to match 3D letter enter phase)
+    const timer = setTimeout(() => {
+      bg.style.transition = 'opacity 0.4s ease-out, transform 0.4s cubic-bezier(0.16,1,0.3,1)';
+      bg.style.opacity = String(DEFAULT_CONFIG.bgOpacity);
+      bg.style.transform = 'translate(-50%, -50%) scale(1)';
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [selectedYear]);
+
   const [bgScale, setBgScale] = useState(DEFAULT_CONFIG.bgScale);
   const [bgOpacity, setBgOpacity] = useState(DEFAULT_CONFIG.bgOpacity);
   const [bgY, setBgY] = useState(DEFAULT_CONFIG.bgY);
