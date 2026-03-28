@@ -64,6 +64,7 @@ interface Node {
   sx: number; sy: number; scale: number; depth: number; screenR: number; // projection cache
   hoverAnim: number;
   avatarImg: HTMLImageElement | null;
+  lod: 0 | 1 | 2; // 0=dot, 1=simple, 2=full — persists to prevent flicker
 }
 
 interface Edge { from: number; to: number; }
@@ -180,7 +181,7 @@ function buildGraph(entries: WebringEntry[]) {
     const z = (layer - layers / 2 + 0.5) * cellSize + jz;
     let avatarImg: HTMLImageElement | null = null;
     if (entry.avatar) { avatarImg = new Image(); avatarImg.src = entry.avatar; }
-    return { x, y, z, entry, index: i, sx: 0, sy: 0, scale: 1, depth: 0, screenR: 0, hoverAnim: 0, avatarImg };
+    return { x, y, z, entry, index: i, sx: 0, sy: 0, scale: 1, depth: 0, screenR: 0, hoverAnim: 0, avatarImg, lod: 1 as const };
   });
 
   // Edges: ring + proximity
@@ -526,6 +527,11 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
         n.sx = p.sx; n.sy = p.sy; n.scale = p.scale; n.depth = p.depth;
         const beatSize = 1 + beat * 0.15;
         n.screenR = (22 + n.hoverAnim * 8) * p.scale * beatSize;
+        // LOD with hysteresis — need 30% past threshold to switch, prevents flicker
+        if (n.lod === 0 && n.screenR > LOD_DOT * 1.3) n.lod = 1;
+        else if (n.lod === 1 && n.screenR < LOD_DOT * 0.7) n.lod = 0;
+        else if (n.lod === 1 && n.screenR > LOD_SIMPLE * 1.3) n.lod = 2;
+        else if (n.lod === 2 && n.screenR < LOD_SIMPLE * 0.7) n.lod = 1;
       }
 
       // ── Render ────────────────────────────────────────────────────────
@@ -615,7 +621,7 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
         if (brightenedFog < 0.01 || r < 0.5) continue;
 
         // ── LOD: Dot ────────────────────────────────────────────────────
-        if (r < LOD_DOT && !isHovered) {
+        if (node.lod === 0 && !isHovered) {
           ctx.beginPath();
           ctx.arc(node.sx, node.sy, Math.max(1, r), 0, TAU);
           ctx.fillStyle = `rgba(255,255,255,${(isMatch ? 0.5 : 0.15) * brightenedFog})`;
@@ -624,7 +630,7 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
         }
 
         // ── LOD: Simple ─────────────────────────────────────────────────
-        if (r < LOD_SIMPLE && !isHovered) {
+        if (node.lod === 1 && !isHovered) {
           ctx.beginPath();
           ctx.arc(node.sx, node.sy, r, 0, TAU);
           ctx.fillStyle = `rgba(${isMatch ? 10 : 5},${isMatch ? 10 : 5},${isMatch ? 10 : 5},${brightenedFog})`;
@@ -783,7 +789,7 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
       const dy = my - orbitDragRef.current.lastY;
       const dt = Math.max(1, Date.now() - orbitDragRef.current.lastTime);
       cam.orbitTheta -= dx * 0.005;
-      cam.orbitPhi = Math.max(PHI_CLAMP_MIN, Math.min(PHI_CLAMP_MAX, cam.orbitPhi - dy * 0.005));
+      cam.orbitPhi -= dy * 0.005;
       cam.orbitThetaVel = (-dx * 0.005) / Math.min(dt / 16, 3);
       orbitDragRef.current.lastX = mx;
       orbitDragRef.current.lastY = my;
@@ -1088,7 +1094,9 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
               <button
                 className="collapse-btn"
                 onClick={(e) => { e.stopPropagation(); setCollapsed(prev => !prev); }}
-                style={{ background: 'none', border: '1px solid #333', color: '#888', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 10, padding: '1px 6px', lineHeight: 1 }}
+                style={{ background: 'transparent', border: '2px solid #fff', color: '#fff', cursor: 'pointer', fontFamily: 'var(--font-arcade)', fontSize: 9, padding: '2px 7px', lineHeight: 1, letterSpacing: '0.1em', transition: 'all 0.15s ease' }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#000'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#fff'; }}
               >
                 {collapsed ? '+' : '−'}
               </button>
@@ -1159,9 +1167,9 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
                 <button
                   onClick={handleDeselect}
                   className="cta-btn"
-                  style={{ fontFamily: 'var(--font-arcade)', fontSize: 9, letterSpacing: '0.15em', color: '#888', border: '2px solid #555', boxShadow: '2px 2px 0 #000', padding: '5px 14px', background: 'transparent', cursor: 'pointer', transition: 'all 0.15s ease' }}
-                  onMouseEnter={e => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#fff'; }}
-                  onMouseLeave={e => { e.currentTarget.style.color = '#888'; e.currentTarget.style.borderColor = '#555'; }}
+                  style={{ fontFamily: 'var(--font-arcade)', fontSize: 9, letterSpacing: '0.15em', color: '#fff', border: '2px solid #fff', boxShadow: '2px 2px 0 #000', padding: '5px 14px', background: 'transparent', cursor: 'pointer', transition: 'all 0.15s ease' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#000'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#fff'; }}
                 >DESELECT</button>
               )}
             </div>
