@@ -81,14 +81,25 @@ const CHAR_WIDTH: Record<string, number> = {
 function AllLetters({ year, config, twoLine }: { year: string; config: ClassTitle3DConfig; twoLine: boolean }) {
   const groupRef = useRef<THREE.Group>(null);
   const letterRefs = useRef<THREE.Group[]>([]);
-  const swapPhase = useRef(0); // 0 = idle, >0 = animating
+  // Animation state: 'idle' | 'exit' | 'enter'
+  const animState = useRef<'idle' | 'exit' | 'enter'>('enter');
+  const animT = useRef(0); // 0→1 progress through current phase
   const prevYear = useRef(year);
+  const pendingYear = useRef<string | null>(null);
+  const [displayYear, setDisplayYear] = useState(year);
 
-  // Trigger swap animation when year changes
+  // Trigger exit animation when year changes
   useEffect(() => {
     if (prevYear.current !== year) {
-      swapPhase.current = 1.0;
       prevYear.current = year;
+      // If already exiting, just update the pending target
+      if (animState.current === 'exit') {
+        pendingYear.current = year;
+        return;
+      }
+      pendingYear.current = year;
+      animState.current = 'exit';
+      animT.current = 0;
     }
   }, [year]);
 
@@ -113,8 +124,8 @@ function AllLetters({ year, config, twoLine }: { year: string; config: ClassTitl
 
   const layoutLines = useMemo(() => {
     const lines = twoLine
-      ? ['CLASS', `OF ${year}`]
-      : [`CLASS OF ${year}`];
+      ? ['CLASS', `OF ${displayYear}`]
+      : [`CLASS OF ${displayYear}`];
 
     return lines.map((line, lineIdx) => {
       const chars = line.split('');
@@ -138,7 +149,7 @@ function AllLetters({ year, config, twoLine }: { year: string; config: ClassTitl
         index: lineIdx * 20 + i,
       }));
     }).flat();
-  }, [twoLine, year, config.size]);
+  }, [twoLine, displayYear, config.size]);
 
   // Store ref callback
   const setRef = useCallback((el: THREE.Group | null, idx: number) => {
@@ -148,14 +159,32 @@ function AllLetters({ year, config, twoLine }: { year: string; config: ClassTitl
   // Single useFrame for ALL letters
   useFrame(({ clock }) => {
     const t = clock.getElapsedTime();
+    const state = animState.current;
+    const speed = 0.045; // animation speed per frame
 
-    // Decay swap animation
-    if (swapPhase.current > 0.01) {
-      swapPhase.current *= 0.92;
-    } else {
-      swapPhase.current = 0;
+    // Advance animation progress
+    if (state !== 'idle') {
+      animT.current = Math.min(1, animT.current + speed);
+
+      // Exit complete → swap text → start enter
+      if (state === 'exit' && animT.current >= 1) {
+        if (pendingYear.current) {
+          setDisplayYear(pendingYear.current);
+          pendingYear.current = null;
+        }
+        animState.current = 'enter';
+        animT.current = 0;
+        return; // skip this frame, new layout will render next frame
+      }
+
+      // Enter complete → idle
+      if (state === 'enter' && animT.current >= 1) {
+        animState.current = 'idle';
+        animT.current = 0;
+      }
     }
-    const swap = swapPhase.current;
+
+    const p = animT.current;
 
     for (let i = 0; i < layoutLines.length; i++) {
       const ref = letterRefs.current[i];
@@ -170,23 +199,43 @@ function AllLetters({ year, config, twoLine }: { year: string; config: ClassTitl
       const zBase = -Math.abs(np) * 1.8;
 
       // 8-bit style: quantize to steps for pixel-snappy feel
-      const step = 0.15;
+      const stepSize = 0.15;
       const rawFloat = Math.sin(t * (0.5 + (d.index % 4) * 0.08) + seed) * 0.1;
-      const quantFloat = Math.round(rawFloat / step) * step;
+      const quantFloat = Math.round(rawFloat / stepSize) * stepSize;
 
-      // Swap animation — letters scatter and snap back
-      const swapY = swap * Math.sin(seed * 0.3) * 2.5;
-      const swapX = swap * Math.cos(seed * 0.5) * 1.5;
-      const swapZ = swap * Math.abs(Math.sin(seed * 0.7)) * -4;
-      const swapRotX = swap * Math.sin(seed * 0.4) * 0.8;
-      const swapRotY = swap * Math.cos(seed * 0.6) * 1.0;
+      let offX = 0, offY = 0, offZ = 0, rotX = 0, rotY = 0, scale = 1;
 
-      ref.position.x = d.x + swapX;
-      ref.position.y = d.y + quantFloat + swapY;
-      ref.position.z = zBase + swapZ;
+      if (state === 'exit') {
+        // Letters fall down and scatter outward — eased acceleration
+        const ease = p * p; // accelerate
+        const dir = np >= 0 ? 1 : -1;
+        offX = ease * dir * (3 + Math.abs(np) * 4);
+        offY = ease * (-8 - Math.abs(Math.sin(seed * 0.3)) * 4);
+        offZ = ease * -8;
+        rotX = ease * Math.sin(seed * 0.4) * 2;
+        rotY = ease * Math.cos(seed * 0.6) * 2;
+        scale = Math.max(0.01, 1 - ease);
+      } else if (state === 'enter') {
+        // Letters rise up from below — staggered by position, decelerated
+        const stagger = Math.max(0, p - i * 0.03);
+        const ease = 1 - Math.pow(1 - Math.min(1, stagger * 1.4), 3); // ease-out cubic
+        const dir = np >= 0 ? 1 : -1;
+        offX = (1 - ease) * dir * 3;
+        offY = (1 - ease) * -6;
+        offZ = (1 - ease) * -5;
+        rotX = (1 - ease) * 0.5;
+        rotY = (1 - ease) * dir * 0.8;
+        scale = Math.max(0.01, ease);
+      }
 
-      ref.rotation.x = splayX + swapRotX;
-      ref.rotation.y = splayY + swapRotY;
+      ref.position.x = d.x + offX;
+      ref.position.y = d.y + quantFloat + offY;
+      ref.position.z = zBase + offZ;
+
+      ref.rotation.x = splayX + rotX;
+      ref.rotation.y = splayY + rotY;
+
+      ref.scale.setScalar(scale);
     }
   });
 
