@@ -1,0 +1,163 @@
+[
+  {
+    "name": "Daniel Liu",
+    "url": "https://danielwliu.com",
+    "description": "SWE @ building things",
+    "role": "Software Engineer",
+    "location": "Windsor, ON",
+    "school": "Massey Secondary",
+    "blurb": "Full-stack dev. Loves React, Three.js, and making pixels dance.",
+    "year": "26",
+    "cohort": "2029",
+    "avatar": "/images/avatars/daniel.png",
+    "websiteImage": "/images/websites/daniel.png",
+    "hobbies": ["Three.js", "pixel art", "music production", "basketball"],
+    "experiences": ["SWE Intern @ Stealth Startup", "Freelance Web Dev"],
+    "socials": [
+      { "type": "github", "url": "https://github.com/DanielWLiu07" },
+      { "type": "linkedin", "url": "https://linkedin.com/in/danielwliu" },
+      { "type": "website", "url": "https://danielwliu.com" }
+    ]
+  },
+  {
+    "name": "Timothy Zheng",
+    "url": "https://timothyzheng.ca",
+    "description": "power trading",
+    "role": "Alumni",
+    "location": "Waterloo, ON",
+    "school": "UWaterloo",
+    "blurb": "Power trading.",
+    "year": "26",
+    "cohort": "2026",
+    "avatar": "/images/avatars/timothyz.png",
+    "websiteImage": "/images/websites/timothyz.png",
+    "hobbies": ["trading", "golf", "poker"],
+    "experiences": ["Power Trader @ Energy Co"]
+  },
+  {
+    "name": "Aadya Khanna",
+    "url": "#",
+    "description": "API whisperer",
+    "role": "Backend Engineer",
+    "location": "Waterloo, ON",
+    "school": "Cameron Heights CI",
+    "blurb": "API whisperer. Flask, FastAPI, and too many databases.",
+    "year": "26",
+    "cohort": "2029",
+    "avatar": "/images/avatars/aadya.svg",
+    "hobbies": ["hiking", "cooking", "open source"],
+    "experiences": ["Backend Intern @ Shopify"],
+    "socials": [
+      { "type": "github", "url": "#" },
+      { "type": "linkedin", "url": "#" }
+    ]
+  },
+  {
+    "name": "Marcus Chen",
+    "url": "#",
+    "description": "quant dev",
+    "role": "Quant Developer",
+    "location": "Vancouver, BC",
+    "school": "Point Grey SS",
+    "blurb": "Turning market noise into signal. Python + C++ daily.",
+    "year": "26",
+    "cohort": "2029",
+    "avatar": "/images/avatars/marcus.svg",
+    "hobbies": ["competitive programming", "chess", "running"],
+    "experiences": ["Quant Intern @ Citadel"],
+    "socials": [
+      { "type": "github", "url": "#" },
+      { "type": "twitter", "url": "#" }
+    ]
+  },
+  {
+    "name": "Priya Sharma",
+    "url": "#",
+    "description": "ML engineer",
+    "role": "ML Engineer",
+    "location": "Mississauga, ON",
+    "school": "John Fraser SS",
+    "blurb": "Training transformers and fine-tuning everything in sight.",
+    "year": "25",
+    "cohort": "2028",
+    "avatar": "/images/avatars/priya.svg",
+    "hobbies": ["kaggle", "reading", "yoga"],
+    "experiences": ["ML Research @ UW NLP Lab"],
+    "socials": [
+      { "type": "github", "url": "#" },
+      { "type": "linkedin", "url": "#" },
+      { "type": "website", "url": "#" }
+    ]
+  },
+  {
+    "name": "Jordan Park",
+    "url": "#",
+    "description": "systems engineer",
+    "role": "Systems Engineer",
+    "location": "Calgary, AB",
+    "school": "Western Canada HS",
+    "blurb": "Low-level tinkerer. Rust, kernels, and bare metal.",
+    "year": "25",
+    "cohort": "2028",
+    "avatar": "/images/avatars/jordan.svg",
+    "hobbies": ["Rust", "Linux", "rock climbing"],
+    "experiences": ["Systems Intern @ AMD"],
+    "socials": [
+      { "type": "github", "url": "#" }
+    ]
+  },
+  {
+    "name": "Sophie Wang",
+    "url": "#",
+    "description": "data scientist",
+    "role": "Data Scientist",
+    "location": "Toronto, ON",
+    "school": "Marc Garneau CI",
+    "blurb": "Finding patterns where others see noise. Stats + viz.",
+    "year": "25",
+    "cohort": "2028",
+    "avatar": "/images/avatars/sophie.svg",
+    "hobbies": ["data viz", "photography", "piano"],
+    "experiences": ["Data Science Intern @ RBC"],
+    "socials": [
+      { "type": "linkedin", "url": "#" },
+      { "type": "twitter", "url": "#" }
+    ]
+  },
+  {
+    "name": "Ethan Zhao",
+    "url": "#",
+    "description": "product designer",
+    "role": "Product Designer",
+    "location": "Ottawa, ON",
+    "school": "Colonel By SS",
+    "blurb": "Designing interfaces people actually want to use.",
+    "year": "25",
+    "cohort": "2028",
+    "avatar": "/images/avatars/ethan.svg",
+    "hobbies": ["UI design", "sketching", "film"],
+    "experiences": ["Product Design Intern @ Figma"],
+    "socials": [
+      { "type": "github", "url": "#" },
+      { "type": "website", "url": "#" }
+    ]
+  },
+  {
+    "name": "Nina Patel",
+    "url": "#",
+    "description": "devops / infra",
+    "role": "DevOps / Infra",
+    "location": "Brampton, ON",
+    "school": "Heart Lake SS",
+    "blurb": "Terraform, K8s, CI/CD. If it deploys, it's her fault.",
+    "year": "26",
+    "cohort": "2029",
+    "avatar": "/images/avatars/nina.svg",
+    "hobbies": ["homelab", "mechanical keyboards", "baking"],
+    "experiences": ["DevOps Intern @ AWS"],
+    "socials": [
+      { "type": "github", "url": "#" },
+      { "type": "linkedin", "url": "#" }
+    ]
+  }
+]
