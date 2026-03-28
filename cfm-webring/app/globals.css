@@ -42,7 +42,7 @@ body {
   0%   { opacity: 0; transform: scale(1.4) translateY(80px); }
   50%  { opacity: 1; transform: scale(0.97) translateY(-5px); }
   70%  { opacity: 1; transform: scale(1.02) translateY(2px); }
-  100% { opacity: 1; transform: scale(1) translateY(0); }
+  100% { opacity: 1; transform: none; }
 }
 
 /* Class — glitch shake: rapid jittery entrance with transform-only (no clip-path repaints) */
@@ -60,7 +60,7 @@ body {
   70%  { transform: translateX(-2px) skewX(0.3deg); }
   80%  { transform: translateX(1px); }
   90%  { transform: translateX(-1px); }
-  100% { opacity: 1; transform: translateX(0) skewX(0); }
+  100% { opacity: 1; transform: none; }
 }
 
 /* Webring — warp in from deep space: zooms from far away (no blur — GPU composited) */
@@ -72,7 +72,7 @@ body {
   30%  { opacity: 0.6; transform: scale(0.8) translateY(20px); }
   60%  { opacity: 1; transform: scale(1.03) translateY(-8px); }
   80%  { opacity: 1; transform: scale(0.99) translateY(2px); }
-  100% { opacity: 1; transform: scale(1) translateY(0); }
+  100% { opacity: 1; transform: none; }
 }
 
 /* GitHub — smooth rise with glow flash */
@@ -83,7 +83,7 @@ body {
   0%   { opacity: 0; transform: translateY(60px); }
   40%  { opacity: 1; }
   70%  { opacity: 1; transform: translateY(-4px); }
-  100% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 1; transform: none; }
 }
 
 @keyframes ready-intro {
@@ -211,6 +211,41 @@ input[type="range"]::-webkit-slider-thumb:active {
 @keyframes class-fade-in {
   0%   { opacity: 0; transform: translateY(20px); }
   100% { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Pixel dissolve transition ─────────────────────────────────────── */
+/* Dither mask: 2x2 checkerboard where only top-left pixel is opaque.
+   As mask-size grows from 1px→32px in discrete steps, visible area
+   shrinks in chunky pixel blocks — true 8-bit dissolve effect. */
+.pixel-dissolve-out {
+  animation: pixel-dissolve-out 0.28s steps(6) forwards;
+}
+.pixel-dissolve-in {
+  animation: pixel-dissolve-in 0.32s steps(6) forwards;
+}
+
+@keyframes pixel-dissolve-out {
+  0%   { opacity: 1; transform: scale(1); }
+  25%  { opacity: 0.7; transform: scale(0.99); }
+  50%  { opacity: 0.4; transform: scale(0.98); }
+  75%  { opacity: 0.15; transform: scale(0.97); }
+  100% { opacity: 0; transform: scale(0.96); }
+}
+
+@keyframes pixel-dissolve-in {
+  0%   { opacity: 0; transform: scale(0.96); }
+  25%  { opacity: 0.2; transform: scale(0.97); }
+  50%  { opacity: 0.5; transform: scale(0.98); }
+  75%  { opacity: 0.85; transform: scale(0.99); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* Card pixel dissolve variants — staggered via animation-delay in JS */
+.pixel-card-out {
+  animation: pixel-dissolve-out 0.22s steps(5) forwards !important;
+}
+.pixel-card-in {
+  animation: pixel-dissolve-in 0.25s steps(5) forwards !important;
 }
 
 /* Class title 3D wrapper — fade in + glitch + jitter (no filter animations) */
@@ -397,5 +432,62 @@ input[type="range"]::-webkit-slider-thumb:active {
   46%  { filter: none; transform: translateX(0) }
   75%  { filter: hue-rotate(180deg); transform: translateX(3px) }
   76%  { filter: none; transform: translateX(0) }
+}
+
+/* Expanded card panel slide-ins */
+@keyframes panel-slide-left {
+  0%   { opacity: 0; transform: translateX(-40px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+@keyframes panel-slide-right {
+  0%   { opacity: 0; transform: translateX(40px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+/* TV bg — fades in with pixelated steps */
+@keyframes tv-bg-in {
+  0%   { opacity: 0; }
+  20%  { opacity: 0; }
+  40%  { opacity: 0.03; }
+  60%  { opacity: 0.05; }
+  80%  { opacity: 0.04; }
+  100% { opacity: 0.07; }
+}
+
+/* TV glitch — intermittent horizontal tears */
+@keyframes tv-glitch {
+  0%, 100% { clip-path: inset(0); transform: translateX(0); }
+  3%  { clip-path: inset(15% 0 80% 0); transform: translateX(-8px); }
+  4%  { clip-path: inset(0); transform: translateX(0); }
+  12% { clip-path: inset(60% 0 30% 0); transform: translateX(5px); }
+  13% { clip-path: inset(0); transform: translateX(0); }
+  28% { clip-path: inset(40% 0 50% 0); transform: translateX(-4px); }
+  29% { clip-path: inset(0); transform: translateX(0); }
+  45% { clip-path: inset(80% 0 10% 0); transform: translateX(6px); }
+  46% { clip-path: inset(0); transform: translateX(0); }
+  67% { clip-path: inset(5% 0 90% 0); transform: translateX(-3px); }
+  68% { clip-path: inset(0); transform: translateX(0); }
+  82% { clip-path: inset(70% 0 20% 0); transform: translateX(4px); }
+  83% { clip-path: inset(0); transform: translateX(0); }
+}
+
+/* TV color bleed — subtle hue cycling */
+@keyframes tv-color-bleed {
+  0%, 100% { filter: grayscale(1) contrast(1.5) hue-rotate(0deg); }
+  25%  { filter: grayscale(0.8) contrast(1.6) hue-rotate(5deg); }
+  50%  { filter: grayscale(1) contrast(1.4) hue-rotate(-3deg); }
+  75%  { filter: grayscale(0.9) contrast(1.7) hue-rotate(4deg); }
+}
+
+/* TV band scroll — slow looping interference */
+@keyframes tv-band-slow {
+  0%   { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+/* Staggered content reveal for expanded member */
+@keyframes content-fade-up {
+  0%   { opacity: 0; transform: translateY(20px); filter: blur(3px); }
+  100% { opacity: 1; transform: translateY(0); filter: blur(0); }
 }
 
