@@ -12,8 +12,7 @@ import WebringSection from './components/WebringSection';
 import GithubSection from './components/GithubSection';
 import ScrollReveal from './components/ScrollReveal';
 
-const isDev = process.env.NODE_ENV === 'development';
-// Dev-only tuner UIs — tree-shaken in production
+const isDev = false; // change to process.env.NODE_ENV === 'development' to re-enable tuners
 const GearTuner = isDev ? require('./components/GearTuner').default : () => null;
 const DecoTuner = isDev ? require('./components/DecoTuner').default : () => null;
 const RingTuner = isDev ? require('./components/RingTuner').default : () => null;
@@ -211,6 +210,7 @@ export default function Home() {
   const spongeRef       = useRef<HTMLImageElement>(null);
   const wallRef         = useRef<HTMLImageElement>(null);
   const webringBeatRef  = useRef<number>(0);
+  const classBeatRef    = useRef<number>(0);
   const webringWrapRef  = useRef<HTMLDivElement>(null);
   const webringSectionRef = useRef<HTMLElement>(null);
   // Cached deco base values — avoids parseFloat from dataset every frame
@@ -248,6 +248,7 @@ export default function Home() {
           sepTargetRef.current = beatIdx % 2 === 0 ? 0 : 1;
           if (beatIdx % 2 === 1) shakeRef.current = 0.04;
           webringBeatRef.current = 1;
+          classBeatRef.current = 1;
           if (beatIdx % 2 === 1) {
             gearAngleRef.current = 15;
             gear2AngleRef.current = 15;
@@ -671,7 +672,7 @@ export default function Home() {
           }}
         />
         <div id="class" className="scroll-reveal reveal-glitch" style={{ position: 'relative', zIndex: 65 }}>
-          <ClassSection onVisibilityChange={handleClassVisibility} />
+          <ClassSection onVisibilityChange={handleClassVisibility} beatRef={classBeatRef} />
         </div>
       </div>
 
@@ -701,7 +702,8 @@ export default function Home() {
           src="/images/star_left.webp"
           alt="" decoding="async"
           className="absolute pointer-events-none select-none"
-          style={{ top: '2%', left: '3%', width: 'auto', height: 'auto', maxWidth: 'none', zIndex: 3, opacity: 0.2, transform: 'rotate(-136deg)' }}
+          data-base-opacity="0.2" data-base-rotation="-136"
+          style={{ top: '2%', left: '3%', width: 'auto', height: '340px', maxWidth: 'none', zIndex: 3, opacity: 0.2, transform: 'rotate(-136deg)' }}
         />
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -709,7 +711,8 @@ export default function Home() {
           src="/images/star_right.webp"
           alt="" decoding="async"
           className="absolute pointer-events-none select-none"
-          style={{ top: '2%', left: '75%', width: 'auto', height: 'auto', maxWidth: 'none', zIndex: 3, opacity: 0.2 }}
+          data-base-opacity="0.2" data-base-rotation="0"
+          style={{ top: '2%', left: '75%', width: 'auto', height: '340px', maxWidth: 'none', zIndex: 3, opacity: 0.2, transform: 'rotate(0deg)' }}
         />
 
         {/* Webring title */}
@@ -732,6 +735,7 @@ export default function Home() {
           src="/images/sponge.webp"
           alt="" decoding="async"
           className="absolute pointer-events-none select-none"
+          data-base-opacity="0.1" data-base-rotation="0"
           style={{ left: '52%', top: '78%', height: '678px', width: 'auto', maxWidth: 'none', zIndex: 2, opacity: 0.1, transform: 'rotate(0deg)' }}
         />
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -740,6 +744,7 @@ export default function Home() {
           src="/images/wall.webp"
           alt="" decoding="async"
           className="absolute pointer-events-none select-none"
+          data-base-opacity="0.2" data-base-rotation="-10"
           style={{ left: '-20%', top: '84%', height: '604px', width: 'auto', maxWidth: 'none', zIndex: 2, opacity: 0.2, transform: 'rotate(-10deg)' }}
         />
 
