@@ -102,10 +102,9 @@ function createCardElement(member: ClassMember, cardW: number, cardH: number, on
   const nameEl = document.createElement('div');
   nameEl.textContent = member.name;
   nameEl.style.cssText = `
-    font-family: var(--font-arcade); font-size: 20px; letter-spacing: 0.1em;
-    color: #000;
-    -webkit-text-stroke: 1.5px #fff;
-    paint-order: stroke fill;
+    font-family: var(--font-arcade); font-size: 24px; letter-spacing: 0.12em;
+    color: #fff;
+    text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
   `;
   nameBar.appendChild(nameEl);
 
@@ -132,7 +131,7 @@ function createCardElement(member: ClassMember, cardW: number, cardH: number, on
   const imgBox = document.createElement('div');
   imgBox.style.cssText = `
     width: ${imgW}px; align-self: stretch; flex-shrink: 0;
-    background: transparent; border: 1px solid #1a1a1a;
+    background: transparent; border: none;
     display: flex; align-items: center; justify-content: center;
     overflow: hidden;
   `;
@@ -190,14 +189,11 @@ function createCardElement(member: ClassMember, cardW: number, cardH: number, on
   `;
   info.appendChild(blurbEl);
 
-  body.appendChild(info);
-
-  // Socials — vertical column on the right edge
+  // Socials — horizontal row, bottom-right of info area
   if (member.socials && member.socials.length > 0) {
-    const col = document.createElement('div');
-    col.style.cssText = `
-      display: flex; flex-direction: column; justify-content: center; gap: 4px;
-      padding: 0 8px; flex-shrink: 0;
+    const row = document.createElement('div');
+    row.style.cssText = `
+      display: flex; gap: 4px; margin-top: auto; align-self: flex-end;
     `;
     for (const social of member.socials) {
       const btn = document.createElement('a');
@@ -213,10 +209,12 @@ function createCardElement(member: ClassMember, cardW: number, cardH: number, on
       btn.addEventListener('mouseenter', () => { btn.style.background = '#333'; });
       btn.addEventListener('mouseleave', () => { btn.style.background = '#000'; });
       btn.addEventListener('click', (e) => e.stopPropagation());
-      col.appendChild(btn);
+      row.appendChild(btn);
     }
-    body.appendChild(col);
+    info.appendChild(row);
   }
+
+  body.appendChild(info);
 
   // ── CLICK → full-screen expand ──
   wrapper.addEventListener('click', (e) => {
