@@ -482,7 +482,7 @@ export default function GithubSection({ onVisibilityChange, audioRef, reducedMot
     <section ref={sectionRef} className="relative flex flex-col items-center justify-center px-6" style={{ background: 'transparent', paddingTop: '6vh', paddingBottom: 0 }}>
       <div ref={sentinelRef} className="absolute top-0 left-0 w-full h-24" />
 
-      <div style={{ position: 'relative', display: 'inline-block', marginTop: titlePos.mt, marginBottom: titlePos.mb, maxWidth: '100%' }}>
+      <div style={{ position: 'relative', display: 'flex', justifyContent: 'center', marginTop: titlePos.mt, marginBottom: titlePos.mb, width: '100%' }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           ref={titleRef}
@@ -490,8 +490,7 @@ export default function GithubSection({ onVisibilityChange, audioRef, reducedMot
           alt="GitHub"
           className="pointer-events-none"
           style={{
-            width: titlePos.height,
-            maxWidth: '100vw',
+            width: 'min(715px, 90vw)',
             height: 'auto',
             opacity: visible ? 1 : 0,
             transition: 'opacity 0.6s ease',

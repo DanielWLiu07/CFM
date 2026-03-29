@@ -126,7 +126,7 @@ export default function ClassSection({ onVisibilityChange, beatRef }: ClassSecti
           zIndex: 200,
           width: '100%',
           maxWidth: 600,
-          marginTop: titleConfig.titleGap,
+          marginTop: `clamp(${titleConfig.titleGap}px, -8vw, -20px)`,
           transform: `translateY(${titleConfig.searchY}px)`,
           marginBottom: 'clamp(8px, 1.2vw, 14px)',
           position: 'relative',

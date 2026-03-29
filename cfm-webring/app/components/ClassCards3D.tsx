@@ -49,6 +49,219 @@ function toSlug(name: string) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 }
 
+// ── Seeded PRNG (mulberry32) for deterministic deco placement ──
+function mulberry32(seed: number) {
+  let s = seed | 0;
+  return () => {
+    s = (s + 0x6D2B79F5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function createDecoElements(
+  containerW: number,
+  totalH: number,
+  cols: number,
+): CSS3DObject[] {
+  const objects: CSS3DObject[] = [];
+  const halfW = containerW / 2;
+  const halfH = totalH / 2;
+  const isMobile = cols === 1;
+  const rng = mulberry32(containerW * 1000 + totalH);
+
+  function pick<T>(arr: T[]): T { return arr[Math.floor(rng() * arr.length)]; }
+  function range(min: number, max: number) { return min + rng() * (max - min); }
+
+  function addDeco(el: HTMLElement, x: number, y: number, z: number, rotY = 0, rotZ = 0) {
+    el.style.pointerEvents = 'none';
+    const obj = new CSS3DObject(el);
+    obj.position.set(x, y, z);
+    if (rotY) obj.rotation.y = THREE.MathUtils.degToRad(rotY);
+    if (rotZ) obj.rotation.z = THREE.MathUtils.degToRad(rotZ);
+    objects.push(obj);
+  }
+
+  // ── 1. Grid backdrop ──
+  for (let i = 0; i < 2; i++) {
+    const el = document.createElement('div');
+    const spacing = i === 0 ? 60 : 35;
+    const z = i === 0 ? -520 : -380;
+    const alpha = i === 0 ? 0.035 : 0.025;
+    const scale = 3.5 - i * 0.5;
+    el.style.cssText = `
+      width: ${containerW * scale}px; height: ${totalH * scale}px;
+      background:
+        repeating-linear-gradient(0deg, transparent, transparent ${spacing - 1}px, rgba(68,170,255,${alpha}) ${spacing - 1}px, rgba(68,170,255,${alpha}) ${spacing}px),
+        repeating-linear-gradient(90deg, transparent, transparent ${spacing - 1}px, rgba(68,170,255,${alpha}) ${spacing - 1}px, rgba(68,170,255,${alpha}) ${spacing}px);
+    `;
+    addDeco(el, 0, 0, z);
+  }
+
+  // Spread factor — push decorations far beyond the card grid
+  const spreadX = 2.2;
+  const spreadY = 1.8;
+
+  // ── 2. Pixel dots ──
+  const dotCount = isMobile ? 15 : 28;
+  const dotColors = ['#fff', '#4af', '#36c', '#26a', '#5bf'];
+  for (let i = 0; i < dotCount; i++) {
+    const size = Math.round(range(2, 6));
+    const el = document.createElement('div');
+    const color = pick(dotColors);
+    const round = rng() > 0.5;
+    const opacity = range(0.15, 0.5);
+    const dur = range(3, 7);
+    const delay = range(0, 8);
+    el.style.cssText = `
+      width: ${size}px; height: ${size}px;
+      background: ${color};
+      ${round ? 'border-radius: 50%;' : ''}
+      --deco-opacity: ${opacity};
+      animation: deco-pulse ${dur}s ease-in-out ${delay}s infinite;
+      ${rng() > 0.6 ? `box-shadow: 0 0 ${size * 2}px ${color};` : ''}
+    `;
+    const x = range(-halfW * spreadX, halfW * spreadX);
+    const y = range(-halfH * spreadY, halfH * spreadY);
+    const z = range(-500, -50);
+    addDeco(el, x, y, z);
+  }
+
+  // ── 3. Wireframe shapes ──
+  const shapeCount = isMobile ? 6 : 10;
+  const shapeTypes = ['square', 'circle', 'diamond'] as const;
+  for (let i = 0; i < shapeCount; i++) {
+    const type = pick([...shapeTypes]);
+    const size = Math.round(range(25, 75));
+    const el = document.createElement('div');
+    const alpha = range(0.08, 0.2);
+    const dur = range(20, 55);
+    const delay = range(0, 10);
+    const color = pick(['rgba(68,170,255,' + alpha + ')', 'rgba(255,255,255,' + alpha + ')']);
+    el.style.cssText = `
+      width: ${size}px; height: ${size}px;
+      border: 1px solid ${color};
+      background: transparent;
+      ${type === 'circle' ? 'border-radius: 50%;' : ''}
+      ${type === 'diamond' ? 'transform: rotate(45deg);' : ''}
+      animation: ${type === 'diamond' ? 'deco-float' : 'deco-rotate'} ${dur}s ${type === 'diamond' ? 'ease-in-out' : 'linear'} ${delay}s infinite;
+      --float-distance: ${range(-15, -5)}px;
+    `;
+    const x = range(-halfW * spreadX, halfW * spreadX);
+    const y = range(-halfH * spreadY, halfH * spreadY);
+    const z = range(-350, -60);
+    addDeco(el, x, y, z);
+  }
+
+  // ── 4. Data/code fragments ──
+  const fragments = ['0x4F2A', '>>_', '10110', 'SYS.OK', 'CFM://', 'MEM.64K', 'LOAD *', 'RUN >', '00FF', 'ACK', '0xDEAD', 'NOP', 'PING', 'EOF'];
+  const fragCount = isMobile ? 6 : 10;
+  for (let i = 0; i < fragCount; i++) {
+    const el = document.createElement('div');
+    const opacity = range(0.06, 0.18);
+    const dur = range(6, 14);
+    const delay = range(0, 8);
+    const fontSize = range(8, 12);
+    const color = pick(['#4af', '#fff', '#6cf']);
+    el.textContent = pick(fragments);
+    el.style.cssText = `
+      font-family: var(--font-arcade); font-size: ${fontSize}px;
+      color: ${color}; letter-spacing: 0.1em; white-space: nowrap;
+      --deco-opacity: ${opacity};
+      animation: deco-flicker ${dur}s steps(1) ${delay}s infinite;
+    `;
+    const x = range(-halfW * spreadX, halfW * spreadX);
+    const y = range(-halfH * spreadY, halfH * spreadY);
+    const z = range(-350, -80);
+    addDeco(el, x, y, z);
+  }
+
+  // ── 5. Floating scan lines ──
+  const lineCount = isMobile ? 3 : 5;
+  for (let i = 0; i < lineCount; i++) {
+    const el = document.createElement('div');
+    const height = pick([1, 1, 2]);
+    const alpha = range(0.03, 0.07);
+    const color = pick([`rgba(68,170,255,${alpha})`, `rgba(255,255,255,${alpha})`]);
+    const dur = range(15, 30);
+    const drift = range(40, 80);
+    el.style.cssText = `
+      width: ${containerW * 2.5}px; height: ${height}px;
+      background: ${color};
+      --drift-distance: ${drift}px;
+      animation: deco-drift-y ${dur}s linear ${range(0, 10)}s infinite alternate;
+    `;
+    const y = range(-halfH * spreadY, halfH * spreadY);
+    const z = range(-150, -40);
+    addDeco(el, 0, y, z);
+  }
+
+  // ── 6. Glowing orbs ──
+  const orbCount = isMobile ? 2 : 4;
+  for (let i = 0; i < orbCount; i++) {
+    const size = Math.round(range(60, 130));
+    const el = document.createElement('div');
+    const opacity = range(0.04, 0.1);
+    const dur = range(5, 12);
+    el.style.cssText = `
+      width: ${size}px; height: ${size}px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(68,170,255,0.15) 0%, rgba(68,170,255,0.04) 40%, transparent 70%);
+      --deco-opacity: ${opacity};
+      animation: deco-glow ${dur}s ease-in-out ${range(0, 6)}s infinite;
+    `;
+    const x = range(-halfW * spreadX, halfW * spreadX);
+    const y = range(-halfH * spreadY, halfH * spreadY);
+    const z = range(-500, -200);
+    addDeco(el, x, y, z);
+  }
+
+  // ── 7. Cross/plus markers ──
+  const crossCount = isMobile ? 4 : 7;
+  for (let i = 0; i < crossCount; i++) {
+    const size = Math.round(range(14, 28));
+    const el = document.createElement('div');
+    const alpha = range(0.1, 0.25);
+    const color = `rgba(255,255,255,${alpha})`;
+    el.style.cssText = `
+      width: ${size}px; height: ${size}px; position: relative;
+      --deco-opacity: ${alpha};
+      animation: deco-pulse ${range(4, 8)}s ease-in-out ${range(0, 5)}s infinite;
+    `;
+    const hBar = document.createElement('div');
+    hBar.style.cssText = `position:absolute; top:50%; left:0; width:100%; height:1px; background:${color}; transform:translateY(-50%);`;
+    const vBar = document.createElement('div');
+    vBar.style.cssText = `position:absolute; top:0; left:50%; width:1px; height:100%; background:${color}; transform:translateX(-50%);`;
+    el.appendChild(hBar);
+    el.appendChild(vBar);
+    const x = range(-halfW * spreadX, halfW * spreadX);
+    const y = range(-halfH * spreadY, halfH * spreadY);
+    const z = range(-300, -50);
+    addDeco(el, x, y, z);
+  }
+
+  // ── 8. Connection lines ──
+  const connCount = isMobile ? 3 : 5;
+  for (let i = 0; i < connCount; i++) {
+    const el = document.createElement('div');
+    const height = Math.round(range(100, 300));
+    const alpha = range(0.04, 0.1);
+    el.style.cssText = `
+      width: 1px; height: ${height}px;
+      background: linear-gradient(to bottom, transparent 0%, rgba(68,170,255,${alpha}) 20%, rgba(68,170,255,${alpha}) 80%, transparent 100%);
+      --deco-opacity: ${alpha};
+      animation: deco-pulse ${range(6, 14)}s ease-in-out ${range(0, 8)}s infinite;
+    `;
+    const x = range(-halfW * spreadX, halfW * spreadX);
+    const y = range(-halfH * spreadY, halfH * spreadY);
+    const z = range(-350, -100);
+    const rotZ = range(0, 180);
+    addDeco(el, x, y, z, 0, rotZ);
+  }
+
+  return objects;
+}
+
 function createCardElement(member: ClassMember, cardW: number, cardH: number, onExpand: (member: ClassMember) => void): HTMLElement {
   // Outer wrapper
   const wrapper = document.createElement('div');
@@ -101,10 +314,14 @@ function createCardElement(member: ClassMember, cardW: number, cardH: number, on
   `;
   inner.appendChild(nameBar);
 
+  const fontScale = Math.min(1, cardW / 450);
+  const nameFontSize = Math.max(14, Math.round(24 * fontScale));
+  const termFontSize = Math.max(10, Math.round(16 * fontScale));
+
   const nameEl = document.createElement('div');
   nameEl.textContent = member.name;
   nameEl.style.cssText = `
-    font-family: var(--font-arcade); font-size: 24px; letter-spacing: 0.12em;
+    font-family: var(--font-arcade); font-size: ${nameFontSize}px; letter-spacing: 0.12em;
     color: #fff;
     text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
   `;
@@ -113,7 +330,7 @@ function createCardElement(member: ClassMember, cardW: number, cardH: number, on
   const termEl = document.createElement('div');
   termEl.textContent = "'" + member.year;
   termEl.style.cssText = `
-    font-family: var(--font-arcade); font-size: 16px; letter-spacing: 0.1em;
+    font-family: var(--font-arcade); font-size: ${termFontSize}px; letter-spacing: 0.1em;
     color: #fff; background: #000; padding: 3px 10px;
     transition: background 0.3s ease;
   `;
@@ -162,10 +379,13 @@ function createCardElement(member: ClassMember, cardW: number, cardH: number, on
     transition: background 0.3s ease;
   `;
 
+  const roleFontSize = Math.max(9, Math.round(12 * fontScale));
+  const locFontSize = Math.max(8, Math.round(11 * fontScale));
+
   const roleEl = document.createElement('div');
   roleEl.textContent = member.role;
   roleEl.style.cssText = `
-    font-family: var(--font-arcade); font-size: 12px; letter-spacing: 0.1em;
+    font-family: var(--font-arcade); font-size: ${roleFontSize}px; letter-spacing: 0.1em;
     color: #ddd; text-transform: uppercase;
     transition: color 0.3s ease;
   `;
@@ -175,7 +395,7 @@ function createCardElement(member: ClassMember, cardW: number, cardH: number, on
   const locEl = document.createElement('div');
   locEl.textContent = `${member.location}  //  ${member.school}`;
   locEl.style.cssText = `
-    font-family: var(--font-arcade); font-size: 11px; letter-spacing: 0.06em;
+    font-family: var(--font-arcade); font-size: ${locFontSize}px; letter-spacing: 0.06em;
     color: #bbb; transition: color 0.3s ease;
   `;
   info.appendChild(locEl);
@@ -254,12 +474,25 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const rendererRef = useRef<CSS3DRenderer | null>(null);
   const objectsRef = useRef<CSS3DObject[]>([]);
+  const decoRef = useRef<CSS3DObject[]>([]);
   const rafRef = useRef<number>(0);
   const baseYRef = useRef<number[]>([]);
   const [containerWidth, setContainerWidth] = useState(0);
   const [expandedMember, setExpandedMember] = useState<ClassMember | null>(null);
   // CRT phases — on: dot → line → expand → done | off: flash → shrink → dotout → afterglow → idle
   const [phase, setPhase] = useState<'idle' | 'dot' | 'line' | 'expand' | 'done' | 'flash' | 'shrink' | 'dotout' | 'afterglow'>('idle');
+  const [inkKey, setInkKey] = useState(0);
+  const closeTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  // Dev tuning — hobbies + experience
+  const [hobbyLabelSize, setHobbyLabelSize] = useState(12);
+  const [hobbyItemSize, setHobbyItemSize] = useState(13);
+  const [hobbyPadV, setHobbyPadV] = useState(8);
+  const [hobbyPadH, setHobbyPadH] = useState(18);
+  const [expLabelSize, setExpLabelSize] = useState(12);
+  const [expItemSize, setExpItemSize] = useState(14);
+  const [expPadV, setExpPadV] = useState(10);
+  const [expPadH, setExpPadH] = useState(16);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -274,6 +507,7 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
     renderer.domElement.style.position = 'absolute';
     renderer.domElement.style.top = '0';
     renderer.domElement.style.left = '0';
+    renderer.domElement.style.overflow = 'visible';
     container.appendChild(renderer.domElement);
 
     sceneRef.current = scene;
@@ -308,7 +542,7 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
     if (swapTimeoutRef.current) { clearTimeout(swapTimeoutRef.current); swapTimeoutRef.current = null; }
 
     const buildNewCards = () => {
-      // Remove old
+      // Remove old cards
       objectsRef.current.forEach(obj => {
         scene.remove(obj);
         if (obj.element.parentNode) obj.element.parentNode.removeChild(obj.element);
@@ -316,9 +550,16 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
       objectsRef.current = [];
       baseYRef.current = [];
 
+      // Remove old deco
+      decoRef.current.forEach(obj => {
+        scene.remove(obj);
+        if (obj.element.parentNode) obj.element.parentNode.removeChild(obj.element);
+      });
+      decoRef.current = [];
+
       const containerW = containerWidth || container.clientWidth;
       if (containerW < 100) return; // wait for layout
-      if (members.length === 0) { renderer.setSize(containerW, 0); container.style.height = '0px'; renderer.render(scene, camera); return; }
+      if (members.length === 0) { renderer.setSize(containerW, 0); renderer.domElement.style.overflow = 'visible'; container.style.height = '0px'; renderer.render(scene, camera); return; }
 
       const responsiveCols = containerW >= 900 ? COLS : containerW >= 550 ? 2 : 1;
       const cols = Math.min(responsiveCols, members.length);
@@ -327,13 +568,18 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
       const fillPct = cols === 1 ? 0.85 : 0.95;
       const normalCardW = Math.floor((containerW * 0.95 - (3 - 1) * COL_GAP) / 3);
       const rawCardW = Math.floor((containerW * fillPct - (cols - 1) * COL_GAP) / cols);
-      const cardW = Math.min(rawCardW, normalCardW);
-      const cardH = Math.floor(cardW / ASPECT);
+      const cardW = cols >= 3 ? Math.min(rawCardW, normalCardW) : rawCardW;
+      const effectiveAspect = cols === 1 ? Math.min(ASPECT, 1.4) : cols === 2 ? Math.min(ASPECT, 1.8) : ASPECT;
+      const cardH = Math.floor(cardW / effectiveAspect);
       const gridH = rows * cardH + (rows - 1) * ROW_GAP;
       const PAD = 40;
       const totalH = gridH + PAD * 2;
 
       renderer.setSize(containerW, totalH);
+      // CSS3DRenderer.setSize() forces overflow:hidden — override on all layers
+      renderer.domElement.style.overflow = 'visible';
+      const viewEl = renderer.domElement.firstElementChild as HTMLElement;
+      if (viewEl) { viewEl.style.overflow = 'visible'; }
       camera.aspect = containerW / totalH;
       camera.updateProjectionMatrix();
       camera.position.z = (totalH / 2) / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
@@ -344,7 +590,9 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
         const col = i % cols;
         const row = Math.floor(i / cols);
         const el = createCardElement(member, cardW, cardH, (m) => {
+          clearCloseTimers();
           setExpandedMember(m);
+          setInkKey(k => k + 1);
           setPhase('dot');
           const slug = toSlug(m.name);
           const url = new URL(window.location.href);
@@ -375,6 +623,13 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
 
         scene.add(obj);
         objectsRef.current.push(obj);
+      });
+
+      // Add background decorations
+      const decos = createDecoElements(containerW, totalH, cols);
+      decos.forEach(obj => {
+        scene.add(obj);
+        decoRef.current.push(obj);
       });
 
       renderer.render(scene, camera);
@@ -415,17 +670,25 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
     return () => ro.disconnect();
   }, []);
 
+  const clearCloseTimers = () => {
+    closeTimersRef.current.forEach(t => clearTimeout(t));
+    closeTimersRef.current = [];
+  };
+
   const closeExpanded = () => {
     if (phase !== 'done') return;
     const url = new URL(window.location.href);
     url.searchParams.delete('member');
     window.history.pushState({}, '', url.toString());
     // CRT turn-off: flash → shrink → dotout → afterglow → idle
+    clearCloseTimers();
     setPhase('flash');
-    setTimeout(() => setPhase('shrink'), 100);
-    setTimeout(() => setPhase('dotout'), 400);
-    setTimeout(() => setPhase('afterglow'), 600);
-    setTimeout(() => { setPhase('idle'); setExpandedMember(null); }, 1050);
+    closeTimersRef.current.push(
+      setTimeout(() => setPhase('shrink'), 100),
+      setTimeout(() => setPhase('dotout'), 400),
+      setTimeout(() => setPhase('afterglow'), 600),
+      setTimeout(() => { setPhase('idle'); setExpandedMember(null); }, 1050),
+    );
   };
 
   // Open from URL on mount (e.g. ?member=daniel-liu)
@@ -434,7 +697,9 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
     if (!slug || members.length === 0) return;
     const match = members.find(m => toSlug(m.name) === slug);
     if (match) {
+      clearCloseTimers();
       setExpandedMember(match);
+      setInkKey(k => k + 1);
       setPhase('dot');
       setTimeout(() => setPhase('line'), 80);
       setTimeout(() => setPhase('expand'), 250);
@@ -448,11 +713,14 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
       const slug = new URLSearchParams(window.location.search).get('member');
       if (!slug) {
         if (phase === 'done') {
+          clearCloseTimers();
           setPhase('flash');
-          setTimeout(() => setPhase('shrink'), 70);
-          setTimeout(() => setPhase('dotout'), 320);
-          setTimeout(() => setPhase('afterglow'), 520);
-          setTimeout(() => { setPhase('idle'); setExpandedMember(null); }, 900);
+          closeTimersRef.current.push(
+            setTimeout(() => setPhase('shrink'), 70),
+            setTimeout(() => setPhase('dotout'), 320),
+            setTimeout(() => setPhase('afterglow'), 520),
+            setTimeout(() => { setPhase('idle'); setExpandedMember(null); }, 900),
+          );
         }
       }
     };
@@ -474,24 +742,12 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
     };
   }, [phase]);
 
-  // Trigger ink noise reveal SVG animations when content becomes visible
-  useEffect(() => {
-    if (phase !== 'done') return;
-    const timer = setTimeout(() => {
-      const svg = document.getElementById('ink-reveal-svg');
-      if (!svg) return;
-      svg.querySelectorAll('animate').forEach((anim) => {
-        try { (anim as SVGAnimateElement).beginElement(); } catch {}
-      });
-    }, 50);
-    return () => clearTimeout(timer);
-  }, [phase, expandedMember]);
 
   return (
     <>
       <div
         ref={containerRef}
-        style={{ position: 'relative', width: '100%', height: members.length > 0 ? 600 : 0, zIndex: 100 }}
+        style={{ position: 'relative', width: '100%', height: members.length > 0 ? 600 : 0, zIndex: 100, overflow: 'visible' }}
       />
 
       {/* CRT TV overlay — portaled to body */}
@@ -511,6 +767,7 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
                 background:
                   phase === 'dotout' ? '#a0c4ff'
                   : phase === 'expand' ? '#000'
+                  : phase === 'done' ? '#000'
                   : '#fff',
                 ...(phase === 'dot' ? {
                   transform: 'scaleX(0.006) scaleY(0.006)',
@@ -621,157 +878,267 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
                 }} />
               )}
 
-              {/* ── MEMBER CONTENT — left: avatar, right: info ── */}
-              {(phase === 'done' || phase === 'flash' || phase === 'shrink') && expandedMember && (
+              {/* ── MEMBER CONTENT — left: avatar with ink reveal, right: staggered info ── */}
+              {(phase === 'done' || phase === 'flash' || phase === 'shrink' || phase === 'dotout') && expandedMember && (
                 <div style={{
                   position: 'absolute', inset: 0, zIndex: 8,
                   display: 'flex', flexDirection: 'row',
-                  opacity: phase === 'flash' || phase === 'shrink' ? 0.6 : 1,
-                  transition: 'opacity 0.1s ease',
+                  opacity: (phase === 'done' || phase === 'flash') ? 1 : 0,
+                  transition: phase === 'flash' ? 'opacity 0.25s ease 0.05s' : phase === 'shrink' ? 'opacity 0.2s ease' : 'opacity 0.35s ease',
+                  pointerEvents: phase === 'done' ? 'auto' : 'none',
                 }}>
-                  {/* Left — profile image */}
+                  {/* Left — avatar with ink noise reveal, transparent bg for PNG */}
                   <div style={{
                     width: '40%', height: '100%', flexShrink: 0,
-                    borderRight: '2px solid rgba(255,255,255,0.1)',
                     overflow: 'hidden', position: 'relative',
-                    animation: phase === 'done' ? 'panel-slide-left 0.4s cubic-bezier(0.16,1,0.3,1) both' : 'none',
+                    ...(phase === 'done' ? {
+                      animation: 'panel-in 0.8s ease 0.1s both',
+                    } : (phase === 'flash' || phase === 'shrink') ? {
+                      animation: 'panel-out 0.3s ease forwards',
+                    } : {}),
                   }}>
-                    {expandedMember.avatar && (
+                    {expandedMember.avatar ? (
                       <>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={expandedMember.avatar}
-                          alt={expandedMember.name}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
-                        />
+                        <svg
+                          key={inkKey}
+                          width="100%"
+                          height="100%"
+                          xmlns="http://www.w3.org/2000/svg"
+                          style={{ position: 'absolute', inset: 0, display: 'block' }}
+                        >
+                          <defs>
+                            <filter id="inkNoiseReveal" x="-20%" y="-20%" width="140%" height="140%">
+                              <feTurbulence type="fractalNoise" baseFrequency="0.01" numOctaves="3" result="noise" />
+                              <feDisplacementMap in="SourceGraphic" in2="noise" scale="200" xChannelSelector="R" yChannelSelector="G">
+                                <animate attributeName="scale" values="200;50" dur="3s" begin="0s" calcMode="spline" keySplines="0.2 0.8 0.3 1" fill="freeze" />
+                              </feDisplacementMap>
+                            </filter>
+                            <mask id="inkMask">
+                              <rect x="0" y="0" width="100%" height="100%" fill="black" />
+                              <rect x="50%" y="50%" width="0%" height="0%" fill="white" filter="url(#inkNoiseReveal)">
+                                <animate attributeName="x" values="50%;5%" dur="3s" begin="0s" calcMode="spline" keySplines="0.2 0.8 0.3 1" fill="freeze" />
+                                <animate attributeName="y" values="50%;5%" dur="3s" begin="0s" calcMode="spline" keySplines="0.2 0.8 0.3 1" fill="freeze" />
+                                <animate attributeName="width" values="0%;90%" dur="3s" begin="0s" calcMode="spline" keySplines="0.2 0.8 0.3 1" fill="freeze" />
+                                <animate attributeName="height" values="0%;90%" dur="3s" begin="0s" calcMode="spline" keySplines="0.2 0.8 0.3 1" fill="freeze" />
+                              </rect>
+                            </mask>
+                          </defs>
+                          <image
+                            href={expandedMember.avatar}
+                            width="100%"
+                            height="100%"
+                            preserveAspectRatio="xMidYMid slice"
+                            mask="url(#inkMask)"
+                          />
+                        </svg>
                         {/* CRT scanline overlay on image */}
                         <div style={{
                           position: 'absolute', inset: 0,
-                          background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.12) 2px, rgba(0,0,0,0.12) 4px)',
+                          background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px)',
                           pointerEvents: 'none',
                         }} />
                       </>
-                    )}
-                    {!expandedMember.avatar && (
+                    ) : (
                       <div style={{
                         width: '100%', height: '100%',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        background: '#0a0a0a',
-                        fontFamily: 'var(--font-arcade)', fontSize: 48, color: '#222', letterSpacing: '0.1em',
+                        background: '#000',
+                        fontFamily: 'var(--font-arcade)', fontSize: 64, color: '#333', letterSpacing: '0.1em',
+                        animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.2s both',
                       }}>
                         {expandedMember.name.split(' ').map(w => w[0]).join('')}
                       </div>
                     )}
                   </div>
 
-                  {/* Right — info panel */}
+                  {/* Right — name top, socials bottom, middle scrolls */}
                   <div style={{
-                    flex: 1, padding: '30px 28px', overflowY: 'auto',
-                    display: 'flex', flexDirection: 'column', gap: 16,
-                    animation: phase === 'done' ? 'panel-slide-right 0.45s cubic-bezier(0.16,1,0.3,1) 0.08s both' : 'none',
+                    flex: 1, display: 'flex', flexDirection: 'column',
+                    overflow: 'hidden', background: 'rgba(255,255,255,0.85)', position: 'relative',
+                    ...(phase === 'done' ? {
+                      animation: 'panel-in 1.2s ease 0.2s both',
+                    } : (phase === 'flash' || phase === 'shrink') ? {
+                      animation: 'panel-out 0.3s ease forwards',
+                    } : {}),
                   }}>
-                    {/* Name */}
-                    <div>
-                      <h2 style={{
-                        fontFamily: 'var(--font-arcade)', fontSize: 'clamp(20px, 3vw, 28px)',
-                        color: '#fff', letterSpacing: '0.12em', margin: 0,
-                        textShadow: '2px 2px 0 #000',
-                      }}>
-                        {expandedMember.name}
-                      </h2>
-                      <p style={{
-                        fontFamily: 'var(--font-arcade)', fontSize: 11, color: '#888',
-                        letterSpacing: '0.15em', margin: '4px 0 0', textTransform: 'uppercase',
-                      }}>
-                        {expandedMember.role}
-                      </p>
-                    </div>
-
-                    {/* Info */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      <p style={{ fontFamily: 'var(--font-arcade)', fontSize: 9, color: '#555', letterSpacing: '0.1em', margin: 0 }}>
-                        {expandedMember.location}  //  {expandedMember.school}
-                      </p>
-                      <p style={{ fontFamily: 'var(--font-arcade)', fontSize: 9, color: '#555', letterSpacing: '0.1em', margin: 0 }}>
-                        CLASS OF &apos;{expandedMember.year}
-                      </p>
-                    </div>
-
-                    {/* Blurb */}
-                    <p style={{
-                      fontFamily: 'var(--font-mono)', fontSize: 13, color: '#ccc',
-                      lineHeight: 1.7, margin: 0, fontStyle: 'italic',
+                    {/* Header — name + role + location pinned to top */}
+                    <div style={{
+                      padding: '20px 56px 10px', flexShrink: 0,
+                      display: 'flex', flexDirection: 'column', gap: 4,
+                      borderBottom: '2px solid #000',
+                      animation: 'fade-in 0.4s cubic-bezier(0.16,1,0.3,1) 0.12s both',
                     }}>
-                      &ldquo;{expandedMember.blurb}&rdquo;
-                    </p>
-
-                    {/* Hobbies */}
-                    {expandedMember.hobbies && expandedMember.hobbies.length > 0 && (
-                      <div>
-                        <p style={{ fontFamily: 'var(--font-arcade)', fontSize: 9, color: '#666', letterSpacing: '0.15em', margin: '0 0 6px', textTransform: 'uppercase' }}>
-                          HOBBIES
-                        </p>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                          {expandedMember.hobbies.map((h, i) => (
-                            <span key={i} style={{
-                              fontFamily: 'var(--font-arcade)', fontSize: 9, letterSpacing: '0.08em',
-                              padding: '3px 10px', border: '1px solid #333', color: '#aaa',
-                            }}>
-                              {h}
-                            </span>
-                          ))}
-                        </div>
+                      <div style={{ animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.15s both' }}>
+                        <h2 style={{
+                          fontFamily: 'var(--font-arcade)', fontSize: 80,
+                          color: '#fff', letterSpacing: '0.01em', margin: 0,
+                          WebkitTextStroke: '2.5px #000',
+                          paintOrder: 'stroke fill' as React.CSSProperties['paintOrder'],
+                          textShadow: '3px 3px 0 #000, 4px 4px 0 #000, 5px 5px 0 rgba(0,0,0,0.4), 6px 6px 0 rgba(0,0,0,0.2)',
+                        }}>
+                          {expandedMember.name}
+                        </h2>
                       </div>
-                    )}
-
-                    {/* Experiences */}
-                    {expandedMember.experiences && expandedMember.experiences.length > 0 && (
-                      <div>
-                        <p style={{ fontFamily: 'var(--font-arcade)', fontSize: 9, color: '#666', letterSpacing: '0.15em', margin: '0 0 6px', textTransform: 'uppercase' }}>
-                          EXPERIENCE
+                      <div style={{ animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.22s both', marginTop: -43 }}>
+                        <p style={{
+                          fontFamily: 'var(--font-arcade)', fontSize: 32, color: '#000',
+                          letterSpacing: '0.12em', margin: 0, textTransform: 'uppercase',
+                        }}>
+                          {expandedMember.role}
                         </p>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          {expandedMember.experiences.map((exp, i) => (
-                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <span style={{ color: '#555', fontFamily: 'var(--font-mono)', fontSize: 11 }}>&gt;</span>
-                              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: '#ccc' }}>{exp}</span>
-                            </div>
-                          ))}
-                        </div>
                       </div>
-                    )}
+                      <div style={{
+                        display: 'flex', flexDirection: 'column', gap: 2,
+                        animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.29s both',
+                        marginTop: -13,
+                      }}>
+                        <p style={{ fontFamily: 'var(--font-arcade)', fontSize: 16, color: '#777', letterSpacing: '0.08em', margin: 0 }}>
+                          {expandedMember.location}  //  {expandedMember.school}
+                        </p>
+                        <p style={{ fontFamily: 'var(--font-arcade)', fontSize: 16, color: '#777', letterSpacing: '0.08em', margin: 0 }}>
+                          CLASS OF &apos;{expandedMember.year}
+                        </p>
+                      </div>
+                    </div>
 
-                    {/* Socials + Visit */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 'auto', paddingTop: 12, borderTop: '1px solid #222' }}>
+                    {/* Scrollable middle content */}
+                    <div
+                      style={{
+                        flex: 1, overflowY: 'auto', padding: '28px 56px 32px',
+                        display: 'flex', flexDirection: 'column', gap: 28,
+                      }}
+                      onClick={e => e.stopPropagation()}
+                    >
+                      {/* Blurb */}
+                      <p style={{
+                        fontFamily: 'monospace', fontSize: 18, color: '#000',
+                        lineHeight: 1.9, margin: 0, fontStyle: 'italic',
+                        animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.36s both',
+                      }}>
+                        &ldquo;{expandedMember.blurb}&rdquo;
+                      </p>
+
+                      {/* Dev controls — hobbies + experience */}
+                      <div onClick={e => e.stopPropagation()} style={{
+                        position: 'fixed', top: 10, left: 10, zIndex: 999999,
+                        background: 'rgba(0,0,0,0.92)', color: '#fff', padding: '12px 16px',
+                        borderRadius: 8, width: 280, fontFamily: 'system-ui', fontSize: 11,
+                        display: 'flex', flexDirection: 'column', gap: 5,
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <strong>Hobby + Exp Controls</strong>
+                          <button onClick={() => {
+                            const out = JSON.stringify({ hobbyLabelSize, hobbyItemSize, hobbyPadV, hobbyPadH, expLabelSize, expItemSize, expPadV, expPadH }, null, 2);
+                            navigator.clipboard.writeText(out); alert(out);
+                          }} style={{ background: '#333', color: '#fff', border: 'none', padding: '3px 8px', cursor: 'pointer', fontSize: 10, borderRadius: 4 }}>Copy</button>
+                        </div>
+                        {[
+                          ['Hobby Label', hobbyLabelSize, setHobbyLabelSize, 4, 30],
+                          ['Hobby Item', hobbyItemSize, setHobbyItemSize, 4, 30],
+                          ['Hobby Pad V', hobbyPadV, setHobbyPadV, 0, 30],
+                          ['Hobby Pad H', hobbyPadH, setHobbyPadH, 0, 40],
+                          ['Exp Label', expLabelSize, setExpLabelSize, 4, 30],
+                          ['Exp Item', expItemSize, setExpItemSize, 4, 30],
+                          ['Exp Pad V', expPadV, setExpPadV, 0, 30],
+                          ['Exp Pad H', expPadH, setExpPadH, 0, 40],
+                        ].map(([label, val, setter, min, max]) => (
+                          <div key={label as string} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <label style={{ width: 80, flexShrink: 0 }}>{label as string}</label>
+                            <input type="range" min={min as number} max={max as number} step={1}
+                              value={val as number}
+                              onChange={e => (setter as React.Dispatch<React.SetStateAction<number>>)(parseInt(e.target.value))}
+                              style={{ flex: 1, height: 14 }}
+                            />
+                            <span style={{ width: 30, textAlign: 'right', fontFamily: 'monospace' }}>{val as number}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Hobbies */}
+                      {expandedMember.hobbies && expandedMember.hobbies.length > 0 && (
+                        <div style={{ animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.43s both', marginTop: 0 }}>
+                          <p style={{ fontFamily: 'var(--font-arcade)', fontSize: hobbyLabelSize, color: '#888', letterSpacing: '0.18em', margin: '0 0 12px', textTransform: 'uppercase' }}>
+                            HOBBIES
+                          </p>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                            {expandedMember.hobbies.map((h, i) => (
+                              <span key={i} style={{
+                                fontFamily: 'var(--font-arcade)', fontSize: hobbyItemSize, letterSpacing: '0.06em',
+                                padding: `${hobbyPadV}px ${hobbyPadH}px`, background: '#fff', border: '2px solid #000', color: '#000',
+                              }}>
+                                {h}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Experiences */}
+                      {expandedMember.experiences && expandedMember.experiences.length > 0 && (
+                        <div style={{ animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.5s both', marginTop: 0 }}>
+                          <p style={{ fontFamily: 'var(--font-arcade)', fontSize: expLabelSize, color: '#888', letterSpacing: '0.18em', margin: '0 0 12px', textTransform: 'uppercase' }}>
+                            EXPERIENCE
+                          </p>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            {expandedMember.experiences.map((exp, i) => (
+                              <div key={i} style={{
+                                display: 'flex', alignItems: 'center', gap: 12,
+                                background: '#fff', border: '2px solid #000', padding: `${expPadV}px ${expPadH}px`,
+                              }}>
+                                <span style={{ color: '#000', fontFamily: 'var(--font-arcade)', fontSize: expItemSize }}>&gt;</span>
+                                <span style={{ fontFamily: 'var(--font-arcade)', fontSize: expItemSize, color: '#000' }}>{exp}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Socials + Visit — pinned to bottom */}
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 14, padding: '24px 56px', borderTop: '2px solid #000',
+                      flexShrink: 0,
+                      animation: 'content-fade-up 0.6s cubic-bezier(0.16,1,0.3,1) 0.55s both',
+                    }}>
                       {expandedMember.socials?.map((s, i) => (
                         <a key={i} href={s.url} target="_blank" rel="noopener noreferrer"
                           style={{
-                            color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            width: 30, height: 30, border: '2px solid #fff', background: 'transparent',
+                            color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            width: 40, height: 40, border: '2px solid #000', background: 'transparent',
                             textDecoration: 'none', transition: 'all 0.15s ease',
                           }}
-                          onMouseEnter={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#000'; }}
-                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#fff'; }}
+                          onMouseEnter={e => { e.currentTarget.style.background = '#000'; e.currentTarget.style.color = '#fff'; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#000'; }}
                           onClick={e => e.stopPropagation()}
                         >
-                          <span style={{ fontSize: 12 }}>{s.type === 'github' ? 'GH' : s.type === 'linkedin' ? 'LI' : s.type === 'twitter' ? 'X' : '🌐'}</span>
+                          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }} dangerouslySetInnerHTML={{ __html: (SOCIAL_ICONS[s.type] || '').replace(/width="12" height="12"/g, 'width="18" height="18"') }} />
                         </a>
                       ))}
                       {expandedMember.url && expandedMember.url !== '#' && (
                         <a href={expandedMember.url} target="_blank" rel="noopener noreferrer"
                           style={{
-                            fontFamily: 'var(--font-arcade)', fontSize: 10, letterSpacing: '0.15em',
-                            color: '#fff', border: '2px solid #fff', padding: '5px 14px',
+                            fontFamily: 'var(--font-arcade)', fontSize: 13, letterSpacing: '0.15em',
+                            color: '#000', border: '2px solid #000', padding: '10px 24px',
                             background: 'transparent', textDecoration: 'none', transition: 'all 0.15s ease', marginLeft: 'auto',
                           }}
-                          onMouseEnter={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#000'; }}
-                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#fff'; }}
+                          onMouseEnter={e => { e.currentTarget.style.background = '#000'; e.currentTarget.style.color = '#fff'; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#000'; }}
                           onClick={e => e.stopPropagation()}
                         >
                           VISIT →
                         </a>
                       )}
                     </div>
+
+                    {/* CRT scanlines + vignette on right panel */}
+                    <div style={{
+                      position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 20,
+                      background: 'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.015) 3px, rgba(0,0,0,0.015) 4px)',
+                    }} />
+                    <div style={{
+                      position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 21,
+                      background: 'radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.08) 100%)',
+                    }} />
                   </div>
                 </div>
               )}
@@ -788,7 +1155,7 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
               )}
 
               {/* ── TV BACKGROUND — faded person_tv + glitch effects (visible during done + close phases) ── */}
-              {(phase === 'done' || phase === 'flash' || phase === 'shrink') && (
+              {(phase === 'expand' || phase === 'done' || phase === 'flash' || phase === 'shrink') && (
                 <>
                   {/* Faded TV background — fades in with stepped animation + color bleed loop */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -801,7 +1168,11 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
                       objectFit: 'cover',
                       imageRendering: 'pixelated' as React.CSSProperties['imageRendering'],
                       pointerEvents: 'none',
-                      animation: 'tv-bg-in 0.8s steps(6) forwards, tv-color-bleed 6s ease-in-out infinite 0.8s',
+                      ...((phase === 'expand' || phase === 'done') ? {
+                        animation: 'tv-warmup 0.8s cubic-bezier(0.16,1,0.3,1) forwards, tv-color-bleed 6s ease-in-out infinite 0.8s',
+                      } : {
+                        animation: 'tv-warmdown 0.3s ease forwards',
+                      }),
                     }}
                   />
 

@@ -308,6 +308,15 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
   const [tooltip, setTooltip] = useState<{ x: number; y: number; entry: WebringEntry } | null>(null);
   const lastEntryRef = useRef<WebringEntry | null>(null);
 
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 640);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
   // Right panel state
   const rightPanelRef = useRef<HTMLDivElement>(null);
   const [rightDragged, setRightDragged] = useState(false);
@@ -377,6 +386,14 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
   }, []);
   const [panelSize, setPanelSize] = useState({ w: 340, h: 420 });
   const [collapsed, setCollapsed] = useState(false);
+  // Start collapsed on mobile
+  const mobileCollapseInit = useRef(false);
+  useEffect(() => {
+    if (!mobileCollapseInit.current && window.innerWidth < 640) {
+      setCollapsed(true);
+      mobileCollapseInit.current = true;
+    }
+  }, []);
   const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
   const resizeRef = useRef<{ startX: number; startY: number; origW: number; origH: number } | null>(null);
 
@@ -1214,7 +1231,16 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
       <div
         ref={panelRef}
         className="absolute z-[60]"
-        style={{ top: panelPos.y, left: panelPos.x, width: panelSize.w, userSelect: 'none' }}
+        style={{
+          ...(isMobile
+            ? { bottom: 0, left: 0, right: 0, width: '100%', top: 'auto',
+                transform: (selectedNode >= 0) ? 'translateY(100%)' : 'translateY(0)',
+                transition: 'transform 0.3s cubic-bezier(0.16,1,0.3,1)',
+              }
+            : { top: panelPos.y, left: panelPos.x, width: panelSize.w }
+          ),
+          userSelect: 'none',
+        }}
       >
         <div
           style={{
@@ -1222,7 +1248,8 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
             background: 'rgba(0, 0, 0, 1)',
             backdropFilter: 'blur(8px)',
             boxShadow: '3px 3px 0 #000',
-            height: collapsed ? 'auto' : panelSize.h,
+            height: collapsed ? 'auto' : (isMobile ? 'auto' : panelSize.h),
+            maxHeight: isMobile && !collapsed ? '50vh' : undefined,
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
@@ -1235,9 +1262,9 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
           }} />
 
           <div
-            onMouseDown={handleDragStart}
+            onMouseDown={isMobile ? undefined : handleDragStart}
             className="flex items-center justify-between px-4 py-2 relative z-10"
-            style={{ borderBottom: '1px solid #222', background: '#0a0a0a', cursor: 'grab', flexShrink: 0 }}
+            style={{ borderBottom: '1px solid #222', background: '#0a0a0a', cursor: isMobile ? 'default' : 'grab', flexShrink: 0 }}
           >
             <div className="flex items-center gap-2">
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff', display: 'inline-block', boxShadow: '0 0 6px rgba(255,255,255,0.5)' }} />
@@ -1263,10 +1290,10 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
           <div
             className="flex flex-col relative z-10"
             style={{
-              maxHeight: collapsed ? 0 : 600,
+              maxHeight: collapsed ? 0 : (isMobile ? 'calc(50vh - 44px)' : 600),
               opacity: collapsed ? 0 : 1,
               padding: collapsed ? '0 16px' : '12px 16px',
-              overflow: 'hidden',
+              overflow: collapsed ? 'hidden' : 'auto',
               transition: 'max-height 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease, padding 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
               flex: collapsed ? 'none' : '1',
             }}
@@ -1328,7 +1355,7 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
             </div>
           </div>
 
-          {!collapsed && (
+          {!collapsed && !isMobile && (
             <div onMouseDown={handleResizeStart} style={{ position: 'absolute', bottom: 0, right: 0, width: 16, height: 16, cursor: 'nwse-resize', zIndex: 10 }}>
               <svg width="16" height="16" viewBox="0 0 16 16" style={{ opacity: 0.3 }}>
                 <line x1="14" y1="4" x2="4" y2="14" stroke="#fff" strokeWidth="1" />
@@ -1351,21 +1378,25 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
             ref={rightPanelRef}
             className="absolute z-[60]"
             style={{
-              ...(rightDragged
-                ? { top: rightPos.y, left: rightPos.x }
-                : { top: '50%', right: 24, transform: isOpen ? 'translateY(-50%)' : 'translateY(-50%) translateX(30px)' }
+              ...(isMobile
+                ? { bottom: 0, left: 0, right: 0, width: '100%', top: 'auto', transform: isOpen ? 'translateY(0)' : 'translateY(100%)' }
+                : rightDragged
+                  ? { top: rightPos.y, left: rightPos.x }
+                  : { top: '50%', right: 24, transform: isOpen ? 'translateY(-50%)' : 'translateY(-50%) translateX(30px)' }
               ),
-              width: 280,
-              opacity: isOpen ? 1 : 0,
+              width: isMobile ? '100%' : 280,
+              opacity: isMobile ? (isOpen ? 1 : 0) : (isOpen ? 1 : 0),
               pointerEvents: isOpen ? 'auto' : 'none',
               transition: 'transform 0.35s cubic-bezier(0.16,1,0.3,1), opacity 0.3s ease, width 0.25s ease',
               userSelect: 'none',
+              zIndex: isMobile ? 70 : undefined,
             }}
           >
             <div style={{
               border: '2px solid #000', background: 'rgba(0,0,0,1)', boxShadow: '3px 3px 0 #000',
               display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative',
               height: rightCollapsed ? 'auto' : undefined,
+              maxHeight: isMobile ? '60vh' : undefined,
             }}>
               {/* Scanlines */}
               <div className="absolute inset-0 pointer-events-none" style={{
@@ -1375,9 +1406,9 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
 
               {/* Title bar — draggable */}
               <div
-                onMouseDown={handleRightDragStart}
+                onMouseDown={isMobile ? undefined : handleRightDragStart}
                 className="flex items-center justify-between px-4 py-2 relative z-10"
-                style={{ borderBottom: '1px solid #222', background: '#0a0a0a', flexShrink: 0, cursor: 'grab' }}
+                style={{ borderBottom: '1px solid #222', background: '#0a0a0a', flexShrink: 0, cursor: isMobile ? 'default' : 'grab' }}
               >
                 <div className="flex items-center gap-2">
                   <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff', display: 'inline-block', boxShadow: '0 0 6px rgba(255,255,255,0.5)' }} />
@@ -1410,9 +1441,9 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
                 <div
                   className="flex flex-col relative z-10"
                   style={{
-                    maxHeight: rightCollapsed ? 0 : 600,
+                    maxHeight: rightCollapsed ? 0 : (isMobile ? 'calc(60vh - 44px)' : 600),
                     opacity: rightCollapsed ? 0 : 1,
-                    overflow: 'hidden',
+                    overflow: rightCollapsed ? 'hidden' : 'auto',
                     transition: 'max-height 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease',
                   }}
                 >
@@ -1497,10 +1528,11 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
         />
       </div>
 
-      {/* Controls bar */}
+      {/* Controls bar — hidden on mobile */}
       <div
         className="absolute z-[60] flex items-center gap-5"
         style={{
+          display: isMobile ? 'none' : 'flex',
           bottom: 24,
           left: '50%',
           transform: 'translateX(-50%)',

@@ -276,13 +276,13 @@ export default function ClassTitle3D({ year = '26', config = DEFAULT_CONFIG, bea
     return () => { if (timeoutRef.current) clearTimeout(timeoutRef.current); };
   }, [year, displayedYear]);
 
-  const isMobile = screenW < 640;
+  const twoLine = screenW < 800;
 
-  const charCount = isMobile ? 5 : 9;
-  const spaceCount = isMobile ? 0 : 2;
+  const charCount = twoLine ? 5 : 9;
+  const spaceCount = twoLine ? 0 : 2;
   const textWidth = ((charCount * 764 + spaceCount * 178) / 1000 + (charCount + spaceCount - 1) * 0.06) * config.size;
 
-  const containerHeight = isMobile ? 'clamp(180px, 50vw, 300px)' : 'clamp(160px, 24vw, 300px)';
+  const containerHeight = twoLine ? 'clamp(200px, 55vw, 320px)' : 'clamp(160px, 24vw, 300px)';
 
   return (
     <div
@@ -316,7 +316,7 @@ export default function ClassTitle3D({ year = '26', config = DEFAULT_CONFIG, bea
         <directionalLight position={[-12, 4, 6]} intensity={0.6} color="#4488ff" />
         <directionalLight position={[12, -2, 6]} intensity={0.4} color="#ffaa44" />
         <directionalLight position={[0, 2, -10]} intensity={0.3} color="#7766ff" />
-        <AllLetters year={displayedYear} config={config} twoLine={isMobile} beatRef={beatRef} />
+        <AllLetters year={displayedYear} config={config} twoLine={twoLine} beatRef={beatRef} />
       </Canvas>
     </div>
   );

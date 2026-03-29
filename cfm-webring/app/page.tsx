@@ -695,25 +695,27 @@ export default function Home() {
           ]}
         />
 
-        {/* Stars */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          ref={starLeftRef}
-          src="/images/star_left.webp"
-          alt="" decoding="async"
-          className="absolute pointer-events-none select-none"
-          data-base-opacity="0.2" data-base-rotation="-136"
-          style={{ top: '2%', left: '3%', width: 'auto', height: '340px', maxWidth: 'none', zIndex: 3, opacity: 0.2, transform: 'rotate(-136deg)' }}
-        />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          ref={starRightRef}
-          src="/images/star_right.webp"
-          alt="" decoding="async"
-          className="absolute pointer-events-none select-none"
-          data-base-opacity="0.2" data-base-rotation="0"
-          style={{ top: '2%', left: '75%', width: 'auto', height: '340px', maxWidth: 'none', zIndex: 3, opacity: 0.2, transform: 'rotate(0deg)' }}
-        />
+        {/* Stars — fixed-width centered container so they crop from edges on narrow screens */}
+        <div className="absolute pointer-events-none" style={{ top: 0, left: '50%', transform: 'translateX(-50%)', width: '1400px', height: '100%', zIndex: 3 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            ref={starLeftRef}
+            src="/images/star_left.webp"
+            alt="" decoding="async"
+            className="absolute pointer-events-none select-none"
+            data-base-opacity="0.2" data-base-rotation="-136"
+            style={{ top: '2%', left: '42px', width: 'auto', height: '340px', maxWidth: 'none', opacity: 0.2, transform: 'rotate(-136deg)' }}
+          />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            ref={starRightRef}
+            src="/images/star_right.webp"
+            alt="" decoding="async"
+            className="absolute pointer-events-none select-none"
+            data-base-opacity="0.2" data-base-rotation="0"
+            style={{ top: '2%', right: '42px', width: 'auto', height: '340px', maxWidth: 'none', opacity: 0.2, transform: 'rotate(0deg)' }}
+          />
+        </div>
 
         {/* Webring title */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -724,7 +726,7 @@ export default function Home() {
           className="absolute pointer-events-none"
           style={{
             top: '4%', left: '50%', transform: 'translateX(-50%)',
-            width: 'clamp(350px, 55vw, 700px)', height: 'auto', zIndex: 4,
+            width: 'min(700px, 90vw)', height: 'auto', zIndex: 4,
             filter: 'drop-shadow(0 0 30px rgba(255,255,255,0.3)) drop-shadow(0 0 60px rgba(255,255,255,0.15)) brightness(1.1)',
           }}
         />

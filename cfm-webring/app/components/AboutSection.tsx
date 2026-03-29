@@ -376,7 +376,7 @@ export default function AboutSection({ onVisibilityChange, audioRef, reducedMoti
             fontFamily: 'var(--font-arcade)',
             fontSize: 12,
             letterSpacing: '0.25em',
-            color: 'rgba(255,255,255,0.5)',
+            color: '#fff',
             textShadow: '0 0 4px #000, 0 0 8px #000, 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000',
           }}
         >
