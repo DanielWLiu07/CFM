@@ -110,9 +110,12 @@ export default function GithubSection({ onVisibilityChange, audioRef, reducedMot
     return () => observer.disconnect();
   }, []);
 
-  // Beat-synced gear rotation — intro spin from right + smooth beat snap
+  // Gear — intro spin from right + beat-synced snap (beat part gated by reducedMotion)
+  const reducedRef = useRef(reducedMotion);
+  reducedRef.current = reducedMotion;
+
   useEffect(() => {
-    if (!visible || reducedMotion) return;
+    if (!visible) return;
     let lastFiredIdx = -1;
     const startTime = Date.now();
     let targetAngle = 0;
@@ -128,16 +131,21 @@ export default function GithubSection({ onVisibilityChange, audioRef, reducedMot
       const introX = 80 * (1 - ease) * overshoot;
       const introRot = -180 * (1 - ease);
 
-      const audio = audioRef?.current;
-      if (audio && !audio.paused && audio.currentTime > 0) {
-        const t = audio.currentTime;
-        if (t >= BEAT_OFFSET) {
-          const beatIdx = Math.floor((t - BEAT_OFFSET) / BEAT_INTERVAL);
-          if (beatIdx > lastFiredIdx) {
-            lastFiredIdx = beatIdx;
-            targetAngle = beatIdx % 2 === 1 ? -15 : 15;
+      if (!reducedRef.current) {
+        const audio = audioRef?.current;
+        if (audio && !audio.paused && audio.currentTime > 0) {
+          const t = audio.currentTime;
+          if (t >= BEAT_OFFSET) {
+            const beatIdx = Math.floor((t - BEAT_OFFSET) / BEAT_INTERVAL);
+            if (beatIdx < lastFiredIdx) lastFiredIdx = -1; // audio looped
+            if (beatIdx > lastFiredIdx) {
+              lastFiredIdx = beatIdx;
+              targetAngle = beatIdx % 2 === 1 ? -15 : 15;
+            }
           }
         }
+      } else {
+        targetAngle = 0;
       }
 
       // Smooth lerp toward target angle
@@ -150,11 +158,11 @@ export default function GithubSection({ onVisibilityChange, audioRef, reducedMot
     };
     gearRafRef.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(gearRafRef.current);
-  }, [visible, audioRef, reducedMotion, replayKey, animSettings]);
+  }, [visible, audioRef, replayKey, animSettings]);
 
-  // Beat-synced cat bob — intro slide from left + smash down on beat
+  // Cat — intro slide from left + beat bob (beat part gated by reducedMotion)
   useEffect(() => {
-    if (!visible || reducedMotion) return;
+    if (!visible) return;
     const baseRotate = 13;
     let smoothY = 0;
     let lastBeatIdx = -1;
@@ -172,12 +180,13 @@ export default function GithubSection({ onVisibilityChange, audioRef, reducedMot
       introX = -80 * (1 - ease) * overshoot;
 
       const audio = audioRef?.current;
-      const hasMusic = audio && !audio.paused && audio.currentTime > 0;
+      const hasMusic = !reducedRef.current && audio && !audio.paused && audio.currentTime > 0;
 
       if (hasMusic) {
         const t = audio.currentTime;
         if (t >= BEAT_OFFSET) {
           const beatIdx = Math.floor((t - BEAT_OFFSET) / BEAT_INTERVAL);
+          if (beatIdx < lastBeatIdx) lastBeatIdx = -1; // audio looped
           if (beatIdx > lastBeatIdx) {
             lastBeatIdx = beatIdx;
             velocity = 8;
@@ -198,11 +207,11 @@ export default function GithubSection({ onVisibilityChange, audioRef, reducedMot
     };
     catRafRef.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(catRafRef.current);
-  }, [visible, audioRef, reducedMotion, replayKey, animSettings]);
+  }, [visible, audioRef, replayKey, animSettings]);
 
-  // Beat-synced title — intro slide + scale pulse + glow
+  // Title — intro slide + scale pulse + glow (beat part gated by reducedMotion)
   useEffect(() => {
-    if (!visible || reducedMotion) return;
+    if (!visible) return;
     let smoothScale = 1;
     let smoothGlow = 0;
     let lastBeatIdx = -1;
@@ -220,19 +229,22 @@ export default function GithubSection({ onVisibilityChange, audioRef, reducedMot
       introY = -40 * (1 - ease) * overshoot;
       introScale = 1 + 0.1 * (1 - ease) * overshoot;
 
-      const audio = audioRef?.current;
       let beat = 0;
-      if (audio && !audio.paused && audio.currentTime > 0) {
-        const t = audio.currentTime;
-        if (t >= BEAT_OFFSET) {
-          const beatIdx = Math.floor((t - BEAT_OFFSET) / BEAT_INTERVAL);
-          if (beatIdx > lastBeatIdx) {
-            lastBeatIdx = beatIdx;
-            beat = 1;
+      if (!reducedRef.current) {
+        const audio = audioRef?.current;
+        if (audio && !audio.paused && audio.currentTime > 0) {
+          const t = audio.currentTime;
+          if (t >= BEAT_OFFSET) {
+            const beatIdx = Math.floor((t - BEAT_OFFSET) / BEAT_INTERVAL);
+            if (beatIdx < lastBeatIdx) lastBeatIdx = -1; // audio looped
+            if (beatIdx > lastBeatIdx) {
+              lastBeatIdx = beatIdx;
+              beat = 1;
+            }
           }
+          const beatElapsed = ((audio.currentTime - BEAT_OFFSET) % BEAT_INTERVAL) / BEAT_INTERVAL;
+          beat = beatElapsed < 0.1 ? 1 - beatElapsed / 0.1 : 0;
         }
-        const beatElapsed = ((audio.currentTime - BEAT_OFFSET) % BEAT_INTERVAL) / BEAT_INTERVAL;
-        beat = beatElapsed < 0.1 ? 1 - beatElapsed / 0.1 : 0;
       }
 
       smoothScale += ((introScale + beat * 0.06) - smoothScale) * 0.3;
@@ -249,7 +261,7 @@ export default function GithubSection({ onVisibilityChange, audioRef, reducedMot
     };
     titleRafRef.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(titleRafRef.current);
-  }, [visible, audioRef, reducedMotion, replayKey, animSettings]);
+  }, [visible, audioRef, replayKey, animSettings]);
 
   const { mono, arcade } = FONT;
   const { green, dim, mid, bright } = COLOR;
@@ -505,113 +517,6 @@ export default function GithubSection({ onVisibilityChange, audioRef, reducedMot
       </div>
       </div>
 
-      {/* Replay & Controls */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 16 }}>
-        <button
-          onClick={replay}
-          style={{
-            fontFamily: arcade,
-            fontSize: 11,
-            letterSpacing: '0.1em',
-            color: green,
-            background: 'rgba(0,230,118,0.08)',
-            border: '1px solid rgba(0,230,118,0.25)',
-            borderRadius: 8,
-            padding: '8px 20px',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,230,118,0.15)'; e.currentTarget.style.borderColor = 'rgba(0,230,118,0.5)'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,230,118,0.08)'; e.currentTarget.style.borderColor = 'rgba(0,230,118,0.25)'; }}
-        >
-          ▶ REPLAY
-        </button>
-        <button
-          onClick={() => setShowControls(s => !s)}
-          style={{
-            fontFamily: mono,
-            fontSize: 10,
-            color: dim,
-            background: showControls ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.03)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: 8,
-            padding: '8px 16px',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
-          }}
-        >
-          {showControls ? '✕ CLOSE' : '⚙ SETTINGS'}
-        </button>
-        <button
-          onClick={() => setAnimSettings(DEFAULT_SETTINGS)}
-          style={{
-            fontFamily: mono,
-            fontSize: 10,
-            color: dim,
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: 8,
-            padding: '8px 12px',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
-          }}
-        >
-          RESET
-        </button>
-      </div>
-
-      {showControls && (
-        <div style={{
-          marginTop: 12,
-          width: '100%',
-          maxWidth: 720,
-          background: 'rgba(10,14,10,0.7)',
-          backdropFilter: 'blur(16px)',
-          border: '1px solid rgba(255,255,255,0.08)',
-          borderRadius: 10,
-          padding: '16px 20px',
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '12px 24px',
-        }}>
-          <div style={{ gridColumn: '1 / -1', fontFamily: arcade, fontSize: 10, color: green, letterSpacing: '0.1em', marginBottom: 4 }}>
-            ANIMATION CONTROLS
-          </div>
-
-          {([
-            { label: 'Title Duration', key: 'titleDuration' as const, min: 100, max: 3000, step: 50, unit: 'ms' },
-            { label: 'Title Delay', key: 'titleDelay' as const, min: 0, max: 2000, step: 50, unit: 'ms' },
-            { label: 'Terminal Duration', key: 'terminalDuration' as const, min: 100, max: 3000, step: 50, unit: 'ms' },
-            { label: 'Terminal Delay', key: 'terminalDelay' as const, min: 0, max: 2000, step: 50, unit: 'ms' },
-            { label: 'Cat Duration', key: 'catDuration' as const, min: 100, max: 3000, step: 50, unit: 'ms' },
-            { label: 'Cat Delay', key: 'catDelay' as const, min: 0, max: 2000, step: 50, unit: 'ms' },
-            { label: 'Gear Duration', key: 'gearDuration' as const, min: 100, max: 3000, step: 50, unit: 'ms' },
-            { label: 'Gear Delay', key: 'gearDelay' as const, min: 0, max: 2000, step: 50, unit: 'ms' },
-            { label: 'Overshoot', key: 'overshoot' as const, min: 0, max: 2, step: 0.1, unit: 'x' },
-          ]).map(({ label, key, min, max, step, unit }) => (
-            <div key={key}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                <span style={{ fontFamily: mono, fontSize: 9, color: dim, letterSpacing: '0.05em' }}>{label}</span>
-                <span style={{ fontFamily: mono, fontSize: 9, color: mid }}>{animSettings[key]}{unit}</span>
-              </div>
-              <input
-                type="range"
-                min={min}
-                max={max}
-                step={step}
-                value={animSettings[key]}
-                onChange={e => setAnimSettings(s => ({ ...s, [key]: Number(e.target.value) }))}
-                style={{
-                  width: '100%',
-                  accentColor: green,
-                  height: 4,
-                  cursor: 'pointer',
-                }}
-              />
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* Footer */}
       <div style={{

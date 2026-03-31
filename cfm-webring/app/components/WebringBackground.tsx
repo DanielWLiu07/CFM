@@ -303,37 +303,255 @@ function FloatingLines({ count = 18 }: { count?: number }) {
   );
 }
 
-// ── Wireframe Shapes ────────────────────────────────────────────────────────
+// ── Candlestick Charts (finance aesthetic) ──────────────────────────────────
 
-function WireframeShape({ position, size, speedX, speedY, geo }: {
-  position: [number, number, number];
-  size: number;
-  speedX: number;
-  speedY: number;
-  geo: 'icosa' | 'octa' | 'dodeca';
-}) {
-  const ref = useRef<THREE.Mesh>(null);
-  const beatRef = useContext(BeatContext);
+function CandlestickChart({ position, rotation: rot, scale: s = 1, count = 12 }: { position: [number, number, number]; rotation?: [number, number, number]; scale?: number; count?: number }) {
+  const groupRef = useRef<THREE.Group>(null);
+
+  const candles = useMemo(() => {
+    return Array.from({ length: count }, (_, i) => ({
+      x: (i - count / 2) * 0.45,
+      baseH: 0.4 + Math.random() * 1.5,
+      speed: 0.15 + Math.random() * 0.3,
+      phase: Math.random() * Math.PI * 2,
+      bullish: Math.random() > 0.4,
+    }));
+  }, [count]);
 
   useFrame(({ clock }) => {
-    if (!ref.current) return;
-    const beat = beatRef.current ?? 0;
-    ref.current.rotation.x = clock.elapsedTime * speedX;
-    ref.current.rotation.y = clock.elapsedTime * speedY;
-    ref.current.position.y = position[1] + Math.sin(clock.elapsedTime * 0.3 + position[0]) * 0.4;
-    const s = 1 + beat * 0.15;
-    ref.current.scale.setScalar(s);
-    const mat = ref.current.material as THREE.MeshBasicMaterial;
-    mat.opacity = 0.05 + beat * 0.08;
+    if (!groupRef.current) return;
+    const t = clock.elapsedTime;
+    // Gentle floating
+    groupRef.current.position.x = position[0] + Math.sin(t * 0.02 + position[2]) * 1.5;
+    groupRef.current.position.y = position[1] + Math.sin(t * 0.015 + position[0]) * 1.0;
+    groupRef.current.position.z = position[2] + Math.cos(t * 0.012 + position[0]) * 0.8;
+    groupRef.current.rotation.y = (rot?.[1] ?? 0) + Math.sin(t * 0.018 + position[0]) * 0.1;
+
+    // Animate each bar's height via scale.y
+    let idx = 0;
+    groupRef.current.children.forEach(child => {
+      if (!(child as THREE.Mesh).isMesh) return;
+      const c = candles[Math.floor(idx / 2)]; // 2 meshes per candle (body + wick)
+      if (!c) return;
+      const h = c.baseH * (0.6 + 0.4 * Math.sin(t * c.speed + c.phase));
+      child.scale.y = Math.max(0.1, h);
+      child.position.y = h * 0.25 - 0.8;
+      idx++;
+    });
   });
 
   return (
-    <mesh ref={ref} position={position}>
-      {geo === 'icosa' && <icosahedronGeometry args={[size, 1]} />}
-      {geo === 'octa' && <octahedronGeometry args={[size]} />}
-      {geo === 'dodeca' && <dodecahedronGeometry args={[size]} />}
-      <meshBasicMaterial color="#ffffff" wireframe transparent opacity={0.05} depthWrite={false} />
-    </mesh>
+    <group ref={groupRef} position={position} rotation={rot} scale={[s, s, s]}>
+      {candles.map((c, i) => (
+        <group key={i}>
+          <mesh position={[c.x, 0, 0]}>
+            <boxGeometry args={[0.2, 1, 0.01]} />
+            <meshBasicMaterial color={c.bullish ? '#00e676' : '#ff5252'} transparent opacity={0.06} depthWrite={false} blending={THREE.AdditiveBlending} />
+          </mesh>
+          <mesh position={[c.x, 0, 0]}>
+            <boxGeometry args={[0.03, 1.5, 0.01]} />
+            <meshBasicMaterial color="#ffffff" transparent opacity={0.035} depthWrite={false} blending={THREE.AdditiveBlending} />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  );
+}
+
+// ── Scrolling Ticker Numbers (finance data stream) ──────────────────────────
+
+function TickerStream({ count = 6 }: { count?: number }) {
+  const groupRef = useRef<THREE.Group>(null);
+  const beatRef = useContext(BeatContext);
+
+  const streams = useMemo(() => {
+    return Array.from({ length: count }, (_, i) => {
+      const y = (Math.random() - 0.5) * 10;
+      const z = -5 - Math.random() * 10;
+      const speed = 0.3 + Math.random() * 0.5;
+      const len = 2 + Math.random() * 4;
+      const points = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(len, 0, 0)];
+      const geo = new THREE.BufferGeometry().setFromPoints(points);
+      const green = Math.random() > 0.5;
+      return { geo, y, z, speed, len, green, startX: (Math.random() - 0.5) * 20 };
+    });
+  }, [count]);
+
+  useFrame(({ clock }) => {
+    if (!groupRef.current) return;
+    const beat = beatRef.current ?? 0;
+    groupRef.current.children.forEach((child, i) => {
+      const s = streams[i];
+      const mesh = child as THREE.Line;
+      const offset = (clock.elapsedTime * s.speed) % 24 - 12;
+      mesh.position.set(s.startX + offset, s.y, s.z);
+      const mat = mesh.material as THREE.LineBasicMaterial;
+      mat.opacity = 0.025 + beat * 0.015;
+    });
+  });
+
+  return (
+    <group ref={groupRef}>
+      {streams.map((s, i) => {
+        const line = new THREE.Line(s.geo, new THREE.LineBasicMaterial({
+          color: s.green ? '#00e676' : '#ff5252',
+          transparent: true, opacity: 0.025, depthWrite: false, blending: THREE.AdditiveBlending,
+        }));
+        line.position.set(s.startX, s.y, s.z);
+        return <primitive key={i} object={line} />;
+      })}
+    </group>
+  );
+}
+
+// ── Line Chart (stock chart aesthetic) ──────────────────────────────────────
+
+function LineChart({ position, rotation: rot, scale: s = 1 }: { position: [number, number, number]; rotation?: [number, number, number]; scale?: number }) {
+  const ref = useRef<THREE.Line>(null);
+  const beatRef = useContext(BeatContext);
+
+  const geo = useMemo(() => {
+    const points: THREE.Vector3[] = [];
+    let price = 1;
+    for (let i = 0; i < 60; i++) {
+      price += (Math.random() - 0.48) * 0.18;
+      price = Math.max(0.1, price);
+      points.push(new THREE.Vector3((i / 60) * 10 - 5, price - 1, 0));
+    }
+    return new THREE.BufferGeometry().setFromPoints(points);
+  }, []);
+
+  useFrame(({ clock }) => {
+    if (!ref.current) return;
+    ref.current.position.x = position[0] + Math.sin(clock.elapsedTime * 0.018 + position[2]) * 1.5;
+    ref.current.position.y = position[1] + Math.sin(clock.elapsedTime * 0.013 + position[0]) * 1.0;
+    ref.current.position.z = position[2] + Math.cos(clock.elapsedTime * 0.01 + position[0]) * 0.8;
+  });
+
+  const line = useMemo(() => {
+    return new THREE.Line(geo, new THREE.LineBasicMaterial({
+      color: '#00e676', transparent: true, opacity: 0.07, depthWrite: false, blending: THREE.AdditiveBlending,
+    }));
+  }, [geo]);
+
+  return (
+    <group position={position} rotation={rot} scale={[s, s, s]}>
+      <primitive ref={ref} object={line} />
+    </group>
+  );
+}
+
+// ── Bar Chart ───────────────────────────────────────────────────────────────
+
+function BarChart({ position, rotation: rot, scale: s = 1, count = 14 }: { position: [number, number, number]; rotation?: [number, number, number]; scale?: number; count?: number }) {
+  const groupRef = useRef<THREE.Group>(null);
+
+  const bars = useMemo(() => {
+    return Array.from({ length: count }, (_, i) => ({
+      x: (i - count / 2) * 0.35,
+      baseH: 0.3 + Math.random() * 2,
+      speed: 0.1 + Math.random() * 0.25,
+      phase: Math.random() * Math.PI * 2,
+      green: Math.random() > 0.35,
+    }));
+  }, [count]);
+
+  useFrame(({ clock }) => {
+    if (!groupRef.current) return;
+    const t = clock.elapsedTime;
+    // Float around
+    groupRef.current.position.x = position[0] + Math.sin(t * 0.018 + position[0]) * 1.5;
+    groupRef.current.position.y = position[1] + Math.sin(t * 0.014 + position[2]) * 1.0;
+    groupRef.current.position.z = position[2] + Math.cos(t * 0.011 + position[2]) * 0.8;
+    groupRef.current.rotation.y = (rot?.[1] ?? 0) + Math.sin(t * 0.016 + position[0]) * 0.1;
+
+    // Animate bar heights
+    let idx = 0;
+    groupRef.current.children.forEach(child => {
+      if (!(child as THREE.Mesh).isMesh) return;
+      const b = bars[idx];
+      if (!b) return;
+      const h = b.baseH * (0.5 + 0.5 * Math.sin(t * b.speed + b.phase));
+      child.scale.y = Math.max(0.05, h);
+      child.position.y = h * 0.3 - 0.6;
+      idx++;
+    });
+  });
+
+  return (
+    <group ref={groupRef} position={position} rotation={rot} scale={[s, s, s]}>
+      {bars.map((b, i) => (
+        <mesh key={i} position={[b.x, 0, 0]}>
+          <boxGeometry args={[0.2, 1, 0.01]} />
+          <meshBasicMaterial color={b.green ? '#00e676' : '#ff5252'} transparent opacity={0.055} depthWrite={false} blending={THREE.AdditiveBlending} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+// ── Floating Numbers ────────────────────────────────────────────────────────
+
+function FloatingNumbers({ count = 16 }: { count?: number }) {
+  const groupRef = useRef<THREE.Group>(null);
+  const beatRef = useContext(BeatContext);
+
+  const items = useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 48;
+
+    return Array.from({ length: count }, () => {
+      const texts = ['$142.87', '+3.2%', '0x4F2A', 'BTC 64,210', 'ETH 3,847', '$89.41', '-1.7%', 'AAPL 189.2', 'SPY 512', '10Y:4.2%', 'VIX:18.3', 'P/E:24.1', 'ROI:+12%', 'EPS:3.41', 'YTD:+8.7%', 'MSFT 421', 'NVDA 892', 'const x =', 'return {}', 'async fn'];
+      const text = texts[Math.floor(Math.random() * texts.length)];
+      const green = !text.startsWith('-');
+
+      const clone = canvas.cloneNode(true) as HTMLCanvasElement;
+      const ctx = clone.getContext('2d')!;
+      ctx.clearRect(0, 0, 256, 48);
+      ctx.fillStyle = green ? '#00e676' : '#ff5252';
+      ctx.font = 'bold 24px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, 128, 24);
+
+      const texture = new THREE.CanvasTexture(clone);
+      texture.needsUpdate = true;
+
+      return {
+        texture,
+        position: [
+          (Math.random() - 0.5) * 28,
+          (Math.random() - 0.5) * 16,
+          -3 - Math.random() * 16,
+        ] as [number, number, number],
+        speed: 0.03 + Math.random() * 0.08,
+        driftSpeed: 0.01 + Math.random() * 0.03,
+        phase: Math.random() * Math.PI * 2,
+      };
+    });
+  }, [count]);
+
+  useFrame(({ clock }) => {
+    if (!groupRef.current) return;
+    groupRef.current.children.forEach((child, i) => {
+      const item = items[i];
+      const mesh = child as THREE.Mesh;
+      mesh.position.x = item.position[0] + Math.sin(clock.elapsedTime * item.driftSpeed + item.phase) * 2;
+      mesh.position.y = item.position[1] + Math.sin(clock.elapsedTime * item.speed + item.phase) * 0.8;
+      mesh.rotation.y = Math.sin(clock.elapsedTime * 0.02 + item.phase) * 0.2;
+    });
+  });
+
+  return (
+    <group ref={groupRef}>
+      {items.map((item, i) => (
+        <mesh key={i} position={item.position}>
+          <planeGeometry args={[2.4, 0.5]} />
+          <meshBasicMaterial map={item.texture} transparent opacity={0.06} depthWrite={false} blending={THREE.AdditiveBlending} side={THREE.DoubleSide} />
+        </mesh>
+      ))}
+    </group>
   );
 }
 
@@ -385,11 +603,11 @@ function RadialGlow() {
 
         float dist = distance(vUv, center);
 
-        // Main radial glow — white core fading out
-        float glow = smoothstep(0.7, 0.0, dist) * (0.06 + uBeat * 0.04);
+        // Main radial glow — white core fading out (static, no beat)
+        float glow = smoothstep(0.7, 0.0, dist) * 0.06;
 
         // Secondary wider halo
-        float halo = smoothstep(1.0, 0.2, dist) * (0.02 + uBeat * 0.015);
+        float halo = smoothstep(1.0, 0.2, dist) * 0.02;
 
         // Subtle vignette brightening from center
         float vig = 1.0 - smoothstep(0.0, 0.9, dist);
@@ -433,10 +651,9 @@ function CentralGlow() {
 
   useFrame(({ clock }) => {
     if (!ref.current) return;
-    const beat = beatRef.current ?? 0;
     const mat = ref.current.material as THREE.MeshBasicMaterial;
-    mat.opacity = 0.05 + Math.sin(clock.elapsedTime * 0.3) * 0.02 + beat * 0.06;
-    ref.current.scale.setScalar(8 + Math.sin(clock.elapsedTime * 0.25) * 1 + beat * 2);
+    mat.opacity = 0.05 + Math.sin(clock.elapsedTime * 0.15) * 0.015;
+    ref.current.scale.setScalar(8 + Math.sin(clock.elapsedTime * 0.1) * 0.5);
   });
 
   return (
@@ -487,8 +704,6 @@ export default function WebringBackground({ beatRef, paused }: { beatRef?: RefOb
 
         <Stars count={300} />
         <FloatingDust count={80} />
-        <NebulaClouds count={4} />
-        <ShootingStars count={2} />
         {/* Center rings */}
         <ConcentricRings />
         {/* Scattered ring groups */}
@@ -501,9 +716,21 @@ export default function WebringBackground({ beatRef, paused }: { beatRef?: RefOb
         <FloatingLines count={8} />
         <CentralGlow />
 
-        <WireframeShape position={[-9, 3, -6]} size={1.8} speedX={0.04} speedY={0.03} geo="icosa" />
-        <WireframeShape position={[10, -3, -8]} size={2} speedX={0.03} speedY={0.025} geo="octa" />
-        <WireframeShape position={[0, 6, -12]} size={1.5} speedX={0.05} speedY={0.02} geo="dodeca" />
+        {/* Finance: candlesticks — spread out, angled, animated heights */}
+        <CandlestickChart position={[-10, 3, -8]} rotation={[0.1, 0.3, -0.05]} scale={1.5} />
+        <CandlestickChart position={[9, -3, -12]} rotation={[-0.1, -0.4, 0.08]} scale={1.2} />
+        <CandlestickChart position={[2, 6, -15]} rotation={[0.15, 0.1, 0.1]} scale={1.0} />
+
+        {/* Finance: line charts — angled differently */}
+        <LineChart position={[-7, -4, -10]} rotation={[0.1, -0.2, 0.05]} scale={1.4} />
+        <LineChart position={[7, 4, -14]} rotation={[-0.05, 0.3, -0.1]} scale={1.1} />
+
+        {/* Finance: bar charts */}
+        <BarChart position={[0, -1, -11]} rotation={[0.05, 0.15, 0]} scale={1.2} />
+
+        {/* Finance/code: floating numbers + tickers */}
+        <FloatingNumbers count={12} />
+        <TickerStream count={5} />
 
         <GridFloor />
         <CameraRig />

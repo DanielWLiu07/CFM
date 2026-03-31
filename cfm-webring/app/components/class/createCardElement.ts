@@ -98,7 +98,7 @@ export function createCardElement(member: ClassMember, cardW: number, cardH: num
     const img = document.createElement('img');
     img.src = member.avatar;
     img.alt = member.name;
-    img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
+    img.style.cssText = 'width: 100%; height: 100%; object-fit: cover; mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent), linear-gradient(to bottom, transparent, black 8%, black 92%, transparent); mask-composite: intersect; -webkit-mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent), linear-gradient(to bottom, transparent, black 8%, black 92%, transparent); -webkit-mask-composite: source-in;';
     imgBox.appendChild(img);
   } else {
     const initials = document.createElement('span');

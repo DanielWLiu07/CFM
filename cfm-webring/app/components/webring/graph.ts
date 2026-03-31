@@ -26,19 +26,19 @@ export function buildGraph(entries: WebringEntry[], originalIndices?: number[]) 
     let avatarImg: HTMLImageElement | null = null;
     if (entry.avatar) { avatarImg = new Image(); avatarImg.src = entry.avatar; }
     const idx = originalIndices ? originalIndices[i] : i;
-    return { x, y, z, targetX: x, targetY: y, targetZ: z, transitionT: 1, nodeOpacity: 1, removing: false, entry, index: idx, sx: 0, sy: 0, scale: 1, depth: 0, screenR: 0, hoverAnim: 0, avatarImg, lod: 1 as const };
+    return { x, y, z, targetX: x, targetY: y, targetZ: z, transitionT: 1, nodeOpacity: 1, removing: false, entry, index: idx, sx: 0, sy: 0, scale: 1, depth: 0, screenR: 0, hoverAnim: 0, flashAnim: 0, flashGreen: true, simValue: 100 + Math.floor(seededRandom(i * 13) * 900), avatarImg, lod: 1 as const };
   });
 
   // Edges: ring + proximity
   const edges: Edge[] = [];
   const hasEdge = (a: number, b: number) => edges.some(e => (e.from === a && e.to === b) || (e.from === b && e.to === a));
-  for (let i = 0; i < n; i++) edges.push({ from: i, to: (i + 1) % n, hoverAnim: 0 });
+  for (let i = 0; i < n; i++) edges.push({ from: i, to: (i + 1) % n, hoverAnim: 0, packetGreen: Math.random() > 0.4 });
 
   if (n <= 20) {
     for (let i = 0; i < n; i++) {
       const jump = 2 + Math.floor(seededRandom(i * 7 + 3) * 3);
       const target = (i + jump) % n;
-      if (!hasEdge(i, target)) edges.push({ from: i, to: target, hoverAnim: 0 });
+      if (!hasEdge(i, target)) edges.push({ from: i, to: target, hoverAnim: 0, packetGreen: Math.random() > 0.4 });
     }
   } else {
     const maxExtra = Math.floor(n * 1.5);
@@ -51,7 +51,7 @@ export function buildGraph(entries: WebringEntry[], originalIndices?: number[]) 
         const d = dx * dx + dy * dy + dz * dz;
         if (d < bestDist) { bestDist = d; bestJ = j; }
       }
-      if (bestJ >= 0) { edges.push({ from: i, to: bestJ, hoverAnim: 0 }); added++; }
+      if (bestJ >= 0) { edges.push({ from: i, to: bestJ, hoverAnim: 0, packetGreen: Math.random() > 0.4 }); added++; }
     }
   }
 

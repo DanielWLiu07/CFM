@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import type { ClassMember } from './types';
 import { SOCIAL_ICONS } from './types';
@@ -9,13 +9,24 @@ type CRTPhase = 'idle' | 'dot' | 'line' | 'expand' | 'done' | 'flash' | 'shrink'
 
 interface CRTOverlayProps {
   expandedMember: ClassMember | null;
+  members: ClassMember[];
   phase: CRTPhase;
   closeExpanded: () => void;
+  onNavigate: (member: ClassMember) => void;
   inkKey: number;
   onReplay?: () => void;
 }
 
-export default function CRTOverlay({ expandedMember, phase, closeExpanded, inkKey, onReplay }: CRTOverlayProps) {
+export default function CRTOverlay({ expandedMember, members, phase, closeExpanded, onNavigate, inkKey, onReplay }: CRTOverlayProps) {
+  // Responsive — narrow = image inline with header instead of side panel
+  const [isNarrow, setIsNarrow] = useState(false);
+  useEffect(() => {
+    const check = () => setIsNarrow(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
   // Image tuning
   const [imgX, setImgX] = useState(0);
   const [imgY, setImgY] = useState(0);
@@ -26,9 +37,18 @@ export default function CRTOverlay({ expandedMember, phase, closeExpanded, inkKe
   const [maskLeft, setMaskLeft] = useState(5);
   const [maskRight, setMaskRight] = useState(5);
   // Noise
-  const [noiseScale, setNoiseScale] = useState(50);
+  const [noiseScale, setNoiseScale] = useState(600);
   const [noiseFreq, setNoiseFreq] = useState(10);
-  const [showDebug, setShowDebug] = useState(true);
+  const [showDebug, setShowDebug] = useState(false);
+  // Text sizing
+  const [blurbSize, setBlurbSize] = useState(18);
+  const [hobbySize, setHobbySize] = useState(13);
+  const [hobbyPadV, setHobbyPadV] = useState(8);
+  const [hobbyPadH, setHobbyPadH] = useState(18);
+  const [expSize, setExpSize] = useState(14);
+  const [expPadV, setExpPadV] = useState(10);
+  const [expPadH, setExpPadH] = useState(16);
+  const [labelSize, setLabelSize] = useState(32);
 
   // Draggable panel
   const [panelPos, setPanelPos] = useState({ x: 10, y: 10 });
@@ -184,8 +204,8 @@ export default function CRTOverlay({ expandedMember, phase, closeExpanded, inkKe
               transition: phase === 'flash' ? 'opacity 0.25s ease 0.05s' : phase === 'shrink' ? 'opacity 0.2s ease' : 'opacity 0.35s ease',
               pointerEvents: phase === 'done' ? 'auto' : 'none',
             }}>
-              {/* Left — avatar with ink noise reveal, transparent bg for PNG */}
-              <div style={{
+              {/* Left — avatar with ink noise reveal (hidden on narrow) */}
+              {!isNarrow && <div style={{
                 width: '40%', height: '100%', flexShrink: 0,
                 overflow: 'hidden', position: 'relative',
                 ...(phase === 'done' ? {
@@ -260,39 +280,94 @@ export default function CRTOverlay({ expandedMember, phase, closeExpanded, inkKe
                     {expandedMember.name.split(' ').map(w => w[0]).join('')}
                   </div>
                 )}
-              </div>
+              </div>}
 
               {/* Right — name top, socials bottom, middle scrolls */}
               <div style={{
                 flex: 1, display: 'flex', flexDirection: 'column',
                 overflow: 'hidden', background: 'rgba(255,255,255,0.85)', position: 'relative',
+                backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(0,0,0,0.02) 39px, rgba(0,0,0,0.02) 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(0,0,0,0.02) 39px, rgba(0,0,0,0.02) 40px)',
                 ...(phase === 'done' ? {
                   animation: 'panel-in 1.2s ease 0.2s both',
                 } : (phase === 'flash' || phase === 'shrink') ? {
                   animation: 'panel-out 0.3s ease forwards',
                 } : {}),
               }}>
+                {/* Scrolling ticker tape */}
+                <div style={{
+                  overflow: 'hidden', background: '#000', borderBottom: '2px solid #000',
+                  flexShrink: 0, height: 28, display: 'flex', alignItems: 'center',
+                  animation: 'fade-in 0.3s ease 0.1s both',
+                }}>
+                  <div style={{
+                    display: 'flex', gap: 40, whiteSpace: 'nowrap',
+                    animation: 'ticker-scroll 20s linear infinite',
+                    fontFamily: 'var(--font-arcade)', fontSize: 11, letterSpacing: '0.05em',
+                  }}>
+                    {[...Array(2)].map((_, rep) => (
+                      <span key={rep} style={{ display: 'flex', gap: 40 }}>
+                        <span style={{ color: '#22c55e' }}>CFM ▲ 142.69 +3.21%</span>
+                        <span style={{ color: '#ef4444' }}>UWAT ▼ 87.30 -1.04%</span>
+                        <span style={{ color: '#22c55e' }}>ALGO ▲ 2048.00 +7.77%</span>
+                        <span style={{ color: '#eab308' }}>SYS.OK ● UPTIME 99.97%</span>
+                        <span style={{ color: '#22c55e' }}>NODE ▲ 18.3.0 STABLE</span>
+                        <span style={{ color: '#ef4444' }}>HEAP ▼ 412MB -2.1%</span>
+                        <span style={{ color: '#22c55e' }}>REQ/S ▲ 14.2K +12%</span>
+                        <span style={{ color: '#eab308' }}>LATENCY ● 23ms P99</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
                 {/* Header — name + role + location pinned to top */}
                 <div style={{
-                  padding: '20px 56px 10px', flexShrink: 0,
-                  display: 'flex', flexDirection: 'column', gap: 4,
+                  padding: isNarrow ? '16px 20px 10px' : '20px 56px 10px', flexShrink: 0,
+                  display: 'flex', flexDirection: isNarrow ? 'row' : 'column', gap: isNarrow ? 16 : 4,
                   borderBottom: '2px solid #000',
                   animation: 'fade-in 0.4s cubic-bezier(0.16,1,0.3,1) 0.12s both',
+                  alignItems: isNarrow ? 'center' : undefined,
                 }}>
+                  {/* Inline avatar on narrow screens */}
+                  {isNarrow && expandedMember.avatar && (
+                    <div style={{
+                      width: 130, height: 130, flexShrink: 0,
+                      border: '3px solid #000', boxShadow: '4px 4px 0px #000',
+                      overflow: 'hidden',
+                      animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.12s both',
+                    }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={expandedMember.avatar} alt={expandedMember.name}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </div>
+                  )}
+                  {isNarrow && !expandedMember.avatar && (
+                    <div style={{
+                      width: 130, height: 130, flexShrink: 0,
+                      border: '3px solid #000', boxShadow: '4px 4px 0px #000',
+                      background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontFamily: 'var(--font-arcade)', fontSize: 32, color: '#333',
+                      animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.12s both',
+                    }}>
+                      {expandedMember.name.split(' ').map(w => w[0]).join('')}
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: isNarrow ? 2 : 4, flex: 1, minWidth: 0 }}>
                   <div style={{ animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.15s both' }}>
                     <h2 style={{
-                      fontFamily: 'var(--font-arcade)', fontSize: 80,
+                      fontFamily: 'var(--font-arcade)', fontSize: isNarrow ? 48 : 80,
                       color: '#fff', letterSpacing: '0.01em', margin: 0,
-                      WebkitTextStroke: '2.5px #000',
+                      WebkitTextStroke: isNarrow ? '2px #000' : '2.5px #000',
                       paintOrder: 'stroke fill' as React.CSSProperties['paintOrder'],
-                      textShadow: '3px 3px 0 #000, 4px 4px 0 #000, 5px 5px 0 rgba(0,0,0,0.4), 6px 6px 0 rgba(0,0,0,0.2)',
+                      textShadow: isNarrow
+                        ? '2px 2px 0 #000, 3px 3px 0 rgba(0,0,0,0.4)'
+                        : '3px 3px 0 #000, 4px 4px 0 #000, 5px 5px 0 rgba(0,0,0,0.4), 6px 6px 0 rgba(0,0,0,0.2)',
                     }}>
                       {expandedMember.name}
                     </h2>
                   </div>
-                  <div style={{ animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.22s both', marginTop: -43 }}>
+                  <div style={{ animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.22s both', marginTop: isNarrow ? -24 : -43 }}>
                     <p style={{
-                      fontFamily: 'var(--font-arcade)', fontSize: 32, color: '#000',
+                      fontFamily: 'var(--font-arcade)', fontSize: isNarrow ? 22 : 32, color: '#000',
                       letterSpacing: '0.12em', margin: 0, textTransform: 'uppercase',
                     }}>
                       {expandedMember.role}
@@ -301,48 +376,62 @@ export default function CRTOverlay({ expandedMember, phase, closeExpanded, inkKe
                   <div style={{
                     display: 'flex', flexDirection: 'column', gap: 2,
                     animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.29s both',
-                    marginTop: -13,
+                    marginTop: isNarrow ? -8 : -13,
                   }}>
-                    <p style={{ fontFamily: 'var(--font-arcade)', fontSize: 16, color: '#777', letterSpacing: '0.08em', margin: 0 }}>
+                    <p style={{ fontFamily: 'var(--font-arcade)', fontSize: isNarrow ? 14 : 16, color: '#777', letterSpacing: '0.08em', margin: 0 }}>
                       {expandedMember.location}  //  {expandedMember.school}
                     </p>
-                    <p style={{ fontFamily: 'var(--font-arcade)', fontSize: 16, color: '#777', letterSpacing: '0.08em', margin: 0 }}>
+                    <p style={{ fontFamily: 'var(--font-arcade)', fontSize: isNarrow ? 14 : 16, color: '#777', letterSpacing: '0.08em', margin: 0 }}>
                       CLASS OF &apos;{expandedMember.year}
                     </p>
                   </div>
+                  </div>{/* close inner name/info column wrapper */}
                 </div>
 
                 {/* Scrollable middle content */}
                 <div
                   style={{
-                    flex: 1, overflowY: 'auto', padding: '28px 56px 32px',
+                    flex: 1, overflowY: 'auto', padding: isNarrow ? '20px 20px 24px' : '28px 56px 32px',
                     display: 'flex', flexDirection: 'column', gap: 28,
                   }}
                   onClick={e => e.stopPropagation()}
                 >
-                  {/* Blurb */}
-                  <p style={{
-                    fontFamily: 'monospace', fontSize: 18, color: '#000',
-                    lineHeight: 1.9, margin: 0, fontStyle: 'italic',
+                  {/* Blurb — terminal style */}
+                  <div style={{
+                    background: '#0a0a0a', border: '2px solid #333', padding: '16px 20px',
+                    boxShadow: '4px 4px 0px #000, inset 0 0 30px rgba(0,255,100,0.03)',
                     animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.36s both',
                   }}>
-                    &ldquo;{expandedMember.blurb}&rdquo;
-                  </p>
+                    <div style={{ fontFamily: 'monospace', fontSize: 10, color: '#555', marginBottom: 8, letterSpacing: '0.1em' }}>
+                      {'>'} cat ~/about.txt
+                    </div>
+                    <p style={{
+                      fontFamily: 'monospace', fontSize: blurbSize, color: '#22c55e',
+                      lineHeight: 1.8, margin: 0,
+                    }}>
+                      {expandedMember.blurb}
+                      <span style={{ display: 'inline-block', width: 8, height: '1.1em', background: '#22c55e', marginLeft: 4, animation: 'blink 1s steps(1) infinite', verticalAlign: 'text-bottom' }} />
+                    </p>
+                  </div>
 
-                  {/* Hobbies */}
+                  {/* About Me */}
                   {expandedMember.hobbies && expandedMember.hobbies.length > 0 && (
                     <div style={{ animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.43s both', marginTop: 0 }}>
-                      <p style={{ fontFamily: 'var(--font-arcade)', fontSize: 12, color: '#888', letterSpacing: '0.18em', margin: '0 0 12px', textTransform: 'uppercase' }}>
-                        HOBBIES
+                      <p style={{ fontFamily: 'var(--font-arcade)', fontSize: labelSize, color: '#888', letterSpacing: '0.18em', margin: '0 0 12px', textTransform: 'uppercase' }}>
+                        <span style={{ color: '#22c55e', marginRight: 8 }}>$</span>INTERESTS
                       </p>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {expandedMember.hobbies.map((h, i) => (
-                          <span key={i} style={{
-                            fontFamily: 'var(--font-arcade)', fontSize: 13, letterSpacing: '0.06em',
-                            padding: '8px 18px', background: '#fff', border: '2px solid #000', color: '#000',
+                          <div key={i} style={{
+                            display: 'flex', alignItems: 'center', gap: 10,
+                            background: '#fff', border: '3px solid #000', padding: `${hobbyPadV}px ${hobbyPadH}px`,
+                            boxShadow: '4px 4px 0px #000',
                           }}>
-                            {h}
-                          </span>
+                            <span style={{ color: '#000', fontFamily: 'var(--font-arcade)', fontSize: hobbySize }}>&gt;</span>
+                            <span style={{ fontFamily: 'var(--font-arcade)', fontSize: hobbySize, letterSpacing: '0.06em', color: '#000' }}>
+                              {h}
+                            </span>
+                          </div>
                         ))}
                       </div>
                     </div>
@@ -351,17 +440,18 @@ export default function CRTOverlay({ expandedMember, phase, closeExpanded, inkKe
                   {/* Experiences */}
                   {expandedMember.experiences && expandedMember.experiences.length > 0 && (
                     <div style={{ animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.5s both', marginTop: 0 }}>
-                      <p style={{ fontFamily: 'var(--font-arcade)', fontSize: 12, color: '#888', letterSpacing: '0.18em', margin: '0 0 12px', textTransform: 'uppercase' }}>
-                        EXPERIENCE
+                      <p style={{ fontFamily: 'var(--font-arcade)', fontSize: labelSize, color: '#888', letterSpacing: '0.18em', margin: '0 0 12px', textTransform: 'uppercase' }}>
+                        <span style={{ color: '#22c55e', marginRight: 8 }}>$</span>EXPERIENCE
                       </p>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {expandedMember.experiences.map((exp, i) => (
                           <div key={i} style={{
                             display: 'flex', alignItems: 'center', gap: 12,
-                            background: '#fff', border: '2px solid #000', padding: '10px 16px',
+                            background: '#fff', border: '3px solid #000', padding: `${expPadV}px ${expPadH}px`,
+                            boxShadow: '4px 4px 0px #000',
                           }}>
-                            <span style={{ color: '#000', fontFamily: 'var(--font-arcade)', fontSize: 14 }}>&gt;</span>
-                            <span style={{ fontFamily: 'var(--font-arcade)', fontSize: 14, color: '#000' }}>{exp}</span>
+                            <span style={{ color: '#000', fontFamily: 'var(--font-arcade)', fontSize: expSize }}>&gt;</span>
+                            <span style={{ fontFamily: 'var(--font-arcade)', fontSize: expSize, color: '#000' }}>{exp}</span>
                           </div>
                         ))}
                       </div>
@@ -369,9 +459,9 @@ export default function CRTOverlay({ expandedMember, phase, closeExpanded, inkKe
                   )}
                 </div>
 
-                {/* Socials + Visit — pinned to bottom */}
+                {/* Socials + Nav — pinned to bottom */}
                 <div style={{
-                  display: 'flex', alignItems: 'center', gap: 14, padding: '24px 56px', borderTop: '2px solid #000',
+                  display: 'flex', alignItems: 'center', gap: isNarrow ? 8 : 14, padding: isNarrow ? '16px 20px' : '24px 56px', borderTop: '2px solid #000',
                   flexShrink: 0,
                   animation: 'content-fade-up 0.6s cubic-bezier(0.16,1,0.3,1) 0.55s both',
                 }}>
@@ -379,7 +469,8 @@ export default function CRTOverlay({ expandedMember, phase, closeExpanded, inkKe
                     <a key={i} href={s.url} target="_blank" rel="noopener noreferrer"
                       style={{
                         color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        width: 40, height: 40, border: '2px solid #000', background: 'transparent',
+                        width: 44, height: 44, border: '3px solid #000', background: '#fff',
+                        boxShadow: '4px 4px 0px #000',
                         textDecoration: 'none', transition: 'all 0.15s ease',
                       }}
                       onMouseEnter={e => { e.currentTarget.style.background = '#000'; e.currentTarget.style.color = '#fff'; }}
@@ -389,20 +480,60 @@ export default function CRTOverlay({ expandedMember, phase, closeExpanded, inkKe
                       <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }} dangerouslySetInnerHTML={{ __html: (SOCIAL_ICONS[s.type] || '').replace(/width="12" height="12"/g, 'width="18" height="18"') }} />
                     </a>
                   ))}
-                  {expandedMember.url && expandedMember.url !== '#' && (
-                    <a href={expandedMember.url} target="_blank" rel="noopener noreferrer"
-                      style={{
-                        fontFamily: 'var(--font-arcade)', fontSize: 13, letterSpacing: '0.15em',
-                        color: '#000', border: '2px solid #000', padding: '10px 24px',
-                        background: 'transparent', textDecoration: 'none', transition: 'all 0.15s ease', marginLeft: 'auto',
-                      }}
-                      onMouseEnter={e => { e.currentTarget.style.background = '#000'; e.currentTarget.style.color = '#fff'; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#000'; }}
-                      onClick={e => e.stopPropagation()}
-                    >
-                      VISIT →
-                    </a>
-                  )}
+
+                  {/* Prev / Next arrows — wrap around */}
+                  <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+                    {(() => {
+                      const idx = members.findIndex(m => m.name === expandedMember.name);
+                      const prev = members[(idx - 1 + members.length) % members.length];
+                      const next = members[(idx + 1) % members.length];
+                      return (
+                        <>
+                          <button
+                            onClick={e => { e.stopPropagation(); onNavigate(prev); }}
+                            style={{
+                              fontFamily: 'var(--font-arcade)', fontSize: 28,
+                              color: '#000', border: '3px solid #000', padding: '6px 18px',
+                              background: '#fff', boxShadow: '4px 4px 0px #000',
+                              cursor: 'pointer', transition: 'all 0.15s ease',
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.background = '#000'; e.currentTarget.style.color = '#fff'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#000'; }}
+                          >
+                            &lt;
+                          </button>
+                          <button
+                            onClick={e => { e.stopPropagation(); onNavigate(next); }}
+                            style={{
+                              fontFamily: 'var(--font-arcade)', fontSize: 28,
+                              color: '#000', border: '3px solid #000', padding: '6px 18px',
+                              background: '#fff', boxShadow: '4px 4px 0px #000',
+                              cursor: 'pointer', transition: 'all 0.15s ease',
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.background = '#000'; e.currentTarget.style.color = '#fff'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#000'; }}
+                          >
+                            &gt;
+                          </button>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
+
+                {/* Terminal status bar */}
+                <div style={{
+                  background: '#0a0a0a', padding: '6px 20px', flexShrink: 0,
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  fontFamily: 'monospace', fontSize: 10, color: '#555', letterSpacing: '0.05em',
+                  borderTop: '1px solid #333',
+                }}>
+                  <span>CFM://members/{expandedMember.name.toLowerCase().replace(/\s+/g, '-')}</span>
+                  <span style={{ display: 'flex', gap: 16 }}>
+                    <span><span style={{ color: '#22c55e' }}>●</span> CONNECTED</span>
+                    <span>CLASS &apos;{expandedMember.year}</span>
+                    <span>{(() => { const idx = members.findIndex(m => m.name === expandedMember.name); return `${idx + 1}/${members.length}`; })()}</span>
+                  </span>
                 </div>
 
                 {/* CRT scanlines + vignette on right panel */}
@@ -529,13 +660,10 @@ export default function CRTOverlay({ expandedMember, phase, closeExpanded, inkKe
         onMouseDown={startDrag}
         style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'grab', userSelect: 'none' }}
       >
-        <strong>Image + Mask Controls</strong>
+        <strong>Text Controls</strong>
         <div style={{ display: 'flex', gap: 4 }}>
-          <button onClick={() => setShowDebug(d => !d)} style={{ background: showDebug ? '#0a0' : '#333', color: '#fff', border: 'none', padding: '3px 8px', cursor: 'pointer', fontSize: 10, borderRadius: 4 }}>
-            {showDebug ? 'Debug ON' : 'Debug OFF'}
-          </button>
           <button onClick={() => {
-            const out = JSON.stringify({ imgX, imgY, imgScale, maskTop, maskBottom, maskLeft, maskRight, noiseScale, noiseFreq }, null, 2);
+            const out = JSON.stringify({ blurbSize, hobbySize, hobbyPadV, hobbyPadH, expSize, expPadV, expPadH, labelSize }, null, 2);
             navigator.clipboard.writeText(out); alert(out);
           }} style={{ background: '#333', color: '#fff', border: 'none', padding: '3px 8px', cursor: 'pointer', fontSize: 10, borderRadius: 4 }}>Copy</button>
           {onReplay && (
@@ -544,15 +672,14 @@ export default function CRTOverlay({ expandedMember, phase, closeExpanded, inkKe
         </div>
       </div>
       {([
-        ['Img X', imgX, setImgX, -50, 50],
-        ['Img Y', imgY, setImgY, -50, 50],
-        ['Img Scale', imgScale, setImgScale, 50, 200],
-        ['Mask Top', maskTop, setMaskTop, -20, 50],
-        ['Mask Bottom', maskBottom, setMaskBottom, -20, 50],
-        ['Mask Left', maskLeft, setMaskLeft, -20, 50],
-        ['Mask Right', maskRight, setMaskRight, -20, 50],
-        ['Noise Scale', noiseScale, setNoiseScale, 0, 200],
-        ['Noise Freq', noiseFreq, setNoiseFreq, 1, 100],
+        ['Blurb Size', blurbSize, setBlurbSize, 10, 32],
+        ['Label Size', labelSize, setLabelSize, 8, 48],
+        ['Hobby Size', hobbySize, setHobbySize, 8, 24],
+        ['Hobby Pad V', hobbyPadV, setHobbyPadV, 2, 20],
+        ['Hobby Pad H', hobbyPadH, setHobbyPadH, 4, 36],
+        ['Exp Size', expSize, setExpSize, 8, 24],
+        ['Exp Pad V', expPadV, setExpPadV, 2, 20],
+        ['Exp Pad H', expPadH, setExpPadH, 4, 36],
       ] as [string, number, React.Dispatch<React.SetStateAction<number>>, number, number][]).map(([label, val, setter, min, max]) => (
         <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <label style={{ width: 80, flexShrink: 0 }}>{label}</label>

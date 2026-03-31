@@ -286,8 +286,17 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
       {/* CRT TV overlay — portaled to body */}
       <CRTOverlay
         expandedMember={expandedMember}
+        members={members}
         phase={phase}
         closeExpanded={closeExpanded}
+        onNavigate={(member) => {
+          if (phase !== 'done') return;
+          setExpandedMember(member);
+          setInkKey(k => k + 1);
+          const url = new URL(window.location.href);
+          url.searchParams.set('member', toSlug(member.name));
+          window.history.replaceState({}, '', url.toString());
+        }}
         inkKey={inkKey}
         onReplay={() => {
           if (phase !== 'done' || !expandedMember) return;

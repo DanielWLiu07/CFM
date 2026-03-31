@@ -25,6 +25,8 @@ export interface SearchPanelProps {
   allCohorts: string[];
   webringEntries: WebringEntry[];
   listMaxHeight: number;
+  simValues?: Record<number, number>;
+  simTick?: number;
 }
 
 export default function SearchPanel({
@@ -50,6 +52,8 @@ export default function SearchPanel({
   allCohorts,
   webringEntries,
   listMaxHeight,
+  simValues,
+  simTick,
 }: SearchPanelProps) {
   return (
     <div
@@ -125,7 +129,7 @@ export default function SearchPanel({
           <div style={{ border: '1px solid #333', background: '#111', display: 'flex', alignItems: 'center', padding: '0 12px', flexShrink: 0 }}>
             <span style={{ color: '#888', fontFamily: 'var(--font-mono)', fontSize: 13, marginRight: 8 }}>{'>'}</span>
             <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="search..." spellCheck={false}
-              style={{ background: 'transparent', border: 'none', outline: 'none', color: '#e0e0e0', fontFamily: 'var(--font-mono)', fontSize: 13, padding: '8px 0', width: '100%', caretColor: '#fff' }}
+              style={{ background: 'transparent', border: 'none', outline: 'none', color: '#e0e0e0', fontFamily: 'var(--font-mono)', fontSize: 13, padding: '8px 0', flex: 1, minWidth: 0, caretColor: '#fff' }}
             />
             {search && <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 14, padding: '0 4px' }}>x</button>}
           </div>
@@ -160,7 +164,19 @@ export default function SearchPanel({
                 >
                   <div className="flex items-center justify-between">
                     <span style={{ fontFamily: 'var(--font-arcade)', fontSize: 11, letterSpacing: '0.06em', color: '#fff' }}>{entry.name}</span>
-                    <span style={{ fontFamily: 'var(--font-arcade)', fontSize: 9, color: '#444', letterSpacing: '0.08em' }}>{entry.cohort}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {simValues && simValues[i] !== undefined && (() => {
+                        const val = simValues[i];
+                        const prev = (simValues[i] ?? 100);
+                        const isUp = val >= 100;
+                        return (
+                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: isUp ? '#00e676' : '#ff5252', letterSpacing: '0.04em' }}>
+                            ${val.toFixed(0)}
+                          </span>
+                        );
+                      })()}
+                      <span style={{ fontFamily: 'var(--font-arcade)', fontSize: 9, color: '#444', letterSpacing: '0.08em' }}>{entry.cohort}</span>
+                    </div>
                   </div>
                   <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#666', margin: 0, marginTop: 2 }}>{entry.description}</p>
                 </div>

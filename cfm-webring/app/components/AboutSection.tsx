@@ -112,8 +112,10 @@ export default function AboutSection({ onVisibilityChange, audioRef, reducedMoti
   reducedMotionRef.current = reducedMotion;
   const titleRef = useRef<HTMLImageElement>(null);
 
-  // Kill gsap animations and reset title when reduced motion turns on
+  // Kill gsap beat animations and reset title when OTT is toggled off (not on mount)
+  const hasMounted = useRef(false);
   useEffect(() => {
+    if (!hasMounted.current) { hasMounted.current = true; return; }
     if (reducedMotion && titleRef.current) {
       gsap.killTweensOf(titleRef.current);
       gsap.set(titleRef.current, { y: 0, scaleX: 1, scaleY: 1 });
@@ -287,7 +289,7 @@ export default function AboutSection({ onVisibilityChange, audioRef, reducedMoti
           width: 'auto',
           maxWidth: 'none',
           transform: 'translate(-50%, -50%)',
-          animation: reducedMotion ? 'none' : 'about-bg-spin 120s linear infinite',
+          animation: 'about-bg-spin 120s linear infinite',
           zIndex: 1,
         }}
       />
