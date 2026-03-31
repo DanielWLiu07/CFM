@@ -20,6 +20,19 @@ app.use("/api/navigate", navigateRouter);
 app.use("/api/widget", widgetRouter);
 app.use("/api/webring", webringRouter);
 
+// Global error handler — prevents unhandled errors from crashing the server
+app.use(
+  (
+    err: Error,
+    _req: express.Request,
+    res: express.Response,
+    _next: express.NextFunction,
+  ) => {
+    console.error("Unhandled error:", err.message);
+    res.status(500).json({ error: "Internal server error" });
+  },
+);
+
 app.listen(port, () => {
   console.log(`CFM Webring backend listening on port ${port}`);
 });

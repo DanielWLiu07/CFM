@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useEffect, type RefObject } from 'react';
+import { useRef, useState, useEffect, useCallback, type RefObject } from 'react';
 
 export interface DecoConfig {
   x: number;   // % from left
@@ -11,7 +11,7 @@ export interface DecoConfig {
 }
 
 interface DecoItem {
-  ref: RefObject<HTMLImageElement | null>;
+  ref: RefObject<HTMLElement | null>;
   label: string;
   defaults: DecoConfig;
 }
@@ -21,6 +21,23 @@ export default function DecoTuner({ items }: { items: DecoItem[] }) {
   const [values, setValues] = useState<DecoConfig[]>(() =>
     items.map(i => ({ ...i.defaults }))
   );
+  const [pos, setPos] = useState({ x: window.innerWidth - 480, y: 10 });
+  const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
+
+  const handleDragStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    dragRef.current = { startX: e.clientX, startY: e.clientY, origX: pos.x, origY: pos.y };
+    const onMove = (ev: MouseEvent) => {
+      if (!dragRef.current) return;
+      setPos({
+        x: dragRef.current.origX + ev.clientX - dragRef.current.startX,
+        y: dragRef.current.origY + ev.clientY - dragRef.current.startY,
+      });
+    };
+    const onUp = () => { dragRef.current = null; window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, [pos]);
 
   useEffect(() => {
     values.forEach((v, i) => {
@@ -42,7 +59,7 @@ export default function DecoTuner({ items }: { items: DecoItem[] }) {
       <button
         onClick={() => setOpen(true)}
         style={{
-          position: 'fixed', top: 10, right: 160, zIndex: 9999,
+          position: 'fixed', top: pos.y, left: pos.x, zIndex: 9999,
           background: '#222', color: '#fff', border: '1px solid #555',
           padding: '4px 10px', fontSize: 11, fontFamily: 'monospace', cursor: 'pointer',
         }}
@@ -52,12 +69,15 @@ export default function DecoTuner({ items }: { items: DecoItem[] }) {
 
   return (
     <div style={{
-      position: 'fixed', top: 10, right: 160, zIndex: 9999,
+      position: 'fixed', top: pos.y, left: pos.x, zIndex: 9999,
       background: '#111', border: '1px solid #555', padding: 12,
       fontFamily: 'monospace', fontSize: 11, color: '#fff', maxHeight: '80vh', overflowY: 'auto',
       width: 320,
     }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+      <div
+        onMouseDown={handleDragStart}
+        style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, cursor: 'grab', userSelect: 'none' }}
+      >
         <strong>DECO TUNER</strong>
         <button onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}>X</button>
       </div>

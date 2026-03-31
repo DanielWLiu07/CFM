@@ -1,24 +1,27 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
-import Navbar from './components/Navbar';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import Navbar, { type NavbarHandle } from './components/Navbar';
 import PixelTrail from './components/PixelTrail';
 import ReadyOverlay from './components/ReadyOverlay';
 import AboutSection from './components/AboutSection';
 import MuteButton from './components/MuteButton';
 import ClassSection from './components/ClassSection';
 import WebringSection from './components/WebringSection';
-import GearTuner from './components/GearTuner';
 import GithubSection from './components/GithubSection';
-import DecoTuner from './components/DecoTuner';
-import RingTuner from './components/RingTuner';
-import SizeTuner from './components/SizeTuner';
+import ScrollReveal from './components/ScrollReveal';
+import { useAssetPreloader } from './hooks/useAssetPreloader';
+import { BEAT_INTERVAL, BEAT_OFFSET } from './lib/beats';
+
+const isDev = false; // change to process.env.NODE_ENV === 'development' to re-enable tuners
+const GearTuner = isDev ? require('./components/GearTuner').default : () => null;
+const DecoTuner = isDev ? require('./components/DecoTuner').default : () => null;
+const RingTuner = isDev ? require('./components/RingTuner').default : () => null;
+const SizeTuner = isDev ? require('./components/SizeTuner').default : () => null;
 
 const MAX_CRUSH   = 180;
 const STIFFNESS   = 0.35;  // spring pull toward target
 const DAMPING     = 0.72;  // < 1 = underdamped → overshoot/bounce
-const BEAT_INTERVAL = 60 / 93; // ~0.645s — derived from 25 recorded cycles
-const BEAT_OFFSET   = 0.229;     // seconds before first beat
 
 export default function Home() {
   const [started, setStarted] = useState(false);
@@ -26,51 +29,46 @@ export default function Home() {
   const [volume, setVolume] = useState(1);
   const [reducedMotion, setReducedMotion] = useState(false);
   const reducedMotionRef = useRef(false);
-  const [activeRoute, setActiveRoute] = useState('/');
-  const [githubPos, setGithubPos] = useState({ mt: 0, bgH: 0, pt: 20, pb: 10 });
-  const [githubTunerOpen, setGithubTunerOpen] = useState(false);
+  const navbarRef = useRef<NavbarHandle>(null);
+  const githubPos = { mt: 0, bgH: 0, pt: 5, pb: 2 };
   const visibleSections = useRef(new Set<string>());
+  const routeRafRef = useRef<number>(0);
+  const lastRouteRef = useRef('/');
 
   const updateActiveRoute = useCallback(() => {
-    // Priority: bottommost visible section wins
-    const priority = ['/github', '/webring', '/class', '/about'];
-    for (const route of priority) {
-      if (visibleSections.current.has(route)) {
-        setActiveRoute(route);
-        window.history.replaceState(null, '', route);
-        return;
+    if (routeRafRef.current) cancelAnimationFrame(routeRafRef.current);
+    routeRafRef.current = requestAnimationFrame(() => {
+      const priority = ['/github', '/webring', '/class', '/about'];
+      let next = '';
+      for (const route of priority) {
+        if (visibleSections.current.has(route)) { next = route; break; }
       }
-    }
-    setActiveRoute('/');
-    window.history.replaceState(null, '', '/');
+      if (!next) {
+        if (window.scrollY < window.innerHeight * 0.5) next = '/';
+        else return;
+      }
+      if (next !== lastRouteRef.current) {
+        lastRouteRef.current = next;
+        navbarRef.current?.setActiveRoute(next);
+        window.history.replaceState(null, '', next);
+      }
+    });
   }, []);
 
-  const handleAboutVisibility = useCallback((visible: boolean) => {
-    if (visible) visibleSections.current.add('/about');
-    else visibleSections.current.delete('/about');
+  const makeVisibilityHandler = useCallback((route: string) => (visible: boolean) => {
+    if (visible) visibleSections.current.add(route);
+    else visibleSections.current.delete(route);
     updateActiveRoute();
   }, [updateActiveRoute]);
 
-  const handleClassVisibility = useCallback((visible: boolean) => {
-    if (visible) visibleSections.current.add('/class');
-    else visibleSections.current.delete('/class');
-    updateActiveRoute();
-  }, [updateActiveRoute]);
-
-  const handleWebringVisibility = useCallback((visible: boolean) => {
-    if (visible) visibleSections.current.add('/webring');
-    else visibleSections.current.delete('/webring');
-    updateActiveRoute();
-  }, [updateActiveRoute]);
-
-  const handleGithubVisibility = useCallback((visible: boolean) => {
-    if (visible) visibleSections.current.add('/github');
-    else visibleSections.current.delete('/github');
-    updateActiveRoute();
-  }, [updateActiveRoute]);
+  const handleAboutVisibility = useMemo(() => makeVisibilityHandler('/about'), [makeVisibilityHandler]);
+  const handleClassVisibility = useMemo(() => makeVisibilityHandler('/class'), [makeVisibilityHandler]);
+  const handleWebringVisibility = useMemo(() => makeVisibilityHandler('/webring'), [makeVisibilityHandler]);
+  const handleGithubVisibility = useMemo(() => makeVisibilityHandler('/github'), [makeVisibilityHandler]);
 
   const audioRef       = useRef<HTMLAudioElement>(null);
   const videoRef       = useRef<HTMLVideoElement>(null);
+  const { progress: loadProgress, ready: assetsReady } = useAssetPreloader(audioRef, videoRef);
   const animFrameRef   = useRef<number>(0);
   const crushRef       = useRef<number>(0);
   const crushVelRef    = useRef<number>(0);
@@ -99,8 +97,11 @@ export default function Home() {
   const spongeRef       = useRef<HTMLImageElement>(null);
   const wallRef         = useRef<HTMLImageElement>(null);
   const webringBeatRef  = useRef<number>(0);
+  const classBeatRef    = useRef<number>(0);
   const webringWrapRef  = useRef<HTMLDivElement>(null);
   const webringSectionRef = useRef<HTMLElement>(null);
+  // Cached deco base values — avoids parseFloat from dataset every frame
+  const decoBasesRef = useRef<{ opacity: number; rotation: number }[]>([]);
 
   // ── rAF loop ───────────────────────────────────────────────────────────────
   // Beats are driven from audio.currentTime — perfectly locked to the music.
@@ -111,6 +112,10 @@ export default function Home() {
     let lastFiredIdx  = -1;
     const introStart  = performance.now();
     const INTRO_DUR   = 800; // ms for wires to slide in
+
+    // Track previous written values to skip redundant DOM writes
+    let prevScale = -1, prevAngle = -1, prevAngle2 = -1, prevAngle3 = -1;
+    let prevWb = -1, prevSepCrush = -1, prevCrush = -1, prevIntroOffset = -1;
 
     const loop = () => {
       const t = audioRef.current?.currentTime ?? 0;
@@ -130,6 +135,7 @@ export default function Home() {
           sepTargetRef.current = beatIdx % 2 === 0 ? 0 : 1;
           if (beatIdx % 2 === 1) shakeRef.current = 0.04;
           webringBeatRef.current = 1;
+          classBeatRef.current = 1;
           if (beatIdx % 2 === 1) {
             gearAngleRef.current = 15;
             gear2AngleRef.current = 15;
@@ -152,65 +158,85 @@ export default function Home() {
       } else {
         shakeRef.current = 0;
       }
-      const scale = 1 + shakeRef.current;
-      if (videoWrapRef.current)
-        videoWrapRef.current.style.transform = `scale(${scale})`;
+      const scale = Math.round((1 + shakeRef.current) * 1000) / 1000;
+      if (scale !== prevScale) {
+        prevScale = scale;
+        if (videoWrapRef.current) videoWrapRef.current.style.transform = `scale(${scale})`;
+      }
 
-      // Gear rotation — smooth transition applied via CSS, rAF just sets the angle
+      // Gear rotation — only write when angle changes
       const angle = gearAngleRef.current;
-      if (leftGearRef.current)
-        leftGearRef.current.style.transform = `rotate(${angle}deg)`;
-      if (rightGearRef.current)
-        rightGearRef.current.style.transform = `rotate(${-angle}deg)`;
-      // Gear 2
+      if (angle !== prevAngle) {
+        prevAngle = angle;
+        if (leftGearRef.current) leftGearRef.current.style.transform = `rotate(${angle}deg)`;
+        if (rightGearRef.current) rightGearRef.current.style.transform = `rotate(${-angle}deg)`;
+      }
       const angle2 = gear2AngleRef.current;
-      if (leftGear2Ref.current)
-        leftGear2Ref.current.style.transform = `rotate(${angle2}deg)`;
-      if (rightGear2Ref.current)
-        rightGear2Ref.current.style.transform = `rotate(${-angle2}deg)`;
-      // Gear 3
+      if (angle2 !== prevAngle2) {
+        prevAngle2 = angle2;
+        if (leftGear2Ref.current) leftGear2Ref.current.style.transform = `rotate(${angle2}deg)`;
+        if (rightGear2Ref.current) rightGear2Ref.current.style.transform = `rotate(${-angle2}deg)`;
+      }
       const angle3 = gear3AngleRef.current;
-      if (leftGear3Ref.current)
-        leftGear3Ref.current.style.transform = `rotate(${angle3}deg)`;
-      if (rightGear3Ref.current)
-        rightGear3Ref.current.style.transform = `rotate(${-angle3}deg)`;
+      if (angle3 !== prevAngle3) {
+        prevAngle3 = angle3;
+        if (leftGear3Ref.current) leftGear3Ref.current.style.transform = `rotate(${angle3}deg)`;
+        if (rightGear3Ref.current) rightGear3Ref.current.style.transform = `rotate(${-angle3}deg)`;
+      }
 
       // Webring title — beat-driven scale + glow
       webringBeatRef.current *= 0.92;
-      const wb = webringBeatRef.current;
-      if (webringTitleRef.current) {
-        const s = 1 + wb * 0.02;
-        const y = -wb * 2;
-        webringTitleRef.current.style.transform = `translateX(-50%) translateY(${y}px) scale(${s})`;
-      }
-
-      // Decos — gentle beat sway + opacity pulse
-      for (const ref of [starLeftRef, starRightRef, spongeRef, wallRef]) {
-        if (!ref.current) continue;
-        const baseOp = parseFloat(ref.current.dataset.baseOpacity ?? '0.2');
-        const rot = parseFloat(ref.current.dataset.baseRotation ?? '0');
-        ref.current.style.opacity = `${baseOp + wb * 0.08}`;
-        ref.current.style.transform = `rotate(${rot}deg) translateY(${-wb * 1.5}px) scale(${1 + wb * 0.02})`;
-        ref.current.style.filter = '';
+      const wb = Math.round(webringBeatRef.current * 100) / 100;
+      if (wb !== prevWb) {
+        prevWb = wb;
+        if (webringTitleRef.current) {
+          const s = 1 + wb * 0.02;
+          const y = -wb * 2;
+          webringTitleRef.current.style.transform = `translateX(-50%) translateY(${y}px) scale(${s})`;
+        }
+        // Decos — only update when beat value changes
+        const decoRefs = [starLeftRef, starRightRef, spongeRef, wallRef];
+        if (decoBasesRef.current.length === 0) {
+          decoBasesRef.current = decoRefs.map(ref => ({
+            opacity: parseFloat(ref.current?.dataset.baseOpacity ?? '0.2'),
+            rotation: parseFloat(ref.current?.dataset.baseRotation ?? '0'),
+          }));
+        }
+        for (let di = 0; di < decoRefs.length; di++) {
+          const el = decoRefs[di].current;
+          if (!el) continue;
+          const base = decoBasesRef.current[di];
+          el.style.opacity = `${base.opacity + wb * 0.08}`;
+          el.style.transform = `rotate(${base.rotation}deg) translateY(${-wb * 1.5}px) scale(${1 + wb * 0.02})`;
+        }
       }
 
       // Separate wires — spring-driven scaleY pulse on beat
       sepCrushVelRef.current += (sepTargetRef.current - sepCrushRef.current) * STIFFNESS;
       sepCrushVelRef.current *= DAMPING;
       sepCrushRef.current += sepCrushVelRef.current;
-      if (sepWiresRef.current)
-        sepWiresRef.current.style.transform = `translateY(-45%) scaleY(${1 + sepCrushRef.current * 0.3})`;
+      const sepCrushRounded = Math.round(sepCrushRef.current * 100) / 100;
+      if (sepCrushRounded !== prevSepCrush) {
+        prevSepCrush = sepCrushRounded;
+        if (sepWiresRef.current)
+          sepWiresRef.current.style.transform = `translateY(-45%) scaleY(${1 + sepCrushRef.current * 0.3})`;
+      }
 
       // Intro slide-in: easeOut from 800 → 0
       const elapsed = performance.now() - introStart;
       const progress = Math.min(1, elapsed / INTRO_DUR);
       const eased = 1 - Math.pow(1 - progress, 3); // cubic ease-out
-      introOffsetRef.current = 800 * (1 - eased);
+      introOffsetRef.current = Math.round(800 * (1 - eased));
 
-      if (leftWireRef.current)
-        leftWireRef.current.style.transform = `translateX(${crushRef.current - introOffsetRef.current}px)`;
-      if (rightWireRef.current)
-        rightWireRef.current.style.transform = `translateX(${-crushRef.current + introOffsetRef.current}px)`;
+      const crushRounded = Math.round(crushRef.current);
+      if (crushRounded !== prevCrush || introOffsetRef.current !== prevIntroOffset) {
+        prevCrush = crushRounded;
+        prevIntroOffset = introOffsetRef.current;
+        if (leftWireRef.current)
+          leftWireRef.current.style.transform = `translateX(${crushRef.current - introOffsetRef.current}px)`;
+        if (rightWireRef.current)
+          rightWireRef.current.style.transform = `translateX(${-crushRef.current + introOffsetRef.current}px)`;
+      }
 
       animFrameRef.current = requestAnimationFrame(loop);
     };
@@ -219,15 +245,15 @@ export default function Home() {
 
   // ── "ready?" click — start everything immediately ─────────────────────────
   const handleStart = async () => {
+    const video = videoRef.current;
+    const audio = audioRef.current;
+    if (!video || !audio) return;
+
     setStarted(true);
-    videoRef.current!.currentTime = 0;
-    audioRef.current!.currentTime = 0;
-    audioRef.current!.muted = muted;
-    // Ensure both are actually playing before starting the beat loop
-    await Promise.all([
-      videoRef.current!.play(),
-      audioRef.current!.play(),
-    ]);
+    video.currentTime = 0;
+    audio.currentTime = 0;
+    audio.muted = muted;
+    await Promise.all([video.play(), audio.play()]);
     startLoop();
   };
 
@@ -289,8 +315,7 @@ export default function Home() {
   useEffect(() => {
     window.scrollTo(0, 0);
     window.history.replaceState(null, '', '/');
-    setActiveRoute('/');
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    navbarRef.current?.setActiveRoute('/');
   }, []);
 
   useEffect(() => {
@@ -308,22 +333,23 @@ export default function Home() {
 
   return (
     <div className={`bg-black${reducedMotion ? ' reduced-motion' : ''}`} style={{ overflowX: 'clip' }}>
+      <ScrollReveal />
 
       <div className="fixed top-4 left-3 z-[100]">
-        <Navbar activeRoute={activeRoute} />
+        <Navbar ref={navbarRef} />
       </div>
 
-      <audio ref={audioRef} src="/music/thick_of_it_thomas_remix.mp3" loop />
+      <audio ref={audioRef} src="/music/thick_of_it_thomas_remix.mp3" loop preload="auto" />
 
-      {!started && <ReadyOverlay onStart={handleStart} muted={muted} onToggleMute={toggleMute} volume={volume} onVolumeChange={handleVolumeChange} />}
+      {!started && <ReadyOverlay onStart={handleStart} muted={muted} onToggleMute={toggleMute} volume={volume} onVolumeChange={handleVolumeChange} assetsReady={assetsReady} loadProgress={loadProgress} />}
 
       <div ref={videoWrapRef} className="relative h-screen" style={{ willChange: 'transform', zIndex: 2 }}>
 
-        <img ref={leftWireRef} src="/images/side_wires.png"
+        <img ref={leftWireRef} src="/images/side_wires.webp"
           className="absolute top-0 h-full w-auto z-20 pointer-events-none"
           style={{ right: 'calc(50% + 100vh * 1512 / 1964)', willChange: 'transform', transform: 'translateX(-800px)' }}
         />
-        <img ref={rightWireRef} src="/images/side_wires.png"
+        <img ref={rightWireRef} src="/images/side_wires.webp"
           className="absolute top-0 h-full w-auto z-20 pointer-events-none"
           style={{ left: 'calc(50% + 100vh * 1512 / 1964)', willChange: 'transform', transform: 'translateX(800px)' }}
         />
@@ -334,7 +360,7 @@ export default function Home() {
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 h-full" style={{ aspectRatio: '3024 / 1964' }}>
             <video ref={videoRef} src="/videos/landing_page.mp4"
-              loop muted playsInline className="h-full w-full"
+              loop muted playsInline preload="auto" className="h-full w-full"
             />
             <div className="absolute inset-y-0 left-0 w-24 pointer-events-none" style={{ background: 'linear-gradient(to right, black, transparent)' }} />
             <div className="absolute inset-y-0 right-0 w-24 pointer-events-none" style={{ background: 'linear-gradient(to left, black, transparent)' }} />
@@ -360,8 +386,8 @@ export default function Home() {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           ref={sepWiresRef}
-          src="/images/sepereate_wires.png"
-          alt=""
+          src="/images/sepereate_wires.webp"
+          alt="" decoding="async"
           className="absolute left-0 w-full pointer-events-none select-none"
           style={{
             top: '50%',
@@ -377,8 +403,8 @@ export default function Home() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             ref={leftGearRef}
-            src="/images/left_gear.png"
-            alt=""
+            src="/images/left_gear.webp"
+            alt="" decoding="async"
             className="absolute pointer-events-none select-none"
             style={{
               bottom: '-1200%',
@@ -395,8 +421,8 @@ export default function Home() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             ref={rightGearRef}
-            src="/images/right_gear.png"
-            alt=""
+            src="/images/right_gear.webp"
+            alt="" decoding="async"
             className="absolute pointer-events-none select-none"
             style={{
               bottom: '-1200%',
@@ -414,8 +440,8 @@ export default function Home() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             ref={leftGear2Ref}
-            src="/images/left_gear.png"
-            alt=""
+            src="/images/left_gear.webp"
+            alt="" decoding="async"
             className="absolute pointer-events-none select-none"
             style={{
               bottom: '-1650%',
@@ -432,8 +458,8 @@ export default function Home() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             ref={rightGear2Ref}
-            src="/images/right_gear.png"
-            alt=""
+            src="/images/right_gear.webp"
+            alt="" decoding="async"
             className="absolute pointer-events-none select-none"
             style={{
               bottom: '-1650%',
@@ -451,8 +477,8 @@ export default function Home() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             ref={leftGear3Ref}
-            src="/images/left_gear.png"
-            alt=""
+            src="/images/left_gear.webp"
+            alt="" decoding="async"
             className="absolute pointer-events-none select-none"
             style={{
               bottom: '-2500%',
@@ -469,8 +495,8 @@ export default function Home() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             ref={rightGear3Ref}
-            src="/images/right_gear.png"
-            alt=""
+            src="/images/right_gear.webp"
+            alt="" decoding="async"
             className="absolute pointer-events-none select-none"
             style={{
               bottom: '-2500%',
@@ -495,8 +521,8 @@ export default function Home() {
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/images/cat_watching.png"
-              alt=""
+              src="/images/cat_watching.webp"
+              alt="" decoding="async"
               style={{
                 height: '100%', width: 'auto', maxWidth: 'none',
                 WebkitMaskImage: 'linear-gradient(to bottom, black 65%, rgba(0,0,0,0) 85%)',
@@ -507,20 +533,17 @@ export default function Home() {
         </div>
       </div>
 
-      <div id="about" style={{ position: 'relative', zIndex: 50 }}>
+      <div id="about" className="scroll-reveal reveal-scale-up" style={{ position: 'relative', zIndex: 50 }}>
         <AboutSection onVisibilityChange={handleAboutVisibility} audioRef={audioRef} reducedMotion={reducedMotion} />
       </div>
 
-      <div id="class" className="relative" style={{ zIndex: 1 }}>
-        {/* Black background — very back */}
-        <div className="absolute inset-0 bg-black" style={{ position: 'absolute', zIndex: 0 }} />
-        {/* Content */}
-        <div style={{ position: 'relative', zIndex: 5 }}>
-          <ClassSection onVisibilityChange={handleClassVisibility} />
+      <div style={{ position: 'relative' }}>
+        <div id="class" className="scroll-reveal reveal-glitch" style={{ position: 'relative', zIndex: 65 }}>
+          <ClassSection onVisibilityChange={handleClassVisibility} beatRef={classBeatRef} />
         </div>
       </div>
 
-      <div id="webring" ref={webringWrapRef} style={{ position: 'relative', zIndex: 70, height: '156vh' }}>
+      <div id="webring" ref={webringWrapRef} className="scroll-reveal reveal-blur-in" style={{ position: 'relative', zIndex: 70, height: '156vh' }}>
         {/* Sticky container — confines everything to the viewport-sized area */}
         {/* Sticky container — only 3JS scene + search portal */}
         <div style={{ position: 'sticky', top: 0, height: '100vh', overflow: 'hidden', zIndex: 1 }}>
@@ -532,40 +555,45 @@ export default function Home() {
         {/* Rings */}
         <RingTuner
           beatRef={webringBeatRef}
+          initialCenter={68}
           initialRings={[
-            { top: -17, left: 50, size: 120, rotation: 0, opacity: 0.35, borderW: 3, full: true },
-            { top: 5, left: 50, size: 90, rotation: 0, opacity: 0.3, borderW: 2.5, full: true },
+            { top: 0, left: 50, size: 113, rotation: 0, opacity: 0.35, borderW: 3, full: true },
+            { top: 0, left: 50, size: 90, rotation: 0, opacity: 0.3, borderW: 2.5, full: true },
           ]}
         />
 
-        {/* Stars */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          ref={starLeftRef}
-          src="/images/star_left.png"
-          alt=""
-          className="absolute pointer-events-none select-none"
-          style={{ top: '2%', left: '3%', width: 'auto', height: 'auto', maxWidth: 'none', zIndex: 3, opacity: 0.2, transform: 'rotate(-136deg)' }}
-        />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          ref={starRightRef}
-          src="/images/star_right.png"
-          alt=""
-          className="absolute pointer-events-none select-none"
-          style={{ top: '2%', left: '75%', width: 'auto', height: 'auto', maxWidth: 'none', zIndex: 3, opacity: 0.2 }}
-        />
+        {/* Stars — fixed-width centered container so they crop from edges on narrow screens */}
+        <div className="absolute pointer-events-none" style={{ top: 0, left: '50vw', transform: 'translateX(-50%)', width: '1400px', height: '100%', zIndex: 3 }}>
+{/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            ref={starLeftRef}
+            src="/images/star_left.webp"
+            alt="" decoding="async"
+            className="absolute pointer-events-none select-none"
+            data-base-opacity="0.2" data-base-rotation="-136"
+            style={{ top: '2%', left: '42px', width: 'auto', height: '340px', maxWidth: 'none', opacity: 0.2, transform: 'rotate(-136deg)' }}
+          />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            ref={starRightRef}
+            src="/images/star_right.webp"
+            alt="" decoding="async"
+            className="absolute pointer-events-none select-none"
+            data-base-opacity="0.2" data-base-rotation="0"
+            style={{ top: '2%', right: '42px', width: 'auto', height: '340px', maxWidth: 'none', opacity: 0.2, transform: 'rotate(0deg)' }}
+          />
+        </div>
 
         {/* Webring title */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           ref={webringTitleRef}
-          src="/images/webring_text.png"
-          alt="WEBRING"
+          src="/images/webring_text.webp"
+          alt="WEBRING" decoding="async"
           className="absolute pointer-events-none"
           style={{
             top: '4%', left: '50%', transform: 'translateX(-50%)',
-            width: 'clamp(350px, 55vw, 700px)', height: 'auto', zIndex: 4,
+            width: 'min(700px, 90vw)', height: 'auto', zIndex: 4,
             filter: 'drop-shadow(0 0 30px rgba(255,255,255,0.3)) drop-shadow(0 0 60px rgba(255,255,255,0.15)) brightness(1.1)',
           }}
         />
@@ -573,17 +601,19 @@ export default function Home() {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           ref={spongeRef}
-          src="/images/sponge.png"
-          alt=""
+          src="/images/sponge.webp"
+          alt="" decoding="async"
           className="absolute pointer-events-none select-none"
+          data-base-opacity="0.1" data-base-rotation="0"
           style={{ left: '52%', top: '78%', height: '678px', width: 'auto', maxWidth: 'none', zIndex: 2, opacity: 0.1, transform: 'rotate(0deg)' }}
         />
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           ref={wallRef}
-          src="/images/wall.png"
-          alt=""
+          src="/images/wall.webp"
+          alt="" decoding="async"
           className="absolute pointer-events-none select-none"
+          data-base-opacity="0.2" data-base-rotation="-10"
           style={{ left: '-20%', top: '84%', height: '604px', width: 'auto', maxWidth: 'none', zIndex: 2, opacity: 0.2, transform: 'rotate(-10deg)' }}
         />
 
@@ -593,58 +623,16 @@ export default function Home() {
 
       {/* Github content — below webring (z:65 < webring z:70) */}
       {/* GitHub — content above webring decos, bg below */}
-      <div id="github" style={{ position: 'relative', marginTop: `${githubPos.mt}vh`, paddingTop: `${githubPos.pt}vh`, paddingBottom: `${githubPos.pb}vh` }}>
+      <div id="github" style={{ position: 'relative', marginTop: `${githubPos.mt}vh`, paddingTop: `${githubPos.pt}vh`, paddingBottom: `${githubPos.pb}vh`, overflow: 'clip' }}>
         {/* Background — below webring (z-65 < webring z-70) */}
         <div className="absolute inset-0 bg-black" style={{ zIndex: 65 }} />
         {/* Content — above webring (z-75 > webring z-70) */}
         <div style={{ position: 'relative', zIndex: 75 }}>
-          <GithubSection onVisibilityChange={handleGithubVisibility} />
+          <GithubSection onVisibilityChange={handleGithubVisibility} audioRef={audioRef} reducedMotion={reducedMotion} />
         </div>
       </div>
 
-      {/* Github position tuner */}
-      {!githubTunerOpen ? (
-        <button
-          onClick={() => setGithubTunerOpen(true)}
-          style={{
-            position: 'fixed', top: 10, right: 180, zIndex: 9999,
-            background: '#222', color: '#fff', border: '1px solid #555',
-            padding: '6px 12px', cursor: 'pointer', fontFamily: 'monospace', fontSize: 12,
-          }}
-        >
-          GITHUB
-        </button>
-      ) : (
-        <div style={{
-          position: 'fixed', top: 10, right: 180, zIndex: 9999,
-          background: 'rgba(0,0,0,0.95)', border: '1px solid #333',
-          padding: '12px 16px', fontFamily: 'monospace', fontSize: 11,
-          color: '#fff', width: 280,
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-            <strong>GITHUB POS</strong>
-            <button onClick={() => setGithubTunerOpen(false)} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer' }}>X</button>
-          </div>
-          {[
-            { label: 'margin-top vh', key: 'mt', min: -120, max: 0, step: 1 },
-            { label: 'padding-top vh', key: 'pt', min: 0, max: 60, step: 1 },
-            { label: 'padding-bot vh', key: 'pb', min: 0, max: 60, step: 1 },
-            { label: 'bg height vh', key: 'bgH', min: 0, max: 120, step: 1 },
-          ].map(c => (
-            <label key={c.key} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <span style={{ width: 90 }}>{c.label}</span>
-              <input type="range" min={c.min} max={c.max} step={c.step}
-                value={githubPos[c.key as keyof typeof githubPos]}
-                onChange={e => setGithubPos(prev => ({ ...prev, [c.key]: +e.target.value }))}
-                style={{ flex: 1 }} />
-              <span style={{ width: 45, textAlign: 'right' }}>{githubPos[c.key as keyof typeof githubPos]}vh</span>
-            </label>
-          ))}
-          <div style={{ background: '#111', border: '1px solid #333', padding: 6, fontSize: 10, color: '#ccc', marginTop: 6 }}>
-            {`mt: ${githubPos.mt}vh, pt: ${githubPos.pt}vh, pb: ${githubPos.pb}vh, bgH: ${githubPos.bgH}vh`}
-          </div>
-        </div>
-      )}
+      {/* Dev tuners — only rendered when isDev = true */}
 
       <DecoTuner items={[
         { ref: starLeftRef, label: 'STAR LEFT', defaults: { x: 3, y: 2, size: 340, rotation: -136, opacity: 0.2 } },

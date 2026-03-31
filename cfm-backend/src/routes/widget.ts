@@ -57,13 +57,13 @@ router.get("/", (req, res) => {
   <body>
     <div class="cfm-webring-widget">
       <button type="button" class="cfm-webring-button cfm-webring-theme-${theme}" id="cfm-webring-prev-btn">
-        ${arrow === "caret" ? "&lsaquo;" : arrow === "arrow" ? "&larr;" : "&lsaquo;"}
+        ${arrow === "arrow" ? "&larr;" : arrow === "caret" ? "&lsaquo;" : "&laquo;"}
       </button>
       <button type="button" class="cfm-webring-button cfm-webring-theme-${theme}" id="cfm-webring-hub-btn">
         CFM Webring
       </button>
       <button type="button" class="cfm-webring-button cfm-webring-theme-${theme}" id="cfm-webring-next-btn">
-        ${arrow === "caret" ? "&rsaquo;" : arrow === "arrow" ? "&rarr;" : "&rsaquo;"}
+        ${arrow === "arrow" ? "&rarr;" : arrow === "caret" ? "&rsaquo;" : "&raquo;"}
       </button>
     </div>
     <script>
