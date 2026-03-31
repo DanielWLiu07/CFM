@@ -3,9 +3,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import gsap from 'gsap';
 import TerminalCard from './TerminalCard';
-
-const BEAT_INTERVAL = 60 / 93;
-const BEAT_OFFSET = 0.229;
+import { BEAT_INTERVAL, BEAT_OFFSET } from '../lib/beats';
 
 interface AboutSectionProps {
   onVisibilityChange: (visible: boolean) => void;
@@ -62,7 +60,7 @@ const CARDS = [
           6 Work Terms Over 5 Years
         </p>
         <p><Dim>{'>'} </Dim>Co-op is a mandatory part of the CFM program. Students alternate between <G>4-month academic terms</G> and <G>4-month paid work terms</G> beginning after first year. By the time they graduate, students have completed <G>6 separate work placements</G>, totaling 2 full years of professional experience.</p>
-        <p><Dim>{'>'} </Dim>Waterloo's co-op system is the largest of its kind in the world, with connections to over 7,000 employers. CFM students in particular are recruited across both the technology and financial services industries.</p>
+        <p><Dim>{'>'} </Dim>Waterloo&apos;s co-op system is the largest of its kind in the world, with connections to over 7,000 employers. CFM students in particular are recruited across both the technology and financial services industries.</p>
         <p><Dim>{'// '}where CFM students have worked</Dim></p>
         <p><Dim>{'>'} </Dim>[<G> Tech      </G>] Google, Meta, Amazon, Apple, Microsoft, Shopify, Uber, Databricks, Palantir</p>
         <p><Dim>{'>'} </Dim>[<G> Finance   </G>] RBC, TD, BMO, CIBC, Scotiabank, Manulife, Sun Life, CPP Investments, OTPP</p>
@@ -118,44 +116,11 @@ export default function AboutSection({ onVisibilityChange, audioRef, reducedMoti
   }, [reducedMotion]);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
   const stackRef = useRef<HTMLDivElement>(null);
-  const dotsRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [tunerOpen, setTunerOpen] = useState(false);
-  const [stackPos, setStackPos] = useState({ ml: 30, mt: -45, rot: -3, rotZ: 2, w: 800, h: 460 });
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [stackPos] = useState({ ml: 30, mt: -20, rot: -3, rotZ: 2, w: 800, h: 460 });
   const isAnimatingRef = useRef(false);
   const titleAnimStarted = useRef(false);
   const titleBeatRef = useRef({ lastFiredIdx: -1, rafId: 0 });
-
-  // IntersectionObserver for URL routing + intro trigger
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        onVisibilityChange(entry.isIntersecting);
-        if (entry.isIntersecting && !titleAnimStarted.current && titleRef.current) {
-          titleAnimStarted.current = true;
-          const img = titleRef.current;
-
-          // Intro: slam in from above
-          const tl = gsap.timeline();
-          tl.fromTo(img,
-            { y: -120, scaleY: 0, opacity: 0, transformOrigin: 'center bottom' },
-            { y: 0, scaleY: 1, opacity: 1, duration: 0.5, ease: 'power3.out' }
-          );
-          tl.to(img, { scaleX: 1.08, scaleY: 0.92, duration: 0.08, ease: 'power4.in' });
-          tl.to(img, { scaleX: 1, scaleY: 1, duration: 0.15, ease: 'elastic.out(1, 0.4)' });
-
-          // After intro completes, start the audio-driven beat loop
-          tl.add(() => startBeatLoop());
-        }
-      },
-      { threshold: 0.1 }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [onVisibilityChange]);
 
   // Audio-driven beat loop — same math as the wire crush in page.tsx
   const startBeatLoop = useCallback(() => {
@@ -200,6 +165,33 @@ export default function AboutSection({ onVisibilityChange, audioRef, reducedMoti
 
     state.rafId = requestAnimationFrame(loop);
   }, [audioRef]);
+
+  // IntersectionObserver for URL routing + intro trigger
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        onVisibilityChange(entry.isIntersecting);
+        if (entry.isIntersecting && !titleAnimStarted.current && titleRef.current) {
+          titleAnimStarted.current = true;
+          const img = titleRef.current;
+
+          const tl = gsap.timeline();
+          tl.fromTo(img,
+            { y: -120, scaleY: 0, opacity: 0, transformOrigin: 'center bottom' },
+            { y: 0, scaleY: 1, opacity: 1, duration: 0.5, ease: 'power3.out' }
+          );
+          tl.to(img, { scaleX: 1.08, scaleY: 0.92, duration: 0.08, ease: 'power4.in' });
+          tl.to(img, { scaleX: 1, scaleY: 1, duration: 0.15, ease: 'elastic.out(1, 0.4)' });
+          tl.add(() => startBeatLoop());
+        }
+      },
+      { threshold: 0.1 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [onVisibilityChange, startBeatLoop]);
 
   // Cleanup rAF on unmount
   useEffect(() => {
@@ -298,11 +290,11 @@ export default function AboutSection({ onVisibilityChange, audioRef, reducedMoti
       {/* Vignette — linear fades on all sides, same style as hero */}
       <div className="absolute inset-x-0 top-0 pointer-events-none z-[80]" style={{ height: '15%', background: 'linear-gradient(to bottom, black, transparent)' }} />
       <div className="absolute inset-x-0 bottom-0 pointer-events-none z-[80]" style={{ height: '15%', background: 'linear-gradient(to top, black, transparent)' }} />
-      <div className="absolute inset-y-0 left-0 pointer-events-none z-[80]" style={{ width: '10%', background: 'linear-gradient(to right, black, transparent)' }} />
-      <div className="absolute inset-y-0 right-0 pointer-events-none z-[80]" style={{ width: '10%', background: 'linear-gradient(to left, black, transparent)' }} />
+      <div className="absolute inset-y-0 left-0 pointer-events-none z-[80]" style={{ width: '20%', background: 'linear-gradient(to right, black 0%, black 30%, rgba(0,0,0,0.8) 55%, rgba(0,0,0,0.3) 80%, transparent 100%)' }} />
+      <div className="absolute inset-y-0 right-0 pointer-events-none z-[80]" style={{ width: '20%', background: 'linear-gradient(to left, black 0%, black 30%, rgba(0,0,0,0.8) 55%, rgba(0,0,0,0.3) 80%, transparent 100%)' }} />
 
       {/* Section header */}
-      <div className="relative mb-10 sm:mb-20" style={{ zIndex: 85 }}>
+      <div className="relative mb-16 sm:mb-20" style={{ zIndex: 85 }}>
         {/* Glow behind title */}
         <div className="absolute inset-0 pointer-events-none" style={{
           background: 'radial-gradient(ellipse at center, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.03) 40%, transparent 70%)',

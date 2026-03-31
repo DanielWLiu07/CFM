@@ -4,6 +4,7 @@ import { useRef, useEffect, useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { DEFAULT_CONFIG } from './ClassTitle3D';
 import membersData from '../../data/members.json';
+import type { ClassMember } from './class/types';
 
 const ClassCards3D = dynamic(() => import('./ClassCards3D'), { ssr: false });
 const ClassTitle3D = dynamic(() => import('./ClassTitle3D'), { ssr: false });
@@ -12,25 +13,6 @@ const ClassBackground = dynamic(() => import('./ClassBackground'), { ssr: false 
 interface ClassSectionProps {
   onVisibilityChange: (visible: boolean) => void;
   beatRef?: React.RefObject<number>;
-}
-
-interface Social {
-  type: 'github' | 'linkedin' | 'twitter' | 'website';
-  url: string;
-}
-
-interface ClassMember {
-  name: string;
-  url: string;
-  role: string;
-  location: string;
-  school: string;
-  blurb: string;
-  year: string;
-  avatar?: string;
-  socials?: Social[];
-  hobbies?: string[];
-  experiences?: string[];
 }
 
 const MEMBERS: ClassMember[] = membersData as ClassMember[];
@@ -46,6 +28,8 @@ export default function ClassSection({ onVisibilityChange, beatRef }: ClassSecti
   const [searchFocused, setSearchFocused] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const titleWrapRef = useRef<HTMLDivElement>(null);
+  const titleBgRef = useRef<HTMLImageElement>(null);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -59,10 +43,15 @@ export default function ClassSection({ onVisibilityChange, beatRef }: ClassSecti
 
   const [bgScale, setBgScale] = useState(DEFAULT_CONFIG.bgScale);
   const [bgOpacity, setBgOpacity] = useState(DEFAULT_CONFIG.bgOpacity);
+  const [bgX, setBgX] = useState(DEFAULT_CONFIG.bgX);
   const [bgY, setBgY] = useState(DEFAULT_CONFIG.bgY);
+  const [bgMaxW, setBgMaxW] = useState(DEFAULT_CONFIG.bgMaxW);
   const [titleY, setTitleY] = useState(DEFAULT_CONFIG.titleY);
   const [searchY, setSearchY] = useState(DEFAULT_CONFIG.searchY);
-  const titleConfig = { ...DEFAULT_CONFIG, bgScale, bgOpacity, bgY, titleY, searchY };
+  const [showTuner, setShowTuner] = useState(false);
+  const [tunerPos, setTunerPos] = useState({ x: 0, y: 0 });
+  const dragRef = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(null);
+  const titleConfig = { ...DEFAULT_CONFIG, bgScale, bgOpacity, bgX, bgY, bgMaxW, titleY, searchY };
 
   useEffect(() => {
     const el = sentinelRef.current;
@@ -74,6 +63,32 @@ export default function ClassSection({ onVisibilityChange, beatRef }: ClassSecti
     observer.observe(el);
     return () => observer.disconnect();
   }, [onVisibilityChange]);
+
+  // Position title_bg to track the title wrapper center
+  useEffect(() => {
+    const update = () => {
+      const wrap = titleWrapRef.current;
+      const bg = titleBgRef.current;
+      const section = wrap?.closest('section');
+      if (!wrap || !bg || !section) return;
+      const wrapRect = wrap.getBoundingClientRect();
+      const sectionRect = section.getBoundingClientRect();
+      const centerX = wrapRect.left + wrapRect.width / 2 - sectionRect.left + bgX;
+      const centerY = wrapRect.top + wrapRect.height / 2 - sectionRect.top + bgY;
+      const w = Math.min(wrapRect.width * bgScale / 100, bgMaxW);
+      bg.style.width = `${w}px`;
+      bg.style.height = 'auto';
+      bg.style.left = `${centerX}px`;
+      bg.style.top = `${centerY}px`;
+      bg.style.transform = 'translate(-50%, -50%)';
+      bg.style.opacity = String(bgOpacity);
+    };
+    update();
+    window.addEventListener('resize', update);
+    // Also update on scroll in case of layout shifts
+    window.addEventListener('scroll', update, { passive: true });
+    return () => { window.removeEventListener('resize', update); window.removeEventListener('scroll', update); };
+  }, [bgX, bgY, bgScale, bgMaxW, bgOpacity, titleY]);
 
   const filtered = useMemo(() => {
     return MEMBERS.filter(m => {
@@ -101,8 +116,23 @@ export default function ClassSection({ onVisibilityChange, beatRef }: ClassSecti
       {/* Three.js background decoration */}
       <ClassBackground beatRef={beatRef} paused={!sectionVisible} />
 
+      {/* Title bg glow — between ClassBackground (z:0) and title (z:70) */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/images/title_bg.webp"
+        alt="" decoding="async"
+        className="pointer-events-none select-none absolute"
+        id="class-title-bg"
+        ref={titleBgRef}
+        style={{
+          zIndex: 1,
+          mixBlendMode: 'screen',
+        }}
+      />
+
       {/* ── Title — full 3D "CLASS OF 26" ── */}
       <div
+        ref={titleWrapRef}
         style={{
           position: 'relative',
           zIndex: 70,
@@ -338,6 +368,61 @@ export default function ClassSection({ onVisibilityChange, beatRef }: ClassSecti
         </div>
       )}
 
+      {/* BG Tuner */}
+      <button
+        onClick={() => setShowTuner(t => !t)}
+        style={{
+          position: 'fixed', bottom: 10, right: 10, zIndex: 99999,
+          background: '#000', color: '#fff', border: '2px solid #fff',
+          fontFamily: 'var(--font-arcade)', fontSize: 12, padding: '6px 12px', cursor: 'pointer',
+        }}
+      >
+        {showTuner ? 'HIDE' : 'TUNE BG'}
+      </button>
+      {showTuner && (
+        <div
+          style={{
+            position: 'fixed', bottom: 50 - tunerPos.y, right: 10 - tunerPos.x, zIndex: 99999,
+            background: 'rgba(0,0,0,0.9)', border: '2px solid #fff', padding: 0,
+            fontFamily: 'var(--font-arcade)', fontSize: 11, color: '#fff',
+            display: 'flex', flexDirection: 'column', minWidth: 220,
+          }}
+        >
+          {/* Drag handle */}
+          <div
+            style={{
+              padding: '6px 12px', cursor: 'grab', borderBottom: '1px solid #555',
+              userSelect: 'none', background: 'rgba(255,255,255,0.1)', fontSize: 10,
+              letterSpacing: '0.15em',
+            }}
+            onMouseDown={e => {
+              e.preventDefault();
+              dragRef.current = { startX: e.clientX, startY: e.clientY, originX: tunerPos.x, originY: tunerPos.y };
+              const onMove = (ev: MouseEvent) => {
+                if (!dragRef.current) return;
+                setTunerPos({
+                  x: dragRef.current.originX + (ev.clientX - dragRef.current.startX),
+                  y: dragRef.current.originY + (ev.clientY - dragRef.current.startY),
+                });
+              };
+              const onUp = () => { dragRef.current = null; window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+              window.addEventListener('mousemove', onMove);
+              window.addEventListener('mouseup', onUp);
+            }}
+          >
+            ≡ DRAG TO MOVE
+          </div>
+          <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label>BG X: {bgX}px<input type="range" min={-200} max={200} value={bgX} onChange={e => setBgX(+e.target.value)} style={{ width: '100%' }} /></label>
+            <label>BG Y: {bgY}px<input type="range" min={-200} max={200} value={bgY} onChange={e => setBgY(+e.target.value)} style={{ width: '100%' }} /></label>
+            <label>BG Scale: {bgScale}%<input type="range" min={30} max={200} value={bgScale} onChange={e => setBgScale(+e.target.value)} style={{ width: '100%' }} /></label>
+            <label>BG MaxW: {bgMaxW}px<input type="range" min={400} max={1600} value={bgMaxW} onChange={e => setBgMaxW(+e.target.value)} style={{ width: '100%' }} /></label>
+            <label>BG Opacity: {bgOpacity}<input type="range" min={0} max={100} value={bgOpacity * 100} onChange={e => setBgOpacity(+e.target.value / 100)} style={{ width: '100%' }} /></label>
+            <label>Title Y: {titleY}px<input type="range" min={-200} max={200} value={titleY} onChange={e => setTitleY(+e.target.value)} style={{ width: '100%' }} /></label>
+            <p style={{ fontSize: 9, color: '#888', margin: 0 }}>Copy values to DEFAULT_CONFIG when done</p>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

@@ -9,7 +9,7 @@
     "blurb": "Full-stack dev. Loves React, Three.js, and making pixels dance.",
     "year": "26",
     "cohort": "2029",
-    "avatar": "/images/avatars/daniel.png",
+    "avatar": "/images/avatars/daniel.webp",
     "websiteImage": "/images/websites/daniel.png",
     "hobbies": ["Three.js", "pixel art", "music production", "basketball"],
     "experiences": ["SWE Intern @ Stealth Startup", "Freelance Web Dev"],
@@ -29,7 +29,7 @@
     "blurb": "Power trading.",
     "year": "26",
     "cohort": "2026",
-    "avatar": "/images/avatars/timothyz.png",
+    "avatar": "/images/avatars/timothyz.webp",
     "websiteImage": "/images/websites/timothyz.png",
     "hobbies": ["trading", "golf", "poker"],
     "experiences": ["Power Trader @ Energy Co"]

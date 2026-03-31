@@ -1,275 +1,37 @@
 'use client';
 
 import { useRef, useEffect, useState, useCallback, type RefObject } from 'react';
+import { BEAT_INTERVAL, BEAT_OFFSET } from '../lib/beats';
+import { FONT, COLOR } from '../lib/theme';
+import { REPO_URL, TICKER_ITEMS } from './github/data';
+import { CommitBarChart } from './github/CommitBarChart';
+import { TitleNoise } from './github/TitleNoise';
+import { PositionsPanel } from './github/PositionsPanel';
+import './github/GithubSection.css';
 
-const REPO_URL = 'https://github.com/DanielWLiu07/CFM';
-const BEAT_INTERVAL = 60 / 93;
-const BEAT_OFFSET = 0.229;
-
-const TICKER_ITEMS = [
-  { sym: 'NEXT', val: '16.1.7', change: '+2.4%', up: true },
-  { sym: 'REACT', val: '19.2.3', change: '-0.3%', up: false },
-  { sym: 'THREE', val: '0.183', change: '+3.1%', up: true },
-  { sym: 'TS', val: '5.7', change: '+0.9%', up: true },
-  { sym: 'TAIL', val: '4.1', change: '-1.5%', up: false },
-  { sym: 'NODE', val: '22.x', change: '+0.6%', up: true },
-  { sym: 'VCRL', val: 'Vercel', change: '-0.8%', up: false },
-  { sym: 'ESLNT', val: '9.x', change: '+0.4%', up: true },
-  { sym: 'BLNDR', val: '4.3', change: '-2.1%', up: false },
-  { sym: 'TBPK', val: '2.x', change: '+1.7%', up: true },
-];
-
-const POSITIONS = [
-  { asset: 'Next.js 16', alloc: '18%', status: 'ACTIVE' },
-  { asset: 'React 19', alloc: '16%', status: 'ACTIVE' },
-  { asset: 'Three.js', alloc: '14%', status: 'ACTIVE' },
-  { asset: 'TypeScript', alloc: '12%', status: 'ACTIVE' },
-  { asset: 'Tailwind CSS 4', alloc: '10%', status: 'ACTIVE' },
-  { asset: 'Vercel', alloc: '7%', status: 'ACTIVE' },
-  { asset: 'Node.js', alloc: '6%', status: 'ACTIVE' },
-  { asset: 'Turbopack', alloc: '5%', status: 'ACTIVE' },
-  { asset: 'ESLint', alloc: '4%', status: 'ACTIVE' },
-  { asset: 'Blender', alloc: '4%', status: 'ACTIVE' },
-];
-
-// Weekly commit bar chart — fetches real data, renders as vertical bars
-function CommitBarChart({ green, visible, reducedMotion = false }: { green: string; visible: boolean; reducedMotion?: boolean }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const dataRef = useRef<number[]>([]);
-  const rafRef = useRef<number>(0);
-
-  useEffect(() => {
-    fetch('https://api.github.com/repos/DanielWLiu07/CFM/stats/commit_activity')
-      .then(r => r.json())
-      .then(weeks => {
-        if (Array.isArray(weeks) && weeks.length > 0) {
-          dataRef.current = weeks.map((w: { total: number }) => w.total);
-        } else {
-          dataRef.current = generateFallbackWeeks();
-        }
-      })
-      .catch(() => {
-        dataRef.current = generateFallbackWeeks();
-      });
-  }, []);
-
-  const draw = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const data = dataRef.current;
-    if (data.length === 0) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const dpr = window.devicePixelRatio || 1;
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-    ctx.scale(dpr, dpr);
-    const w = rect.width;
-    const h = rect.height;
-    const padding = { top: 8, bottom: 16, left: 4, right: 4 };
-    const chartW = w - padding.left - padding.right;
-    const chartH = h - padding.top - padding.bottom;
-
-    ctx.clearRect(0, 0, w, h);
-
-    const maxVal = Math.max(1, ...data);
-    const barCount = data.length;
-    const gap = 2;
-    const barW = Math.max(1, (chartW - gap * (barCount - 1)) / barCount);
-
-    // Grid lines
-    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
-    ctx.lineWidth = 0.5;
-    for (let i = 1; i <= 3; i++) {
-      const gy = padding.top + chartH * (1 - i / 4);
-      ctx.beginPath();
-      ctx.moveTo(padding.left, gy);
-      ctx.lineTo(w - padding.right, gy);
-      ctx.stroke();
-    }
-
-    // Bars
-    for (let i = 0; i < barCount; i++) {
-      const val = data[i];
-      const barH = (val / maxVal) * chartH;
-      const x = padding.left + i * (barW + gap);
-      const y = padding.top + chartH - barH;
-
-      // Gradient fill per bar
-      const grad = ctx.createLinearGradient(0, y, 0, padding.top + chartH);
-      grad.addColorStop(0, val > 0 ? 'rgba(0,230,118,0.8)' : 'rgba(255,255,255,0.04)');
-      grad.addColorStop(1, val > 0 ? 'rgba(0,230,118,0.2)' : 'rgba(255,255,255,0.02)');
-      ctx.fillStyle = grad;
-      ctx.fillRect(x, y, barW, barH || 1);
-    }
-
-    // Highlight last bar with pulse
-    const lastIdx = barCount - 1;
-    const lastVal = data[lastIdx];
-    const lastBarH = (lastVal / maxVal) * chartH;
-    const lastX = padding.left + lastIdx * (barW + gap);
-    const lastY = padding.top + chartH - lastBarH;
-    const pulse = Math.sin(Date.now() * 0.004) * 0.5 + 0.5;
-    ctx.fillStyle = `rgba(0,230,118,${0.15 + pulse * 0.15})`;
-    ctx.fillRect(lastX - 1, lastY - 1, barW + 2, lastBarH + 2);
-
-    // Label: latest week count
-    ctx.fillStyle = green;
-    ctx.font = '10px monospace';
-    ctx.textAlign = 'right';
-    ctx.fillText(`${lastVal} this week`, w - padding.right, padding.top + chartH + 12);
-
-    // Label: total
-    const total = data.reduce((a, b) => a + b, 0);
-    ctx.fillStyle = 'rgba(255,255,255,0.3)';
-    ctx.textAlign = 'left';
-    ctx.fillText(`${total} total`, padding.left, padding.top + chartH + 12);
-  }, [green]);
-
-  useEffect(() => {
-    if (!visible || reducedMotion) {
-      // Draw once if visible but reduced motion
-      if (visible) draw();
-      return;
-    }
-    const loop = () => {
-      draw();
-      rafRef.current = requestAnimationFrame(loop);
-    };
-    rafRef.current = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [visible, draw, reducedMotion]);
-
-  return (
-    <canvas
-      ref={canvasRef}
-      style={{ width: '100%', height: '100%', display: 'block' }}
-    />
-  );
+interface AnimSettings {
+  titleDuration: number;   // ms
+  titleDelay: number;      // ms
+  terminalDuration: number;
+  terminalDelay: number;
+  catDuration: number;
+  catDelay: number;
+  gearDuration: number;
+  gearDelay: number;
+  overshoot: number;       // 0-2 (bounce intensity)
 }
 
-function generateFallbackWeeks(): number[] {
-  const weeks: number[] = [];
-  for (let w = 0; w < 52; w++) {
-    const recency = w > 40 ? 2.5 : w > 30 ? 1.5 : 0.8;
-    const burst = Math.random() < 0.1 ? 5 + Math.floor(Math.random() * 10) : 0;
-    weeks.push(Math.max(0, Math.floor(Math.random() * 4 * recency + burst)));
-  }
-  return weeks;
-}
-
-// Pixel noise overlay for the title — subtle shifting static grain
-function TitleNoise({ visible, reducedMotion = false }: { visible: boolean; reducedMotion?: boolean }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const rafRef = useRef<number>(0);
-
-  useEffect(() => {
-    if (!visible || reducedMotion) return;
-    let frame = 0;
-    const draw = () => {
-      const canvas = canvasRef.current;
-      if (!canvas) { rafRef.current = requestAnimationFrame(draw); return; }
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      // Only update every 3rd frame for that chunky pixel look
-      frame++;
-      if (frame % 3 !== 0) { rafRef.current = requestAnimationFrame(draw); return; }
-
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      // Use low resolution for chunky pixels
-      const scale = 0.15;
-      canvas.width = Math.floor(rect.width * scale);
-      canvas.height = Math.floor(rect.height * scale);
-
-      const w = canvas.width;
-      const h = canvas.height;
-      const imgData = ctx.createImageData(w, h);
-      const data = imgData.data;
-
-      for (let i = 0; i < data.length; i += 4) {
-        const noise = Math.random();
-        if (noise > 0.92) {
-          // Bright white speckle
-          const v = 180 + Math.floor(Math.random() * 75);
-          data[i] = v;
-          data[i + 1] = v;
-          data[i + 2] = v;
-          data[i + 3] = 18 + Math.floor(Math.random() * 14);
-        } else if (noise > 0.88) {
-          // Dim speckle
-          data[i] = 255;
-          data[i + 1] = 255;
-          data[i + 2] = 255;
-          data[i + 3] = 6 + Math.floor(Math.random() * 8);
-        }
-        // else: transparent
-      }
-
-      ctx.putImageData(imgData, 0, 0);
-      rafRef.current = requestAnimationFrame(draw);
-    };
-    rafRef.current = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [visible, reducedMotion]);
-
-  return (
-    <canvas
-      ref={canvasRef}
-      style={{
-        position: 'absolute',
-        inset: 0,
-        width: '100%',
-        height: '100%',
-        pointerEvents: 'none',
-        imageRendering: 'pixelated',
-        mixBlendMode: 'screen',
-        opacity: 0.7,
-      }}
-    />
-  );
-}
-
-// Auto-scrolling positions panel — CSS animation for reliable infinite scroll
-function PositionsPanel({ mono, dim, mid, bright, green }: {
-  mono: string; dim: string; mid: string; bright: string; green: string;
-}) {
-  const row = (p: typeof POSITIONS[0], i: number) => (
-    <div key={i} style={{
-      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-      padding: '5px 0',
-      borderBottom: '1px solid rgba(255,255,255,0.03)',
-      whiteSpace: 'nowrap',
-    }}>
-      <span style={{ fontFamily: mono, fontSize: 11, color: mid, width: '55%' }}>{p.asset}</span>
-      <span style={{ fontFamily: mono, fontSize: 11, color: bright, width: '25%', textAlign: 'right' }}>{p.alloc}</span>
-      <span style={{ fontFamily: mono, fontSize: 8, color: green, width: '20%', textAlign: 'right', letterSpacing: '0.05em' }}>{p.status}</span>
-    </div>
-  );
-
-  return (
-    <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', overflow: 'hidden', maxHeight: 260 }}>
-      <div style={{ fontFamily: mono, fontSize: 9, color: dim, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>
-        Positions
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 4 }}>
-        <span style={{ fontFamily: mono, fontSize: 8, color: dim, width: '55%' }}>ASSET</span>
-        <span style={{ fontFamily: mono, fontSize: 8, color: dim, width: '25%', textAlign: 'right' }}>ALLOC</span>
-        <span style={{ fontFamily: mono, fontSize: 8, color: dim, width: '20%', textAlign: 'right' }}>STATUS</span>
-      </div>
-      <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
-        <div className="positions-marquee">
-          <div>{POSITIONS.map(row)}</div>
-          <div>{POSITIONS.map(row)}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
+const DEFAULT_SETTINGS: AnimSettings = {
+  titleDuration: 800,
+  titleDelay: 0,
+  terminalDuration: 900,
+  terminalDelay: 200,
+  catDuration: 1000,
+  catDelay: 300,
+  gearDuration: 1200,
+  gearDelay: 400,
+  overshoot: 1,
+};
 
 export default function GithubSection({ onVisibilityChange, audioRef, reducedMotion = false }: { onVisibilityChange?: (visible: boolean) => void; audioRef?: RefObject<HTMLAudioElement | null>; reducedMotion?: boolean }) {
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -282,10 +44,29 @@ export default function GithubSection({ onVisibilityChange, audioRef, reducedMot
   const titleRef = useRef<HTMLImageElement>(null);
   const titleRafRef = useRef<number>(0);
   const [visible, setVisible] = useState(false);
+  const [replayKey, setReplayKey] = useState(0);
+  const [showControls, setShowControls] = useState(false);
+  const [animSettings, setAnimSettings] = useState<AnimSettings>(DEFAULT_SETTINGS);
   const [ghStats, setGhStats] = useState<{ stars: number; forks: number; commits: number } | null>(null);
   const [catPos, setCatPos] = useState({ left: -415, bottom: -95, size: 435, rotate: 13 });
   const [gearPos, setGearPos] = useState({ right: -490, bottom: -280, size: 830 });
   const [titlePos] = useState({ height: 715, mt: -50, mb: 20 });
+
+  const replay = useCallback(() => {
+    setVisible(false);
+    // Cancel ongoing animation frames
+    cancelAnimationFrame(gearRafRef.current);
+    cancelAnimationFrame(catRafRef.current);
+    cancelAnimationFrame(titleRafRef.current);
+    // Reset transforms
+    if (titleRef.current) titleRef.current.style.opacity = '0';
+    if (catRef.current) catRef.current.style.opacity = '0';
+    if (gearRef.current) gearRef.current.style.opacity = '0';
+    setTimeout(() => {
+      setReplayKey(k => k + 1);
+      setVisible(true);
+    }, 100);
+  }, []);
 
   // Fetch live GitHub stats
   useEffect(() => {
@@ -336,15 +117,15 @@ export default function GithubSection({ onVisibilityChange, audioRef, reducedMot
     const startTime = Date.now();
     let targetAngle = 0;
     let smoothAngle = 0;
+    const { gearDuration, gearDelay, overshoot } = animSettings;
     const loop = () => {
       const gear = gearRef.current;
       if (!gear) { gearRafRef.current = requestAnimationFrame(loop); return; }
 
-      // Intro: spin in from right over 1.2s with 0.4s delay
-      const elapsed = Math.max(0, (Date.now() - startTime - 400)) / 1200;
+      const elapsed = Math.max(0, (Date.now() - startTime - gearDelay)) / gearDuration;
       const introT = Math.min(1, elapsed);
       const ease = 1 - Math.pow(1 - introT, 3);
-      const introX = 80 * (1 - ease);
+      const introX = 80 * (1 - ease) * overshoot;
       const introRot = -180 * (1 - ease);
 
       const audio = audioRef?.current;
@@ -369,7 +150,7 @@ export default function GithubSection({ onVisibilityChange, audioRef, reducedMot
     };
     gearRafRef.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(gearRafRef.current);
-  }, [visible, audioRef, reducedMotion]);
+  }, [visible, audioRef, reducedMotion, replayKey, animSettings]);
 
   // Beat-synced cat bob — intro slide from left + smash down on beat
   useEffect(() => {
@@ -380,15 +161,15 @@ export default function GithubSection({ onVisibilityChange, audioRef, reducedMot
     let velocity = 0;
     const startTime = Date.now();
     let introX = -80;
+    const { catDuration, catDelay, overshoot } = animSettings;
     const loop = () => {
       const cat = catRef.current;
       if (!cat) { catRafRef.current = requestAnimationFrame(loop); return; }
 
-      // Intro: slide in from left over 1s with 0.3s delay
-      const elapsed = Math.max(0, (Date.now() - startTime - 300)) / 1000;
+      const elapsed = Math.max(0, (Date.now() - startTime - catDelay)) / catDuration;
       const introT = Math.min(1, elapsed);
       const ease = 1 - Math.pow(1 - introT, 3);
-      introX = -80 * (1 - ease);
+      introX = -80 * (1 - ease) * overshoot;
 
       const audio = audioRef?.current;
       const hasMusic = audio && !audio.paused && audio.currentTime > 0;
@@ -417,7 +198,7 @@ export default function GithubSection({ onVisibilityChange, audioRef, reducedMot
     };
     catRafRef.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(catRafRef.current);
-  }, [visible, audioRef, reducedMotion]);
+  }, [visible, audioRef, reducedMotion, replayKey, animSettings]);
 
   // Beat-synced title — intro slide + scale pulse + glow
   useEffect(() => {
@@ -428,16 +209,16 @@ export default function GithubSection({ onVisibilityChange, audioRef, reducedMot
     const startTime = Date.now();
     let introY = -40;
     let introScale = 1.1;
+    const { titleDuration, titleDelay, overshoot } = animSettings;
     const loop = () => {
       const el = titleRef.current;
       if (!el) { titleRafRef.current = requestAnimationFrame(loop); return; }
 
-      // Intro ease-out over first 800ms
-      const elapsed = (Date.now() - startTime) / 800;
+      const elapsed = Math.max(0, (Date.now() - startTime - titleDelay)) / titleDuration;
       const introT = Math.min(1, elapsed);
-      const ease = 1 - Math.pow(1 - introT, 3); // cubic ease-out
-      introY = -40 * (1 - ease);
-      introScale = 1 + 0.1 * (1 - ease);
+      const ease = 1 - Math.pow(1 - introT, 3);
+      introY = -40 * (1 - ease) * overshoot;
+      introScale = 1 + 0.1 * (1 - ease) * overshoot;
 
       const audio = audioRef?.current;
       let beat = 0;
@@ -468,15 +249,10 @@ export default function GithubSection({ onVisibilityChange, audioRef, reducedMot
     };
     titleRafRef.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(titleRafRef.current);
-  }, [visible, audioRef, reducedMotion]);
+  }, [visible, audioRef, reducedMotion, replayKey, animSettings]);
 
-  const mono = 'var(--font-geist-mono)';
-  const arcade = 'var(--font-arcade)';
-
-  const green = '#00e676';
-  const dim = 'rgba(255,255,255,0.25)';
-  const mid = 'rgba(255,255,255,0.5)';
-  const bright = 'rgba(255,255,255,0.85)';
+  const { mono, arcade } = FONT;
+  const { green, dim, mid, bright } = COLOR;
 
   return (
     <section ref={sectionRef} className="relative flex flex-col items-center justify-center px-6" style={{ background: 'transparent', paddingTop: '6vh', paddingBottom: 0 }}>
@@ -544,7 +320,7 @@ export default function GithubSection({ onVisibilityChange, audioRef, reducedMot
         }}
       />
 
-      <div style={{
+      <div key={`terminal-${replayKey}`} style={{
         width: '100%',
         maxWidth: 720,
         border: '1px solid rgba(255,255,255,0.08)',
@@ -556,7 +332,7 @@ export default function GithubSection({ onVisibilityChange, audioRef, reducedMot
         overflow: 'hidden',
         borderRadius: 12,
         opacity: visible ? 1 : 0,
-        animation: visible ? 'github-terminal-rise 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both' : 'none',
+        animation: visible ? `github-terminal-rise ${animSettings.terminalDuration}ms cubic-bezier(0.16, 1, 0.3, 1) ${animSettings.terminalDelay}ms both` : 'none',
       }}>
 
         {/* Slow-moving gradient overlay */}
@@ -631,7 +407,7 @@ export default function GithubSection({ onVisibilityChange, audioRef, reducedMot
             </div>
 
             <div style={{ position: 'relative', width: '100%', height: 140, marginBottom: 12 }}>
-              <CommitBarChart green={green} visible={visible} reducedMotion={reducedMotion} />
+              <CommitBarChart green={green} visible={visible} reducedMotion={reducedMotion} totalCommits={ghStats?.commits} />
             </div>
 
             {/* Stats row */}
@@ -729,6 +505,114 @@ export default function GithubSection({ onVisibilityChange, audioRef, reducedMot
       </div>
       </div>
 
+      {/* Replay & Controls */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 16 }}>
+        <button
+          onClick={replay}
+          style={{
+            fontFamily: arcade,
+            fontSize: 11,
+            letterSpacing: '0.1em',
+            color: green,
+            background: 'rgba(0,230,118,0.08)',
+            border: '1px solid rgba(0,230,118,0.25)',
+            borderRadius: 8,
+            padding: '8px 20px',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,230,118,0.15)'; e.currentTarget.style.borderColor = 'rgba(0,230,118,0.5)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,230,118,0.08)'; e.currentTarget.style.borderColor = 'rgba(0,230,118,0.25)'; }}
+        >
+          ▶ REPLAY
+        </button>
+        <button
+          onClick={() => setShowControls(s => !s)}
+          style={{
+            fontFamily: mono,
+            fontSize: 10,
+            color: dim,
+            background: showControls ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.03)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 8,
+            padding: '8px 16px',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+          }}
+        >
+          {showControls ? '✕ CLOSE' : '⚙ SETTINGS'}
+        </button>
+        <button
+          onClick={() => setAnimSettings(DEFAULT_SETTINGS)}
+          style={{
+            fontFamily: mono,
+            fontSize: 10,
+            color: dim,
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 8,
+            padding: '8px 12px',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+          }}
+        >
+          RESET
+        </button>
+      </div>
+
+      {showControls && (
+        <div style={{
+          marginTop: 12,
+          width: '100%',
+          maxWidth: 720,
+          background: 'rgba(10,14,10,0.7)',
+          backdropFilter: 'blur(16px)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: 10,
+          padding: '16px 20px',
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '12px 24px',
+        }}>
+          <div style={{ gridColumn: '1 / -1', fontFamily: arcade, fontSize: 10, color: green, letterSpacing: '0.1em', marginBottom: 4 }}>
+            ANIMATION CONTROLS
+          </div>
+
+          {([
+            { label: 'Title Duration', key: 'titleDuration' as const, min: 100, max: 3000, step: 50, unit: 'ms' },
+            { label: 'Title Delay', key: 'titleDelay' as const, min: 0, max: 2000, step: 50, unit: 'ms' },
+            { label: 'Terminal Duration', key: 'terminalDuration' as const, min: 100, max: 3000, step: 50, unit: 'ms' },
+            { label: 'Terminal Delay', key: 'terminalDelay' as const, min: 0, max: 2000, step: 50, unit: 'ms' },
+            { label: 'Cat Duration', key: 'catDuration' as const, min: 100, max: 3000, step: 50, unit: 'ms' },
+            { label: 'Cat Delay', key: 'catDelay' as const, min: 0, max: 2000, step: 50, unit: 'ms' },
+            { label: 'Gear Duration', key: 'gearDuration' as const, min: 100, max: 3000, step: 50, unit: 'ms' },
+            { label: 'Gear Delay', key: 'gearDelay' as const, min: 0, max: 2000, step: 50, unit: 'ms' },
+            { label: 'Overshoot', key: 'overshoot' as const, min: 0, max: 2, step: 0.1, unit: 'x' },
+          ]).map(({ label, key, min, max, step, unit }) => (
+            <div key={key}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span style={{ fontFamily: mono, fontSize: 9, color: dim, letterSpacing: '0.05em' }}>{label}</span>
+                <span style={{ fontFamily: mono, fontSize: 9, color: mid }}>{animSettings[key]}{unit}</span>
+              </div>
+              <input
+                type="range"
+                min={min}
+                max={max}
+                step={step}
+                value={animSettings[key]}
+                onChange={e => setAnimSettings(s => ({ ...s, [key]: Number(e.target.value) }))}
+                style={{
+                  width: '100%',
+                  accentColor: green,
+                  height: 4,
+                  cursor: 'pointer',
+                }}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Footer */}
       <div style={{
         fontFamily: arcade,
@@ -740,139 +624,6 @@ export default function GithubSection({ onVisibilityChange, audioRef, reducedMot
       }}>
         BUILT BY CFM STUDENTS  //  2026
       </div>
-
-
-      <style>{`
-        /* Intro animations */
-        @keyframes github-title-drop {
-          0%   { opacity: 0; transform: translateY(-40px) scale(1.1); }
-          60%  { opacity: 1; transform: translateY(4px) scale(0.98); }
-          100% { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        @keyframes github-terminal-rise {
-          0%   { opacity: 0; transform: translateY(50px); }
-          50%  { opacity: 1; }
-          75%  { opacity: 1; transform: translateY(-3px); }
-          100% { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes github-cat-enter {
-          0%   { opacity: 0; transform: translateX(-80px) rotate(25deg); }
-          60%  { opacity: 1; transform: translateX(8px) rotate(10deg); }
-          80%  { transform: translateX(-3px) rotate(14deg); }
-          100% { opacity: 1; transform: translateX(0) rotate(13deg); }
-        }
-        @keyframes github-gear-enter {
-          0%   { opacity: 0; transform: translateX(80px) rotate(-180deg); }
-          60%  { opacity: 1; transform: translateX(-5px) rotate(10deg); }
-          80%  { transform: translateX(2px) rotate(-5deg); }
-          100% { opacity: 1; transform: translateX(0) rotate(0deg); }
-        }
-
-        @keyframes ticker-scroll {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-50%); }
-        }
-        @keyframes terminal-gradient-drift {
-          0%   { background-position: 0% 0%; }
-          25%  { background-position: 100% 50%; }
-          50%  { background-position: 50% 100%; }
-          75%  { background-position: 0% 50%; }
-          100% { background-position: 0% 0%; }
-        }
-        .terminal-gradient {
-          animation: terminal-gradient-drift 10s ease infinite;
-        }
-        @keyframes terminal-shine-sweep {
-          0%, 70% { left: -100%; }
-          100% { left: 200%; }
-        }
-        .terminal-shine {
-          animation: terminal-shine-sweep 8s ease-in-out infinite;
-        }
-        @keyframes positions-scroll-up {
-          0% { transform: translateY(0); }
-          100% { transform: translateY(-50%); }
-        }
-        .positions-marquee {
-          animation: positions-scroll-up 20s linear infinite;
-          will-change: transform;
-          -webkit-backface-visibility: hidden;
-          backface-visibility: hidden;
-        }
-        .positions-marquee:hover {
-          animation-play-state: paused;
-        }
-
-        .github-contribute-btn {
-          box-shadow: 0 4px 20px rgba(0,0,0,0.35), 0 2px 8px rgba(0,230,118,0.08), inset 0 1px 0 rgba(255,255,255,0.15) !important;
-        }
-        .github-contribute-btn::before {
-          content: '';
-          position: absolute;
-          top: 0; left: -100%; width: 60%; height: 100%;
-          background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.12) 48%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.12) 52%, transparent 60%);
-          transition: left 0.5s ease;
-        }
-        .github-contribute-btn:hover::before {
-          left: 150%;
-        }
-        .github-contribute-btn:hover {
-          background: linear-gradient(135deg, rgba(0,230,118,0.18) 0%, rgba(0,230,118,0.06) 100%) !important;
-          border-color: rgba(0,230,118,0.4) !important;
-          box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 40px rgba(0,230,118,0.2), 0 0 80px rgba(0,230,118,0.08), inset 0 1px 0 rgba(255,255,255,0.2) !important;
-          transform: translateY(-2px);
-        }
-        .github-contribute-btn:active {
-          transform: translateY(0px) scale(0.97);
-          box-shadow: 0 2px 10px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1) !important;
-        }
-        .github-star-link:hover {
-          background: rgba(255,215,0,0.06) !important;
-          border-color: rgba(255,215,0,0.2) !important;
-          box-shadow: 0 0 12px rgba(255,215,0,0.08);
-        }
-        /* 8-bit bounce — snappy steps like a pixel sprite */
-        @keyframes star-8bit-bounce {
-          0%, 100% { transform: translateY(0); }
-          15% { transform: translateY(-6px); }
-          30% { transform: translateY(0); }
-          40% { transform: translateY(-3px); }
-          50% { transform: translateY(0); }
-        }
-        @keyframes star-spin {
-          0%, 100% { transform: rotateY(0deg); }
-          25% { transform: rotateY(180deg); }
-          50% { transform: rotateY(360deg); }
-        }
-        @keyframes star-text-blink {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.6; }
-        }
-        /* Default idle: 8-bit bounce */
-        .star-on-github {
-          animation: star-8bit-bounce 1.2s steps(6) infinite;
-        }
-        .star-icon-wrap {
-          animation: star-spin 3s linear infinite;
-        }
-        .star-text {
-          text-shadow: 0 0 8px rgba(0,230,118,0.3);
-        }
-        /* On contribute button hover */
-        .github-cta-group:hover .star-on-github {
-          animation: star-8bit-bounce 0.7s steps(6) infinite;
-          transform: scale(1.3);
-          transition: transform 0.2s ease;
-          color: #39ff7f;
-        }
-        .github-cta-group:hover .star-icon-wrap {
-          animation: star-spin 1.5s linear infinite;
-        }
-        .github-cta-group:hover .star-text {
-          color: #39ff7f;
-          text-shadow: 0 0 16px rgba(57,255,127,0.8), 0 0 32px rgba(57,255,127,0.4);
-        }
-      `}</style>
     </section>
   );
 }

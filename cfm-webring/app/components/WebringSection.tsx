@@ -3,38 +3,16 @@
 import { useRef, useEffect, useState, useCallback, useMemo, type RefObject } from 'react';
 import dynamic from 'next/dynamic';
 import membersData from '../../data/members.json';
+import { BEAT_INTERVAL, BEAT_OFFSET } from '../lib/beats';
+
+import type { WebringEntry, Social, Node, Edge, Camera, FlyTo, BoundingSphere, WebringSectionProps } from './webring/types';
+import { buildGraph, computeLayout, computeBoundingSphere } from './webring/graph';
+import { FOCAL, TAU, LOD_DOT, LOD_SIMPLE, easeInOutCubic, lerp, getCameraEye, getCameraBasis, project, depthFog } from './webring/camera';
+import SearchPanel from './webring/SearchPanel';
+import ProfilePanel from './webring/ProfilePanel';
+import ControlsBar from './webring/ControlsBar';
 
 const WebringBackground = dynamic(() => import('./WebringBackground'), { ssr: false });
-
-const BEAT_INTERVAL = 60 / 93;
-const BEAT_OFFSET = 0.229;
-
-interface WebringSectionProps {
-  onVisibilityChange: (visible: boolean) => void;
-  audioRef: RefObject<HTMLAudioElement | null>;
-  reducedMotion?: boolean;
-  sectionRefOut?: RefObject<HTMLElement | null>;
-}
-
-interface Social {
-  type: string;
-  url: string;
-}
-
-interface WebringEntry {
-  name: string;
-  url: string;
-  description: string;
-  cohort: string;
-  avatar?: string;
-  websiteImage?: string;
-  role?: string;
-  location?: string;
-  school?: string;
-  blurb?: string;
-  year?: string;
-  socials?: Social[];
-}
 
 const WEBRING_ENTRIES: WebringEntry[] = membersData.map(m => ({
   name: m.name,
@@ -52,249 +30,6 @@ const WEBRING_ENTRIES: WebringEntry[] = membersData.map(m => ({
 }));
 
 const ALL_COHORTS = [...new Set(WEBRING_ENTRIES.map(e => e.cohort))].sort();
-
-function seededRandom(seed: number) {
-  const x = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
-  return x - Math.floor(x);
-}
-
-// ── Types ────────────────────────────────────────────────────────────────────
-
-interface Node {
-  x: number; y: number; z: number; // world position (animated toward target)
-  targetX: number; targetY: number; targetZ: number; // layout target
-  transitionT: number; // 0→1 progress
-  nodeOpacity: number; // 0→1, for fade in/out
-  removing: boolean;
-  entry: WebringEntry;
-  index: number;
-  sx: number; sy: number; scale: number; depth: number; screenR: number; // projection cache
-  hoverAnim: number;
-  avatarImg: HTMLImageElement | null;
-  lod: 0 | 1 | 2; // 0=dot, 1=simple, 2=full — persists to prevent flicker
-}
-
-interface Edge { from: number; to: number; hoverAnim: number; }
-
-interface Camera {
-  tx: number; ty: number; tz: number; // orbit target
-  orbitTheta: number;  // azimuth
-  orbitPhi: number;    // elevation (clamped)
-  orbitDist: number;   // distance from target
-  orbitThetaVel: number; // momentum
-  bobPhase: number;
-}
-
-interface FlyTo {
-  startTarget: [number, number, number];
-  endTarget: [number, number, number];
-  startDist: number;
-  endDist: number;
-  startTheta?: number;
-  endTheta?: number;
-  startPhi?: number;
-  endPhi?: number;
-  t: number;
-  duration: number;
-}
-
-interface BoundingSphere { cx: number; cy: number; cz: number; radius: number; }
-
-// ── Constants ────────────────────────────────────────────────────────────────
-
-const FOCAL = 800;
-const TAU = Math.PI * 2;
-const LOD_DOT = 4;
-const LOD_SIMPLE = 10;
-
-// ── Math helpers ─────────────────────────────────────────────────────────────
-
-function easeInOutCubic(t: number) {
-  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-}
-
-function lerp(a: number, b: number, t: number) { return a + (b - a) * t; }
-
-// ── Camera helpers ───────────────────────────────────────────────────────────
-
-function getCameraEye(cam: Camera): [number, number, number] {
-  const sp = Math.sin(cam.orbitPhi);
-  const cp = Math.cos(cam.orbitPhi);
-  const st = Math.sin(cam.orbitTheta);
-  const ct = Math.cos(cam.orbitTheta);
-  return [
-    cam.tx + cam.orbitDist * sp * st,
-    cam.ty + cam.orbitDist * cp + Math.sin(cam.bobPhase) * 4,
-    cam.tz + cam.orbitDist * sp * ct,
-  ];
-}
-
-function getCameraBasis(eye: [number, number, number], target: [number, number, number], theta: number): {
-  fwd: [number, number, number]; right: [number, number, number]; up: [number, number, number];
-} {
-  let fx = target[0] - eye[0], fy = target[1] - eye[1], fz = target[2] - eye[2];
-  const fl = Math.sqrt(fx * fx + fy * fy + fz * fz) || 1;
-  fx /= fl; fy /= fl; fz /= fl;
-  // Choose up hint: worldUp unless looking nearly straight up/down (gimbal lock)
-  let hx = 0, hy = 1, hz = 0;
-  if (Math.abs(fy) > 0.99) {
-    // At poles — use theta-derived horizontal as up hint to avoid zero cross product
-    hx = Math.sin(theta); hy = 0; hz = Math.cos(theta);
-  }
-  // right = forward × upHint
-  let rx = fy * hz - fz * hy, ry = fz * hx - fx * hz, rz = fx * hy - fy * hx;
-  const rl = Math.sqrt(rx * rx + ry * ry + rz * rz) || 1;
-  rx /= rl; ry /= rl; rz /= rl;
-  // up = right × forward
-  const ux = ry * fz - rz * fy, uy = rz * fx - rx * fz, uz = rx * fy - ry * fx;
-  return { fwd: [fx, fy, fz], right: [rx, ry, rz], up: [ux, uy, uz] };
-}
-
-// ── Projection (look-at camera) ─────────────────────────────────────────────
-
-function project(wx: number, wy: number, wz: number, eye: [number, number, number],
-  right: [number, number, number], up: [number, number, number], fwd: [number, number, number],
-  cx: number, cy: number) {
-  const dx = wx - eye[0], dy = wy - eye[1], dz = wz - eye[2];
-  const camX = dx * right[0] + dy * right[1] + dz * right[2];
-  const camY = dx * up[0] + dy * up[1] + dz * up[2];
-  const camZ = dx * fwd[0] + dy * fwd[1] + dz * fwd[2];
-  if (camZ < 1) return { sx: -9999, sy: -9999, scale: 0.001, depth: 9999 };
-  const scale = FOCAL / camZ;
-  return { sx: cx + camX * scale, sy: cy - camY * scale, scale, depth: camZ };
-}
-
-function depthFog(depth: number, orbitDist: number) {
-  const fogNear = -orbitDist * 0.3;
-  const fogFar = orbitDist * 2.5;
-  return Math.max(0, Math.min(1, 1 - (depth - fogNear) / (fogFar - fogNear)));
-}
-
-// ── Graph Construction (world-space) ─────────────────────────────────────────
-
-function buildGraph(entries: WebringEntry[], originalIndices?: number[]) {
-  const n = entries.length;
-  const span = 400 + n * 4;
-  const cols = Math.max(1, Math.ceil(Math.cbrt(n * 1.5)));
-  const rows = Math.max(1, Math.ceil(Math.cbrt(n * 1.5)));
-  const layers = Math.max(1, Math.ceil(n / (cols * rows)));
-  const cellSize = span / Math.max(cols, rows, layers);
-
-  const nodes: Node[] = entries.map((entry, i) => {
-    const col = i % cols;
-    const row = Math.floor(i / cols) % rows;
-    const layer = Math.floor(i / (cols * rows));
-    const jx = (seededRandom(i * 2) - 0.5) * cellSize * 0.6;
-    const jy = (seededRandom(i * 2 + 1) - 0.5) * cellSize * 0.6;
-    const jz = (seededRandom(i * 2 + 100) - 0.5) * cellSize * 0.6;
-    const x = (col - cols / 2 + 0.5) * cellSize + jx;
-    const y = (row - rows / 2 + 0.5) * cellSize + jy;
-    const z = (layer - layers / 2 + 0.5) * cellSize + jz;
-    let avatarImg: HTMLImageElement | null = null;
-    if (entry.avatar) { avatarImg = new Image(); avatarImg.src = entry.avatar; }
-    const idx = originalIndices ? originalIndices[i] : i;
-    return { x, y, z, targetX: x, targetY: y, targetZ: z, transitionT: 1, nodeOpacity: 1, removing: false, entry, index: idx, sx: 0, sy: 0, scale: 1, depth: 0, screenR: 0, hoverAnim: 0, avatarImg, lod: 1 as const };
-  });
-
-  // Edges: ring + proximity
-  const edges: Edge[] = [];
-  const hasEdge = (a: number, b: number) => edges.some(e => (e.from === a && e.to === b) || (e.from === b && e.to === a));
-  for (let i = 0; i < n; i++) edges.push({ from: i, to: (i + 1) % n, hoverAnim: 0 });
-
-  if (n <= 20) {
-    for (let i = 0; i < n; i++) {
-      const jump = 2 + Math.floor(seededRandom(i * 7 + 3) * 3);
-      const target = (i + jump) % n;
-      if (!hasEdge(i, target)) edges.push({ from: i, to: target, hoverAnim: 0 });
-    }
-  } else {
-    const maxExtra = Math.floor(n * 1.5);
-    let added = 0;
-    for (let i = 0; i < n && added < maxExtra; i++) {
-      let bestDist = Infinity, bestJ = -1;
-      for (let j = 0; j < n; j++) {
-        if (j === i || hasEdge(i, j)) continue;
-        const dx = nodes[j].x - nodes[i].x, dy = nodes[j].y - nodes[i].y, dz = nodes[j].z - nodes[i].z;
-        const d = dx * dx + dy * dy + dz * dz;
-        if (d < bestDist) { bestDist = d; bestJ = j; }
-      }
-      if (bestJ >= 0) { edges.push({ from: i, to: bestJ, hoverAnim: 0 }); added++; }
-    }
-  }
-
-  return { nodes, edges };
-}
-
-// ── One-time layout computation ──────────────────────────────────────────────
-
-function computeLayout(nodes: Node[], edges: Edge[]) {
-  const n = nodes.length;
-  const span = 400 + n * 4;
-  const avgSpacing = Math.cbrt(span * span * span / Math.max(1, n));
-  const springLen = Math.max(60, 1.0 * avgSpacing);
-  const repulsion = 30000 * (springLen / 320) * (springLen / 320);
-  const spring = 0.002 * (320 / Math.max(30, springLen));
-  const damping = 0.85;
-  const maxVel = 10;
-  const cutoff = springLen * 4;
-
-  // Temp velocity arrays
-  const vx = new Float64Array(n), vy = new Float64Array(n), vz = new Float64Array(n);
-
-  for (let iter = 0; iter < 400; iter++) {
-    // Repulsion
-    for (let i = 0; i < n; i++) {
-      for (let j = i + 1; j < n; j++) {
-        const dx = nodes[j].x - nodes[i].x, dy = nodes[j].y - nodes[i].y, dz = nodes[j].z - nodes[i].z;
-        if (Math.abs(dx) + Math.abs(dy) + Math.abs(dz) > cutoff) continue;
-        const distSq = dx * dx + dy * dy + dz * dz;
-        const dist = Math.sqrt(distSq) || 1;
-        const f = repulsion / distSq;
-        const fx = (dx / dist) * f, fy = (dy / dist) * f, fz = (dz / dist) * f;
-        vx[i] -= fx; vy[i] -= fy; vz[i] -= fz;
-        vx[j] += fx; vy[j] += fy; vz[j] += fz;
-      }
-    }
-    // Springs
-    for (const edge of edges) {
-      const a = edge.from, b = edge.to;
-      const dx = nodes[b].x - nodes[a].x, dy = nodes[b].y - nodes[a].y, dz = nodes[b].z - nodes[a].z;
-      const dist = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
-      const f = (dist - springLen) * spring;
-      const fx = (dx / dist) * f, fy = (dy / dist) * f, fz = (dz / dist) * f;
-      vx[a] += fx; vy[a] += fy; vz[a] += fz;
-      vx[b] -= fx; vy[b] -= fy; vz[b] -= fz;
-    }
-    // Mild centering (just to prevent drift, not to constrain)
-    for (let i = 0; i < n; i++) {
-      vx[i] += (0 - nodes[i].x) * 0.0001;
-      vy[i] += (0 - nodes[i].y) * 0.0001;
-      vz[i] += (0 - nodes[i].z) * 0.0001;
-    }
-    // Integration
-    let totalKE = 0;
-    for (let i = 0; i < n; i++) {
-      vx[i] *= damping; vy[i] *= damping; vz[i] *= damping;
-      const speed = Math.sqrt(vx[i] * vx[i] + vy[i] * vy[i] + vz[i] * vz[i]);
-      if (speed > maxVel) { const s = maxVel / speed; vx[i] *= s; vy[i] *= s; vz[i] *= s; }
-      nodes[i].x += vx[i]; nodes[i].y += vy[i]; nodes[i].z += vz[i];
-      totalKE += vx[i] * vx[i] + vy[i] * vy[i] + vz[i] * vz[i];
-    }
-    if (totalKE < 0.01 * n) break;
-  }
-}
-
-function computeBoundingSphere(nodes: Node[]): BoundingSphere {
-  let sx = 0, sy = 0, sz = 0;
-  for (const n of nodes) { sx += n.x; sy += n.y; sz += n.z; }
-  const cx = sx / nodes.length, cy = sy / nodes.length, cz = sz / nodes.length;
-  let maxR = 0;
-  for (const n of nodes) {
-    const d = Math.sqrt((n.x - cx) ** 2 + (n.y - cy) ** 2 + (n.z - cz) ** 2);
-    if (d > maxR) maxR = d;
-  }
-  return { cx, cy, cz, radius: Math.max(maxR, 50) };
-}
 
 // ── Component ────────────────────────────────────────────────────────────────
 
@@ -1199,6 +934,12 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
 
   const listMaxHeight = panelSize.h - 230;
 
+  // Profile panel derived state
+  const selectedGraphNode = selectedNode >= 0 && graphRef.current ? graphRef.current.nodes.find(n => n.index === selectedNode) : null;
+  const isProfileOpen = !!selectedGraphNode;
+  if (isProfileOpen) lastEntryRef.current = selectedGraphNode!.entry;
+  const profileEntry = lastEntryRef.current;
+
   return (
     <section ref={setSectionRef} className="relative h-screen flex flex-col" style={{ zIndex: 10, background: '#000', overflow: 'hidden' }}>
       <div ref={sentinelRef} className="absolute top-0 left-0 w-full h-24" />
@@ -1228,299 +969,44 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
       }} />
 
       {/* Search panel */}
-      <div
-        ref={panelRef}
-        className="absolute z-[60]"
-        style={{
-          ...(isMobile
-            ? { bottom: 0, left: 0, right: 0, width: '100%', top: 'auto',
-                transform: (selectedNode >= 0) ? 'translateY(100%)' : 'translateY(0)',
-                transition: 'transform 0.3s cubic-bezier(0.16,1,0.3,1)',
-              }
-            : { top: panelPos.y, left: panelPos.x, width: panelSize.w }
-          ),
-          userSelect: 'none',
-        }}
-      >
-        <div
-          style={{
-            border: '2px solid #000',
-            background: 'rgba(0, 0, 0, 1)',
-            backdropFilter: 'blur(8px)',
-            boxShadow: '3px 3px 0 #000',
-            height: collapsed ? 'auto' : (isMobile ? 'auto' : panelSize.h),
-            maxHeight: isMobile && !collapsed ? '50vh' : undefined,
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-            position: 'relative',
-          }}
-        >
-          <div className="absolute inset-0 pointer-events-none" style={{
-            background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.015) 2px, rgba(255,255,255,0.015) 4px)',
-            zIndex: 1,
-          }} />
-
-          <div
-            onMouseDown={isMobile ? undefined : handleDragStart}
-            className="flex items-center justify-between px-4 py-2 relative z-10"
-            style={{ borderBottom: '1px solid #222', background: '#0a0a0a', cursor: isMobile ? 'default' : 'grab', flexShrink: 0 }}
-          >
-            <div className="flex items-center gap-2">
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff', display: 'inline-block', boxShadow: '0 0 6px rgba(255,255,255,0.5)' }} />
-              <span style={{ fontFamily: 'var(--font-arcade)', fontSize: 12, letterSpacing: '0.1em', color: '#fff' }}>SEARCH</span>
-              <span style={{ display: 'inline-block', width: 7, height: 12, background: '#fff', animation: 'terminal-cursor-blink 1s step-end infinite' }} />
-            </div>
-            <div className="flex items-center gap-2">
-              <span style={{ fontFamily: 'var(--font-arcade)', fontSize: 8, color: '#444', letterSpacing: '0.1em' }}>
-                {matchingIndices.size}/{WEBRING_ENTRIES.length}
-              </span>
-              <button
-                className="cta-btn"
-                onClick={(e) => { e.stopPropagation(); setCollapsed(prev => !prev); }}
-                style={{ background: 'transparent', border: '2px solid #fff', boxShadow: '2px 2px 0 #000', color: '#fff', cursor: 'pointer', fontFamily: 'var(--font-arcade)', fontSize: 9, padding: '2px 7px', lineHeight: 1, letterSpacing: '0.1em' }}
-                onMouseEnter={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#000'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#fff'; }}
-              >
-                {collapsed ? '+' : '−'}
-              </button>
-            </div>
-          </div>
-
-          <div
-            className="flex flex-col relative z-10"
-            style={{
-              maxHeight: collapsed ? 0 : (isMobile ? 'calc(50vh - 44px)' : 600),
-              opacity: collapsed ? 0 : 1,
-              padding: collapsed ? '0 16px' : '12px 16px',
-              overflow: collapsed ? 'hidden' : 'auto',
-              transition: 'max-height 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease, padding 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
-              flex: collapsed ? 'none' : '1',
-            }}
-          >
-            <div style={{ border: '1px solid #333', background: '#111', display: 'flex', alignItems: 'center', padding: '0 12px', flexShrink: 0 }}>
-              <span style={{ color: '#888', fontFamily: 'var(--font-mono)', fontSize: 13, marginRight: 8 }}>{'>'}</span>
-              <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="search..." spellCheck={false}
-                style={{ background: 'transparent', border: 'none', outline: 'none', color: '#e0e0e0', fontFamily: 'var(--font-mono)', fontSize: 13, padding: '8px 0', width: '100%', caretColor: '#fff' }}
-              />
-              {search && <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 14, padding: '0 4px' }}>x</button>}
-            </div>
-
-            <div className="flex flex-wrap gap-1 mt-2" style={{ flexShrink: 0 }}>
-              {ALL_COHORTS.map(cohort => {
-                const active = selectedCohorts.has(cohort);
-                return (
-                  <button key={cohort} className="cohort-chip" onClick={() => toggleCohort(cohort)}
-                    style={{ fontFamily: 'var(--font-arcade)', fontSize: 9, letterSpacing: '0.08em', padding: '3px 10px', border: `1px solid ${active ? '#fff' : '#333'}`, background: active ? '#fff' : 'transparent', color: active ? '#000' : '#666', cursor: 'pointer', transition: 'all 0.15s ease' }}
-                  >{cohort}</button>
-                );
-              })}
-              {selectedCohorts.size > 0 && <button
-  onClick={() => setSelectedCohorts(new Set())}
-  style={{ fontFamily: 'var(--font-arcade)', fontSize: 9, padding: '3px 8px', border: '2px solid #fff', background: 'transparent', color: '#fff', cursor: 'pointer', letterSpacing: '0.1em', transition: 'all 0.15s ease' }}
-  onMouseEnter={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#000'; }}
-  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#fff'; }}
->CLEAR</button>}
-            </div>
-
-            <div className="mt-3 flex flex-col gap-1 flex-1 overflow-y-auto" style={{ maxHeight: Math.max(80, listMaxHeight) }}>
-              {WEBRING_ENTRIES.map((entry, i) => {
-                if (!matchingIndices.has(i)) return null;
-                const isSelected = selectedNode === i;
-                return (
-                  <div key={i} className="block no-underline webring-item" role="button" tabIndex={0}
-                    onClick={(e) => handleListClick(e, i)}
-                    onDoubleClick={(e) => handleListDoubleClick(e, i)}
-                    onMouseEnter={() => setHoveredNode(i)} onMouseLeave={() => setHoveredNode(-1)}
-                    style={{ padding: '6px 8px', cursor: 'pointer', background: (hoveredNode === i || isSelected) ? 'rgba(255,255,255,0.08)' : 'transparent', border: `1px solid ${isSelected ? 'rgba(255,255,255,0.4)' : hoveredNode === i ? 'rgba(255,255,255,0.2)' : 'transparent'}`, transition: 'all 0.15s ease', flexShrink: 0 }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span style={{ fontFamily: 'var(--font-arcade)', fontSize: 11, letterSpacing: '0.06em', color: '#fff' }}>{entry.name}</span>
-                      <span style={{ fontFamily: 'var(--font-arcade)', fontSize: 9, color: '#444', letterSpacing: '0.08em' }}>{entry.cohort}</span>
-                    </div>
-                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#666', margin: 0, marginTop: 2 }}>{entry.description}</p>
-                  </div>
-                );
-              })}
-              {matchingIndices.size === 0 && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: '#444', padding: '12px 0', textAlign: 'center' }}>no results found</p>}
-            </div>
-
-            <div className="mt-3 pt-2 flex items-center gap-2" style={{ borderTop: '1px solid #222', flexShrink: 0 }}>
-              <a href="https://github.com/DanielWLiu07/CFM" target="_blank" rel="noopener noreferrer"
-                className="inline-block no-underline cta-btn"
-                style={{ fontFamily: 'var(--font-arcade)', fontSize: 9, letterSpacing: '0.15em', color: '#fff', border: '2px solid #fff', boxShadow: '2px 2px 0 #000', padding: '5px 14px', background: 'transparent' }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#fff'; (e.currentTarget as HTMLElement).style.color = '#000'; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#fff'; }}
-              >ADD YOUR SITE</a>
-            </div>
-          </div>
-
-          {!collapsed && !isMobile && (
-            <div onMouseDown={handleResizeStart} style={{ position: 'absolute', bottom: 0, right: 0, width: 16, height: 16, cursor: 'nwse-resize', zIndex: 10 }}>
-              <svg width="16" height="16" viewBox="0 0 16 16" style={{ opacity: 0.3 }}>
-                <line x1="14" y1="4" x2="4" y2="14" stroke="#fff" strokeWidth="1" />
-                <line x1="14" y1="8" x2="8" y2="14" stroke="#fff" strokeWidth="1" />
-                <line x1="14" y1="12" x2="12" y2="14" stroke="#fff" strokeWidth="1" />
-              </svg>
-            </div>
-          )}
-        </div>
-      </div>
+      <SearchPanel
+        panelRef={panelRef}
+        isMobile={isMobile}
+        selectedNode={selectedNode}
+        panelPos={panelPos}
+        panelSize={panelSize}
+        collapsed={collapsed}
+        setCollapsed={setCollapsed}
+        search={search}
+        setSearch={setSearch}
+        selectedCohorts={selectedCohorts}
+        setSelectedCohorts={setSelectedCohorts}
+        toggleCohort={toggleCohort}
+        matchingIndices={matchingIndices}
+        hoveredNode={hoveredNode}
+        setHoveredNode={setHoveredNode}
+        handleDragStart={handleDragStart}
+        handleResizeStart={handleResizeStart}
+        handleListClick={handleListClick}
+        handleListDoubleClick={handleListDoubleClick}
+        allCohorts={ALL_COHORTS}
+        webringEntries={WEBRING_ENTRIES}
+        listMaxHeight={listMaxHeight}
+      />
 
       {/* Right-side profile panel — draggable + resizable, matches left panel */}
-      {(() => {
-        const selectedGraphNode = selectedNode >= 0 && graphRef.current ? graphRef.current.nodes.find(n => n.index === selectedNode) : null;
-        const isOpen = !!selectedGraphNode;
-        if (isOpen) lastEntryRef.current = selectedGraphNode!.entry;
-        const entry = lastEntryRef.current;
-        return (
-          <div
-            ref={rightPanelRef}
-            className="absolute z-[60]"
-            style={{
-              ...(isMobile
-                ? { bottom: 0, left: 0, right: 0, width: '100%', top: 'auto', transform: isOpen ? 'translateY(0)' : 'translateY(100%)' }
-                : rightDragged
-                  ? { top: rightPos.y, left: rightPos.x }
-                  : { top: '50%', right: 24, transform: isOpen ? 'translateY(-50%)' : 'translateY(-50%) translateX(30px)' }
-              ),
-              width: isMobile ? '100%' : 280,
-              opacity: isMobile ? (isOpen ? 1 : 0) : (isOpen ? 1 : 0),
-              pointerEvents: isOpen ? 'auto' : 'none',
-              transition: 'transform 0.35s cubic-bezier(0.16,1,0.3,1), opacity 0.3s ease, width 0.25s ease',
-              userSelect: 'none',
-              zIndex: isMobile ? 70 : undefined,
-            }}
-          >
-            <div style={{
-              border: '2px solid #000', background: 'rgba(0,0,0,1)', boxShadow: '3px 3px 0 #000',
-              display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative',
-              height: rightCollapsed ? 'auto' : undefined,
-              maxHeight: isMobile ? '60vh' : undefined,
-            }}>
-              {/* Scanlines */}
-              <div className="absolute inset-0 pointer-events-none" style={{
-                background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.015) 2px, rgba(255,255,255,0.015) 4px)',
-                zIndex: 3,
-              }} />
-
-              {/* Title bar — draggable */}
-              <div
-                onMouseDown={isMobile ? undefined : handleRightDragStart}
-                className="flex items-center justify-between px-4 py-2 relative z-10"
-                style={{ borderBottom: '1px solid #222', background: '#0a0a0a', flexShrink: 0, cursor: isMobile ? 'default' : 'grab' }}
-              >
-                <div className="flex items-center gap-2">
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff', display: 'inline-block', boxShadow: '0 0 6px rgba(255,255,255,0.5)' }} />
-                  <span style={{ fontFamily: 'var(--font-arcade)', fontSize: 12, letterSpacing: '0.1em', color: '#fff' }}>PROFILE</span>
-                  <span style={{ display: 'inline-block', width: 7, height: 12, background: '#fff', animation: 'terminal-cursor-blink 1s step-end infinite' }} />
-                </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setRightCollapsed(prev => !prev); }}
-                    className="cta-btn"
-                    style={{ background: 'transparent', border: '2px solid #fff', boxShadow: '2px 2px 0 #000', color: '#fff', cursor: 'pointer', fontFamily: 'var(--font-arcade)', fontSize: 9, padding: '2px 7px', lineHeight: 1, letterSpacing: '0.1em' }}
-                    onMouseEnter={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#000'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#fff'; }}
-                  >
-                    {rightCollapsed ? '+' : '−'}
-                  </button>
-                  <button
-                    onClick={handleDeselect}
-                    className="cta-btn"
-                    style={{ background: 'transparent', border: '2px solid #fff', boxShadow: '2px 2px 0 #000', color: '#fff', cursor: 'pointer', fontFamily: 'var(--font-arcade)', fontSize: 9, padding: '2px 7px', lineHeight: 1, letterSpacing: '0.1em' }}
-                    onMouseEnter={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#000'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#fff'; }}
-                  >
-                    X
-                  </button>
-                </div>
-              </div>
-
-              {entry && (
-                <div
-                  className="flex flex-col relative z-10"
-                  style={{
-                    maxHeight: rightCollapsed ? 0 : (isMobile ? 'calc(60vh - 44px)' : 600),
-                    opacity: rightCollapsed ? 0 : 1,
-                    overflow: rightCollapsed ? 'hidden' : 'auto',
-                    transition: 'max-height 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease',
-                  }}
-                >
-                  {/* Website screenshot or avatar fallback */}
-                  {(entry.websiteImage || entry.avatar) && (
-                    <div style={{ width: '100%', height: 160, overflow: 'hidden', borderBottom: '1px solid #222', position: 'relative', flexShrink: 0 }}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={entry.websiteImage || entry.avatar!} alt={`${entry.name}'s website`}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', display: 'block' }} />
-                    </div>
-                  )}
-
-                  {/* Info */}
-                  <div style={{ padding: '14px 16px' }}>
-                    <div className="flex items-center gap-2">
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: '#888' }}>&gt;</span>
-                      <span style={{ fontFamily: 'var(--font-arcade)', fontSize: 14, color: '#fff', letterSpacing: '0.1em' }}>{entry.name}</span>
-                    </div>
-
-                    {entry.role && (
-                      <p style={{ fontFamily: 'var(--font-arcade)', fontSize: 10, color: '#888', margin: 0, marginTop: 4, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-                        {entry.role}
-                      </p>
-                    )}
-
-                    <p style={{ fontFamily: 'var(--font-arcade)', fontSize: 9, color: '#555', margin: 0, marginTop: 4, letterSpacing: '0.1em' }}>
-                      // CLASS OF &apos;{entry.year || entry.cohort}
-                    </p>
-
-                    {(entry.location || entry.school) && (
-                      <p style={{ fontFamily: 'var(--font-arcade)', fontSize: 9, color: '#555', margin: 0, marginTop: 2, letterSpacing: '0.06em' }}>
-                        {entry.location}{entry.location && entry.school ? '  //  ' : ''}{entry.school}
-                      </p>
-                    )}
-
-                    {entry.blurb && (
-                      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: '#e0e0e0', margin: 0, marginTop: 10, lineHeight: 1.7 }}>
-                        &ldquo;{entry.blurb}&rdquo;
-                      </p>
-                    )}
-
-                    {/* Socials (website filtered out — shown as VISIT button) */}
-                    {entry.socials && entry.socials.filter(s => s.type !== 'website').length > 0 && (
-                      <div className="flex gap-2 mt-3">
-                        {entry.socials.filter(s => s.type !== 'website').map((s, i) => (
-                          <a key={i} href={s.url} target="_blank" rel="noopener noreferrer"
-                            className="cta-btn"
-                            style={{ color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, border: '2px solid #fff', boxShadow: '2px 2px 0 #000', background: 'transparent', textDecoration: 'none', transition: 'all 0.15s ease' }}
-                            onMouseEnter={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#000'; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#fff'; }}
-                            dangerouslySetInnerHTML={{ __html:
-                              s.type === 'github' ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>'
-                              : s.type === 'linkedin' ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>'
-                              : s.type === 'twitter' ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l11.733 16h4.267l-11.733 -16z"/><path d="M4 20l6.768 -6.768m2.46 -2.46l6.772 -6.772"/></svg>'
-                              : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>'
-                            }}
-                          />
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Visit */}
-                    <div className="flex items-center gap-2" style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid #222' }}>
-                      <a href={entry.url} target="_blank" rel="noopener noreferrer" className="cta-btn"
-                        style={{ fontFamily: 'var(--font-arcade)', fontSize: 9, letterSpacing: '0.15em', color: '#fff', border: '2px solid #fff', boxShadow: '2px 2px 0 #000', padding: '5px 14px', background: 'transparent', textDecoration: 'none' }}
-                        onMouseEnter={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#000'; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#fff'; }}
-                      >VISIT &rarr;</a>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-            </div>
-          </div>
-        );
-      })()}
+      <ProfilePanel
+        rightPanelRef={rightPanelRef}
+        isMobile={isMobile}
+        isOpen={isProfileOpen}
+        entry={profileEntry}
+        rightDragged={rightDragged}
+        rightPos={rightPos}
+        rightCollapsed={rightCollapsed}
+        setRightCollapsed={setRightCollapsed}
+        handleRightDragStart={handleRightDragStart}
+        handleDeselect={handleDeselect}
+      />
 
       <div className="absolute inset-0" style={{ zIndex: 1 }}>
         <canvas ref={canvasRef} className="w-full h-full" style={{ background: 'transparent' }}
@@ -1529,72 +1015,19 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
       </div>
 
       {/* Controls bar — hidden on mobile */}
-      <div
-        className="absolute z-[60] flex items-center gap-5"
-        style={{
-          display: isMobile ? 'none' : 'flex',
-          bottom: 24,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          background: 'rgba(0,0,0,0.7)',
-          backdropFilter: 'blur(6px)',
-          border: '1px solid #222',
-          padding: '8px 20px',
-          userSelect: 'none',
-        }}
-      >
-        <div className="flex items-center gap-2">
-          <span style={{ fontFamily: 'var(--font-arcade)', fontSize: 8, color: '#555', letterSpacing: '0.1em', whiteSpace: 'nowrap' }}>
-            ROTATE
-          </span>
-          <input
-            type="range" min="0" max="360" step="0.5"
-            value={sliderAngle} onChange={handleSliderChange}
-            onMouseUp={handleSliderUp} onTouchEnd={handleSliderUp}
-            style={{ width: 140, height: 2, appearance: 'none', background: '#333', outline: 'none', cursor: 'pointer', accentColor: '#fff' }}
-          />
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#444', width: 28, textAlign: 'right' }}>
-            {Math.round(sliderAngle)}°
-          </span>
-        </div>
-        <div style={{ width: 1, height: 14, background: '#333' }} />
-        <div className="flex items-center gap-2">
-          <span style={{ fontFamily: 'var(--font-arcade)', fontSize: 8, color: '#555', letterSpacing: '0.1em', whiteSpace: 'nowrap' }}>
-            TILT
-          </span>
-          <input
-            type="range" min="0" max="360" step="1"
-            value={sliderTilt} onChange={handleTiltChange}
-            onMouseUp={handleTiltUp} onTouchEnd={handleTiltUp}
-            style={{ width: 100, height: 2, appearance: 'none', background: '#333', outline: 'none', cursor: 'pointer', accentColor: '#fff' }}
-          />
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#444', width: 28, textAlign: 'right' }}>
-            {Math.round(sliderTilt)}°
-          </span>
-        </div>
-        <div style={{ width: 1, height: 14, background: '#333' }} />
-        <div className="flex items-center gap-2">
-          <span style={{ fontFamily: 'var(--font-arcade)', fontSize: 8, color: '#555', letterSpacing: '0.1em', whiteSpace: 'nowrap' }}>
-            ZOOM
-          </span>
-          <input
-            type="range" min="0" max="100" step="1"
-            value={sliderZoom} onChange={handleZoomChange}
-            onMouseUp={handleZoomUp} onTouchEnd={handleZoomUp}
-            style={{ width: 100, height: 2, appearance: 'none', background: '#333', outline: 'none', cursor: 'pointer', accentColor: '#fff' }}
-          />
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#444', width: 32, textAlign: 'right' }}>
-            {sliderZoom}%
-          </span>
-        </div>
-        <div style={{ width: 1, height: 14, background: '#333' }} />
-        <button
-          onClick={handleResetView}
-          style={{ fontFamily: 'var(--font-arcade)', fontSize: 8, color: '#fff', letterSpacing: '0.1em', background: 'transparent', border: '2px solid #fff', padding: '3px 10px', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s ease' }}
-          onMouseEnter={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#000'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#fff'; }}
-        >RESET</button>
-      </div>
+      <ControlsBar
+        isMobile={isMobile}
+        sliderAngle={sliderAngle}
+        sliderTilt={sliderTilt}
+        sliderZoom={sliderZoom}
+        handleSliderChange={handleSliderChange}
+        handleSliderUp={handleSliderUp}
+        handleTiltChange={handleTiltChange}
+        handleTiltUp={handleTiltUp}
+        handleZoomChange={handleZoomChange}
+        handleZoomUp={handleZoomUp}
+        handleResetView={handleResetView}
+      />
     </section>
   );
 }

@@ -19,13 +19,15 @@ export interface ClassTitle3DConfig {
   titleGap: number;
   bgScale: number;
   bgOpacity: number;
+  bgX: number;
   bgY: number;
+  bgMaxW: number;
   titleY: number;
   searchY: number;
 }
 
 export const DEFAULT_CONFIG: ClassTitle3DConfig = {
-  size: 6.5,
+  size: 8.5,
   depth: 4.0,
   tiltX: -0.25,
   tiltY: 0,
@@ -35,15 +37,17 @@ export const DEFAULT_CONFIG: ClassTitle3DConfig = {
   frontLight: 7.0,
   topLight: 2.5,
   ambient: 0.15,
-  titleGap: -130,
-  bgScale: 90,
+  titleGap: -100,
+  bgScale: 130,
   bgOpacity: 1.0,
-  bgY: 135,
+  bgX: 0,
+  bgY: -30,
+  bgMaxW: 1000,
   titleY: 0,
   searchY: 0,
 };
 
-function AutoCamera({ textWidth }: { textWidth: number }) {
+function AutoCamera({ textWidth, twoLine, fontSize }: { textWidth: number; twoLine: boolean; fontSize: number }) {
   const { camera, size } = useThree();
   const prevW = useRef(0);
   const prevH = useRef(0);
@@ -55,8 +59,18 @@ function AutoCamera({ textWidth }: { textWidth: number }) {
     prevH.current = size.height;
     const cam = camera as THREE.OrthographicCamera;
     const aspect = size.width / size.height;
-    const halfW = (textWidth / 2) * 1.45;
-    const halfH = halfW / aspect;
+    let halfW = (textWidth / 2) * 1.45;
+    let halfH = halfW / aspect;
+    // In two-line mode, ensure enough vertical room for both lines + gap + depth/tilt
+    // Scale both axes proportionally to avoid squashing
+    if (twoLine) {
+      const minHalfH = fontSize * 2.6;
+      if (halfH < minHalfH) {
+        const scale = minHalfH / halfH;
+        halfH = minHalfH;
+        halfW *= scale;
+      }
+    }
     cam.left = -halfW;
     cam.right = halfW;
     cam.top = halfH;
@@ -278,11 +292,24 @@ export default function ClassTitle3D({ year = '26', config = DEFAULT_CONFIG, bea
 
   const twoLine = screenW < 800;
 
-  const charCount = twoLine ? 5 : 9;
-  const spaceCount = twoLine ? 0 : 2;
-  const textWidth = ((charCount * 764 + spaceCount * 178) / 1000 + (charCount + spaceCount - 1) * 0.06) * config.size;
+  // Use the wider line for camera framing — "OF CFM" (6 chars, 1 space) may be wider than "CLASS" (5 chars)
+  const longestLine = twoLine ? `OF ${displayedYear === 'ALL' ? 'CFM' : displayedYear}` : `CLASS OF ${displayedYear === 'ALL' ? 'CFM' : displayedYear}`;
+  const textWidth = (() => {
+    let total = 0;
+    const chars = longestLine.split('');
+    for (const ch of chars) total += ((CHAR_WIDTH[ch] || 764) / 1000) * config.size + 0.06 * config.size;
+    total -= 0.06 * config.size;
+    // In two-line mode, also check "CLASS"
+    if (twoLine) {
+      let classW = 0;
+      for (const ch of 'CLASS'.split('')) classW += ((CHAR_WIDTH[ch] || 764) / 1000) * config.size + 0.06 * config.size;
+      classW -= 0.06 * config.size;
+      return Math.max(total, classW);
+    }
+    return total;
+  })();
 
-  const containerHeight = twoLine ? 'clamp(200px, 55vw, 320px)' : 'clamp(160px, 24vw, 300px)';
+  const containerHeight = twoLine ? 'clamp(300px, 70vw, 500px)' : 'clamp(240px, 35vw, 450px)';
 
   return (
     <div
@@ -309,7 +336,7 @@ export default function ClassTitle3D({ year = '26', config = DEFAULT_CONFIG, bea
         dpr={config.dpr}
         frameloop={visible ? 'always' : 'demand'}
       >
-        <AutoCamera textWidth={textWidth} />
+        <AutoCamera textWidth={textWidth} twoLine={twoLine} fontSize={config.size} />
         <ambientLight intensity={config.ambient} />
         <directionalLight position={[0, 0, 10]} intensity={config.frontLight} />
         <directionalLight position={[0, 14, 2]} intensity={config.topLight} />

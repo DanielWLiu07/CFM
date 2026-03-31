@@ -1,0 +1,129 @@
+/* Intro animations */
+@keyframes github-title-drop {
+  0%   { opacity: 0; transform: translateY(-40px) scale(1.1); }
+  60%  { opacity: 1; transform: translateY(4px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes github-terminal-rise {
+  0%   { opacity: 0; transform: translateY(50px); }
+  50%  { opacity: 1; }
+  75%  { opacity: 1; transform: translateY(-3px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes github-cat-enter {
+  0%   { opacity: 0; transform: translateX(-80px) rotate(25deg); }
+  60%  { opacity: 1; transform: translateX(8px) rotate(10deg); }
+  80%  { transform: translateX(-3px) rotate(14deg); }
+  100% { opacity: 1; transform: translateX(0) rotate(13deg); }
+}
+@keyframes github-gear-enter {
+  0%   { opacity: 0; transform: translateX(80px) rotate(-180deg); }
+  60%  { opacity: 1; transform: translateX(-5px) rotate(10deg); }
+  80%  { transform: translateX(2px) rotate(-5deg); }
+  100% { opacity: 1; transform: translateX(0) rotate(0deg); }
+}
+
+@keyframes ticker-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+@keyframes terminal-gradient-drift {
+  0%   { background-position: 0% 0%; }
+  25%  { background-position: 100% 50%; }
+  50%  { background-position: 50% 100%; }
+  75%  { background-position: 0% 50%; }
+  100% { background-position: 0% 0%; }
+}
+.terminal-gradient {
+  animation: terminal-gradient-drift 10s ease infinite;
+}
+@keyframes terminal-shine-sweep {
+  0%, 70% { left: -100%; }
+  100% { left: 200%; }
+}
+.terminal-shine {
+  animation: terminal-shine-sweep 8s ease-in-out infinite;
+}
+@keyframes positions-scroll-up {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-50%); }
+}
+.positions-marquee {
+  animation: positions-scroll-up 20s linear infinite;
+  will-change: transform;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+.positions-marquee:hover {
+  animation-play-state: paused;
+}
+
+.github-contribute-btn {
+  box-shadow: 0 4px 20px rgba(0,0,0,0.35), 0 2px 8px rgba(0,230,118,0.08), inset 0 1px 0 rgba(255,255,255,0.15) !important;
+}
+.github-contribute-btn::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%; width: 60%; height: 100%;
+  background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.12) 48%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.12) 52%, transparent 60%);
+  transition: left 0.5s ease;
+}
+.github-contribute-btn:hover::before {
+  left: 150%;
+}
+.github-contribute-btn:hover {
+  background: linear-gradient(135deg, rgba(0,230,118,0.18) 0%, rgba(0,230,118,0.06) 100%) !important;
+  border-color: rgba(0,230,118,0.4) !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 40px rgba(0,230,118,0.2), 0 0 80px rgba(0,230,118,0.08), inset 0 1px 0 rgba(255,255,255,0.2) !important;
+  transform: translateY(-2px);
+}
+.github-contribute-btn:active {
+  transform: translateY(0px) scale(0.97);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1) !important;
+}
+.github-star-link:hover {
+  background: rgba(255,215,0,0.06) !important;
+  border-color: rgba(255,215,0,0.2) !important;
+  box-shadow: 0 0 12px rgba(255,215,0,0.08);
+}
+/* 8-bit bounce — snappy steps like a pixel sprite */
+@keyframes star-8bit-bounce {
+  0%, 100% { transform: translateY(0); }
+  15% { transform: translateY(-6px); }
+  30% { transform: translateY(0); }
+  40% { transform: translateY(-3px); }
+  50% { transform: translateY(0); }
+}
+@keyframes star-spin {
+  0%, 100% { transform: rotateY(0deg); }
+  25% { transform: rotateY(180deg); }
+  50% { transform: rotateY(360deg); }
+}
+@keyframes star-text-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+/* Default idle: 8-bit bounce */
+.star-on-github {
+  animation: star-8bit-bounce 1.2s steps(6) infinite;
+}
+.star-icon-wrap {
+  animation: star-spin 3s linear infinite;
+}
+.star-text {
+  text-shadow: 0 0 8px rgba(0,230,118,0.3);
+}
+/* On contribute button hover */
+.github-cta-group:hover .star-on-github {
+  animation: star-8bit-bounce 0.7s steps(6) infinite;
+  transform: scale(1.3);
+  transition: transform 0.2s ease;
+  color: #39ff7f;
+}
+.github-cta-group:hover .star-icon-wrap {
+  animation: star-spin 1.5s linear infinite;
+}
+.github-cta-group:hover .star-text {
+  color: #39ff7f;
+  text-shadow: 0 0 16px rgba(57,255,127,0.8), 0 0 32px rgba(57,255,127,0.4);
+}

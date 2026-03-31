@@ -26,6 +26,16 @@ export function getMemberByUrl(flatList: Member[], url: string): Member | undefi
   return flatList.find((m) => m.url && normalizeUrl(m.url) === target);
 }
 
+/** Build a lookup map for O(1) member access by normalized URL. */
+export function buildUrlIndex(flatList: Member[]): Map<string, number> {
+  const map = new Map<string, number>();
+  for (let i = 0; i < flatList.length; i++) {
+    const m = flatList[i];
+    if (m.url) map.set(normalizeUrl(m.url), i);
+  }
+  return map;
+}
+
 function getCohortSlice(flatList: Member[], year?: number): Member[] {
   if (typeof year !== "number") {
     return flatList;
@@ -42,12 +52,10 @@ export function getNext(
   if (slice.length === 0) return null;
 
   const target = normalizeUrl(currentUrl);
-  const index = slice.findIndex((m) => m.url && normalizeUrl(m.url) === target);
+  const index = findByUrl(slice, target);
   if (index === -1) return null;
 
-  const nextIndex = (index + 1) % slice.length;
-  const nextMember = slice[nextIndex];
-  return nextMember ?? null;
+  return slice[(index + 1) % slice.length] ?? null;
 }
 
 export function getPrev(
@@ -59,11 +67,13 @@ export function getPrev(
   if (slice.length === 0) return null;
 
   const target = normalizeUrl(currentUrl);
-  const index = slice.findIndex((m) => m.url && normalizeUrl(m.url) === target);
+  const index = findByUrl(slice, target);
   if (index === -1) return null;
 
-  const prevIndex = (index - 1 + slice.length) % slice.length;
-  const prevMember = slice[prevIndex];
-  return prevMember ?? null;
+  return slice[(index - 1 + slice.length) % slice.length] ?? null;
+}
+
+function findByUrl(members: Member[], normalizedUrl: string): number {
+  return members.findIndex((m) => m.url && normalizeUrl(m.url) === normalizedUrl);
 }
 

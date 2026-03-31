@@ -20,10 +20,24 @@ const arcadeClassic = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "CFM Webring",
-  description: "CFM Webring",
+  title: "CFM Webring — UWaterloo Computing & Financial Management",
+  description:
+    "An interactive 3D webring connecting Computing & Financial Management students at the University of Waterloo. Explore member portfolios, class galleries, and GitHub activity.",
   icons: {
     icon: "/favicon_cfm.png",
+  },
+  openGraph: {
+    title: "CFM Webring",
+    description:
+      "A retro-arcade 3D webring for UWaterloo CFM students. Browse portfolios, connect with peers, and join the ring.",
+    siteName: "CFM Webring",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "CFM Webring",
+    description:
+      "A retro-arcade 3D webring for UWaterloo CFM students.",
   },
 };
 

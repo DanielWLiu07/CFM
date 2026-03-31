@@ -55,10 +55,7 @@ const Navbar = forwardRef<NavbarHandle>(function Navbar(_, ref) {
         }}
       >
         {links.map(({ href, label }, i) => {
-          const isScrollTarget = true;
-
           const handleClick = (e: React.MouseEvent) => {
-            if (!isScrollTarget) return;
             e.preventDefault();
             if (href === '/') {
               window.scrollTo({ top: 0, behavior: 'smooth' });

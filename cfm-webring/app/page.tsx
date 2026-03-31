@@ -1,16 +1,17 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import Navbar, { type NavbarHandle } from './components/Navbar';
 import PixelTrail from './components/PixelTrail';
 import ReadyOverlay from './components/ReadyOverlay';
 import AboutSection from './components/AboutSection';
 import MuteButton from './components/MuteButton';
 import ClassSection from './components/ClassSection';
-import { DEFAULT_CONFIG } from './components/ClassTitle3D';
 import WebringSection from './components/WebringSection';
 import GithubSection from './components/GithubSection';
 import ScrollReveal from './components/ScrollReveal';
+import { useAssetPreloader } from './hooks/useAssetPreloader';
+import { BEAT_INTERVAL, BEAT_OFFSET } from './lib/beats';
 
 const isDev = false; // change to process.env.NODE_ENV === 'development' to re-enable tuners
 const GearTuner = isDev ? require('./components/GearTuner').default : () => null;
@@ -21,104 +22,6 @@ const SizeTuner = isDev ? require('./components/SizeTuner').default : () => null
 const MAX_CRUSH   = 180;
 const STIFFNESS   = 0.35;  // spring pull toward target
 const DAMPING     = 0.72;  // < 1 = underdamped → overshoot/bounce
-const BEAT_INTERVAL = 60 / 93; // ~0.645s — derived from 25 recorded cycles
-const BEAT_OFFSET   = 0.229;     // seconds before first beat
-
-// ── Asset preloader ────────────────────────────────────────────────────────
-// Tracks loading of all critical assets so the overlay can show true progress.
-function useAssetPreloader(audioRef: React.RefObject<HTMLAudioElement | null>, videoRef: React.RefObject<HTMLVideoElement | null>) {
-  const [progress, setProgress] = useState(0);   // 0–1
-  const [ready, setReady] = useState(false);
-  const trackerRef = useRef({ loaded: 0, total: 0, done: false });
-
-  useEffect(() => {
-    const tracker = trackerRef.current;
-    if (tracker.done) return;
-
-    // -- Critical images to preload --
-    const criticalImages = [
-      '/images/side_wires.webp',
-      '/images/sepereate_wires.webp',
-      '/images/left_gear.webp',
-      '/images/right_gear.webp',
-      '/images/goose-ascii.webp',
-      '/images/waterloo-ascii.svg',
-      '/images/about_bg.webp',
-      '/images/about_title.webp',
-      '/images/nav_bg.webp',
-      '/images/cat_watching.webp',
-      '/images/title_bg.webp',
-    ];
-
-    // Set total BEFORE creating promises (prevents division by zero if something resolves synchronously)
-    // 1 (fonts) + 1 (audio) + 1 (video) + N (images)
-    tracker.total = 3 + criticalImages.length;
-    tracker.loaded = 0;
-    setProgress(0);
-
-    const tick = () => {
-      tracker.loaded++;
-      setProgress(tracker.loaded / tracker.total);
-    };
-
-    const promises: Promise<void>[] = [];
-
-    // 1. Fonts — wait for all fonts to finish loading
-    promises.push(
-      document.fonts.ready.then(() => { tick(); })
-    );
-
-    // 2. Audio — wait for canplaythrough
-    promises.push(new Promise<void>(resolve => {
-      const el = audioRef.current;
-      if (!el) { tick(); resolve(); return; }
-      if (el.readyState >= 4) { tick(); resolve(); return; } // HAVE_ENOUGH_DATA
-      const handler = () => { el.removeEventListener('canplaythrough', handler); tick(); resolve(); };
-      el.addEventListener('canplaythrough', handler);
-      // Nudge browser to actually preload
-      el.load();
-    }));
-
-    // 3. Video — wait for canplaythrough
-    promises.push(new Promise<void>(resolve => {
-      const el = videoRef.current;
-      if (!el) { tick(); resolve(); return; }
-      if (el.readyState >= 4) { tick(); resolve(); return; }
-      const handler = () => { el.removeEventListener('canplaythrough', handler); tick(); resolve(); };
-      el.addEventListener('canplaythrough', handler);
-      el.load();
-    }));
-
-    // 4. Critical images
-    for (const src of criticalImages) {
-      promises.push(new Promise<void>(resolve => {
-        const img = new Image();
-        img.onload = img.onerror = () => { tick(); resolve(); };
-        img.src = src;
-      }));
-    }
-
-    // When all done
-    Promise.all(promises).then(() => {
-      tracker.done = true;
-      setProgress(1);
-      setReady(true);
-    });
-
-    // Safety timeout — after 15s, allow start even if something stalled
-    const timeout = setTimeout(() => {
-      if (!tracker.done) {
-        tracker.done = true;
-        setProgress(1);
-        setReady(true);
-      }
-    }, 15000);
-
-    return () => clearTimeout(timeout);
-  }, [audioRef, videoRef]);
-
-  return { progress, ready };
-}
 
 export default function Home() {
   const [started, setStarted] = useState(false);
@@ -127,57 +30,41 @@ export default function Home() {
   const [reducedMotion, setReducedMotion] = useState(false);
   const reducedMotionRef = useRef(false);
   const navbarRef = useRef<NavbarHandle>(null);
-  const [githubPos, setGithubPos] = useState({ mt: 0, bgH: 0, pt: 5, pb: 2 });
-  const [githubTunerOpen, setGithubTunerOpen] = useState(false);
+  const githubPos = { mt: 0, bgH: 0, pt: 5, pb: 2 };
   const visibleSections = useRef(new Set<string>());
-  const routeUpdateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const routeRafRef = useRef<number>(0);
   const lastRouteRef = useRef('/');
 
   const updateActiveRoute = useCallback(() => {
-    // Use rAF — aligns with paint cycle, no React re-render needed
-    if (routeUpdateTimer.current) cancelAnimationFrame(routeUpdateTimer.current as unknown as number);
-    routeUpdateTimer.current = requestAnimationFrame(() => {
+    if (routeRafRef.current) cancelAnimationFrame(routeRafRef.current);
+    routeRafRef.current = requestAnimationFrame(() => {
       const priority = ['/github', '/webring', '/class', '/about'];
       let next = '';
       for (const route of priority) {
         if (visibleSections.current.has(route)) { next = route; break; }
       }
-      // Only go to '/' if nothing visible AND we're near the top
       if (!next) {
         if (window.scrollY < window.innerHeight * 0.5) next = '/';
-        else return; // between sections — keep current route
+        else return;
       }
       if (next !== lastRouteRef.current) {
         lastRouteRef.current = next;
         navbarRef.current?.setActiveRoute(next);
         window.history.replaceState(null, '', next);
       }
-    }) as unknown as ReturnType<typeof setTimeout>;
+    });
   }, []);
 
-  const handleAboutVisibility = useCallback((visible: boolean) => {
-    if (visible) visibleSections.current.add('/about');
-    else visibleSections.current.delete('/about');
+  const makeVisibilityHandler = useCallback((route: string) => (visible: boolean) => {
+    if (visible) visibleSections.current.add(route);
+    else visibleSections.current.delete(route);
     updateActiveRoute();
   }, [updateActiveRoute]);
 
-  const handleClassVisibility = useCallback((visible: boolean) => {
-    if (visible) visibleSections.current.add('/class');
-    else visibleSections.current.delete('/class');
-    updateActiveRoute();
-  }, [updateActiveRoute]);
-
-  const handleWebringVisibility = useCallback((visible: boolean) => {
-    if (visible) visibleSections.current.add('/webring');
-    else visibleSections.current.delete('/webring');
-    updateActiveRoute();
-  }, [updateActiveRoute]);
-
-  const handleGithubVisibility = useCallback((visible: boolean) => {
-    if (visible) visibleSections.current.add('/github');
-    else visibleSections.current.delete('/github');
-    updateActiveRoute();
-  }, [updateActiveRoute]);
+  const handleAboutVisibility = useMemo(() => makeVisibilityHandler('/about'), [makeVisibilityHandler]);
+  const handleClassVisibility = useMemo(() => makeVisibilityHandler('/class'), [makeVisibilityHandler]);
+  const handleWebringVisibility = useMemo(() => makeVisibilityHandler('/webring'), [makeVisibilityHandler]);
+  const handleGithubVisibility = useMemo(() => makeVisibilityHandler('/github'), [makeVisibilityHandler]);
 
   const audioRef       = useRef<HTMLAudioElement>(null);
   const videoRef       = useRef<HTMLVideoElement>(null);
@@ -358,15 +245,15 @@ export default function Home() {
 
   // ── "ready?" click — start everything immediately ─────────────────────────
   const handleStart = async () => {
+    const video = videoRef.current;
+    const audio = audioRef.current;
+    if (!video || !audio) return;
+
     setStarted(true);
-    videoRef.current!.currentTime = 0;
-    audioRef.current!.currentTime = 0;
-    audioRef.current!.muted = muted;
-    // Ensure both are actually playing before starting the beat loop
-    await Promise.all([
-      videoRef.current!.play(),
-      audioRef.current!.play(),
-    ]);
+    video.currentTime = 0;
+    audio.currentTime = 0;
+    audio.muted = muted;
+    await Promise.all([video.play(), audio.play()]);
     startLoop();
   };
 
@@ -429,7 +316,6 @@ export default function Home() {
     window.scrollTo(0, 0);
     window.history.replaceState(null, '', '/');
     navbarRef.current?.setActiveRoute('/');
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -652,25 +538,6 @@ export default function Home() {
       </div>
 
       <div style={{ position: 'relative' }}>
-        {/* Title bg glow — between gears (z60) and class content (z65) */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/images/title_bg.webp"
-          alt="" decoding="async"
-          className="pointer-events-none select-none"
-          id="class-title-bg"
-          style={{
-            position: 'absolute',
-            top: DEFAULT_CONFIG.bgY,
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: `${DEFAULT_CONFIG.bgScale}%`,
-            height: 'auto',
-            opacity: DEFAULT_CONFIG.bgOpacity,
-            mixBlendMode: 'screen',
-            zIndex: 62,
-          }}
-        />
         <div id="class" className="scroll-reveal reveal-glitch" style={{ position: 'relative', zIndex: 65 }}>
           <ClassSection onVisibilityChange={handleClassVisibility} beatRef={classBeatRef} />
         </div>
@@ -696,8 +563,8 @@ export default function Home() {
         />
 
         {/* Stars — fixed-width centered container so they crop from edges on narrow screens */}
-        <div className="absolute pointer-events-none" style={{ top: 0, left: '50%', transform: 'translateX(-50%)', width: '1400px', height: '100%', zIndex: 3 }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
+        <div className="absolute pointer-events-none" style={{ top: 0, left: '50vw', transform: 'translateX(-50%)', width: '1400px', height: '100%', zIndex: 3 }}>
+{/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             ref={starLeftRef}
             src="/images/star_left.webp"
@@ -765,49 +632,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Github position tuner — dev only */}
-      {isDev && (!githubTunerOpen ? (
-        <button
-          onClick={() => setGithubTunerOpen(true)}
-          style={{
-            position: 'fixed', top: 10, right: 180, zIndex: 9999,
-            background: '#222', color: '#fff', border: '1px solid #555',
-            padding: '6px 12px', cursor: 'pointer', fontFamily: 'monospace', fontSize: 12,
-          }}
-        >
-          GITHUB
-        </button>
-      ) : (
-        <div style={{
-          position: 'fixed', top: 10, right: 180, zIndex: 9999,
-          background: 'rgba(0,0,0,0.95)', border: '1px solid #333',
-          padding: '12px 16px', fontFamily: 'monospace', fontSize: 11,
-          color: '#fff', width: 280,
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-            <strong>GITHUB POS</strong>
-            <button onClick={() => setGithubTunerOpen(false)} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer' }}>X</button>
-          </div>
-          {[
-            { label: 'margin-top vh', key: 'mt', min: -120, max: 0, step: 1 },
-            { label: 'padding-top vh', key: 'pt', min: 0, max: 60, step: 1 },
-            { label: 'padding-bot vh', key: 'pb', min: 0, max: 60, step: 1 },
-            { label: 'bg height vh', key: 'bgH', min: 0, max: 120, step: 1 },
-          ].map(c => (
-            <label key={c.key} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <span style={{ width: 90 }}>{c.label}</span>
-              <input type="range" min={c.min} max={c.max} step={c.step}
-                value={githubPos[c.key as keyof typeof githubPos]}
-                onChange={e => setGithubPos(prev => ({ ...prev, [c.key]: +e.target.value }))}
-                style={{ flex: 1 }} />
-              <span style={{ width: 45, textAlign: 'right' }}>{githubPos[c.key as keyof typeof githubPos]}vh</span>
-            </label>
-          ))}
-          <div style={{ background: '#111', border: '1px solid #333', padding: 6, fontSize: 10, color: '#ccc', marginTop: 6 }}>
-            {`mt: ${githubPos.mt}vh, pt: ${githubPos.pt}vh, pb: ${githubPos.pb}vh, bgH: ${githubPos.bgH}vh`}
-          </div>
-        </div>
-      ))}
+      {/* Dev tuners — only rendered when isDev = true */}
 
       <DecoTuner items={[
         { ref: starLeftRef, label: 'STAR LEFT', defaults: { x: 3, y: 2, size: 340, rotation: -136, opacity: 0.2 } },
