@@ -130,12 +130,13 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
             }} />
           )}
 
-          {/* ── HARD FLICKER — brief phosphor flash during line only ── */}
-          {phase === 'line' && (
+          {/* ── GREEN PHOSPHOR WASH — glows during open, fades out smoothly ── */}
+          {(phase === 'dot' || phase === 'line' || phase === 'expand' || phase === 'done') && (
             <div style={{
               position: 'absolute', inset: 0, zIndex: 4,
-              background: 'rgba(34,197,94,0.1)',
-              animation: 'crt-flicker 0.12s steps(1) 1',
+              background: 'radial-gradient(ellipse at center, rgba(34,197,94,0.25) 0%, rgba(34,197,94,0.1) 40%, transparent 70%)',
+              opacity: phase === 'done' ? 0 : phase === 'dot' ? 0.6 : phase === 'line' ? 1 : 0.7,
+              transition: phase === 'done' ? 'opacity 0.6s ease' : 'opacity 0.15s ease',
               pointerEvents: 'none',
             }} />
           )}
@@ -377,8 +378,11 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
                   </div>
                   <div style={{ animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.22s both', marginTop: isNarrow ? -24 : -43 }}>
                     <p style={{
-                      fontFamily: 'var(--font-arcade)', fontSize: isNarrow ? 22 : 32, color: '#fff',
+                      fontFamily: 'var(--font-arcade)', fontSize: isNarrow ? 22 : 32, color: '#22c55e',
                       letterSpacing: '0.12em', margin: 0, textTransform: 'uppercase',
+                      WebkitTextStroke: isNarrow ? '1px #000' : '1.5px #000',
+                      paintOrder: 'stroke fill' as React.CSSProperties['paintOrder'],
+                      textShadow: '2px 2px 0 #000, 0 0 12px rgba(34,197,94,0.3)',
                     }}>
                       {expandedMember.role}
                     </p>
@@ -388,10 +392,10 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
                     animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.29s both',
                     marginTop: isNarrow ? -8 : -13,
                   }}>
-                    <p style={{ fontFamily: 'var(--font-arcade)', fontSize: isNarrow ? 14 : 16, color: '#777', letterSpacing: '0.08em', margin: 0 }}>
+                    <p style={{ fontFamily: 'var(--font-arcade)', fontSize: isNarrow ? 14 : 16, color: '#999', letterSpacing: '0.08em', margin: 0, textShadow: '1px 1px 0 #000' }}>
                       {expandedMember.location}  //  {expandedMember.school}
                     </p>
-                    <p style={{ fontFamily: 'var(--font-arcade)', fontSize: isNarrow ? 14 : 16, color: '#777', letterSpacing: '0.08em', margin: 0 }}>
+                    <p style={{ fontFamily: 'var(--font-arcade)', fontSize: isNarrow ? 14 : 16, color: '#999', letterSpacing: '0.08em', margin: 0, textShadow: '1px 1px 0 #000' }}>
                       CLASS OF &apos;{expandedMember.year}
                     </p>
                   </div>
@@ -427,18 +431,20 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
                   {/* About Me */}
                   {expandedMember.hobbies && expandedMember.hobbies.length > 0 && (
                     <div style={{ animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.43s both', marginTop: 0 }}>
-                      <p style={{ fontFamily: 'var(--font-arcade)', fontSize: labelSize, color: '#fff', letterSpacing: '0.18em', margin: '0 0 12px', textTransform: 'uppercase' }}>
+                      <p style={{ fontFamily: 'var(--font-arcade)', fontSize: labelSize, color: '#fff', letterSpacing: '0.18em', margin: '0 0 12px', textTransform: 'uppercase', textShadow: '2px 2px 0 #000, 0 0 8px rgba(255,255,255,0.15)' }}>
                         <span style={{ color: '#22c55e', marginRight: 8 }}>$</span>INTERESTS
                       </p>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {expandedMember.hobbies.map((h, i) => (
                           <div key={i} style={{
                             display: 'flex', alignItems: 'center', gap: 10,
-                            background: '#1a1a1a', border: '1px solid #333', padding: `${hobbyPadV}px ${hobbyPadH}px`,
-                            boxShadow: '3px 3px 0px rgba(0,0,0,0.4)',
+                            background: 'linear-gradient(90deg, rgba(34,197,94,0.08) 0%, #1a1a1a 30%)',
+                            borderLeft: '3px solid #22c55e', borderTop: '1px solid #333', borderRight: '1px solid #333', borderBottom: '1px solid #333',
+                            padding: `${hobbyPadV}px ${hobbyPadH}px`,
+                            boxShadow: '3px 3px 0px rgba(0,0,0,0.4), inset 0 0 20px rgba(0,0,0,0.3)',
                           }}>
                             <span style={{ color: '#22c55e', fontFamily: 'var(--font-arcade)', fontSize: hobbySize }}>&gt;</span>
-                            <span style={{ fontFamily: 'var(--font-arcade)', fontSize: hobbySize, letterSpacing: '0.06em', color: '#e0e0e0' }}>
+                            <span style={{ fontFamily: 'var(--font-arcade)', fontSize: hobbySize, letterSpacing: '0.06em', color: '#e0e0e0', textShadow: '1px 1px 0 #000' }}>
                               {h}
                             </span>
                           </div>
@@ -450,18 +456,20 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
                   {/* Experiences */}
                   {expandedMember.experiences && expandedMember.experiences.length > 0 && (
                     <div style={{ animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.5s both', marginTop: 0 }}>
-                      <p style={{ fontFamily: 'var(--font-arcade)', fontSize: labelSize, color: '#fff', letterSpacing: '0.18em', margin: '0 0 12px', textTransform: 'uppercase' }}>
+                      <p style={{ fontFamily: 'var(--font-arcade)', fontSize: labelSize, color: '#fff', letterSpacing: '0.18em', margin: '0 0 12px', textTransform: 'uppercase', textShadow: '2px 2px 0 #000, 0 0 8px rgba(255,255,255,0.15)' }}>
                         <span style={{ color: '#22c55e', marginRight: 8 }}>$</span>EXPERIENCE
                       </p>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {expandedMember.experiences.map((exp, i) => (
                           <div key={i} style={{
                             display: 'flex', alignItems: 'center', gap: 12,
-                            background: '#1a1a1a', border: '1px solid #333', padding: `${expPadV}px ${expPadH}px`,
-                            boxShadow: '3px 3px 0px rgba(0,0,0,0.4)',
+                            background: 'linear-gradient(90deg, rgba(34,197,94,0.08) 0%, #1a1a1a 30%)',
+                            borderLeft: '3px solid #22c55e', borderTop: '1px solid #333', borderRight: '1px solid #333', borderBottom: '1px solid #333',
+                            padding: `${expPadV}px ${expPadH}px`,
+                            boxShadow: '3px 3px 0px rgba(0,0,0,0.4), inset 0 0 20px rgba(0,0,0,0.3)',
                           }}>
                             <span style={{ color: '#22c55e', fontFamily: 'var(--font-arcade)', fontSize: expSize }}>&gt;</span>
-                            <span style={{ fontFamily: 'var(--font-arcade)', fontSize: expSize, color: '#e0e0e0' }}>{exp}</span>
+                            <span style={{ fontFamily: 'var(--font-arcade)', fontSize: expSize, color: '#e0e0e0', textShadow: '1px 1px 0 #000' }}>{exp}</span>
                           </div>
                         ))}
                       </div>

@@ -134,7 +134,7 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
           setTimeout(() => setPhase('line'), 80);
           setTimeout(() => setPhase('expand'), 250);
           setTimeout(() => setPhase('done'), 600);
-        });
+        }, col, cols);
 
         // Start invisible for staggered fade-in
         el.style.opacity = '0';
@@ -156,13 +156,6 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
 
         scene.add(obj);
         objectsRef.current.push(obj);
-      });
-
-      // Add background decorations
-      const decos = createDecoElements(containerW, totalH, cols);
-      decos.forEach(obj => {
-        scene.add(obj);
-        decoRef.current.push(obj);
       });
 
       renderer.render(scene, camera);

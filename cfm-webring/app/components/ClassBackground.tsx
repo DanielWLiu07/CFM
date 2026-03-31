@@ -401,9 +401,6 @@ export default function ClassBackground({ beatRef, paused }: { beatRef?: RefObje
           <RadialGlow />
           <Stars />
           <FloatingDust />
-          <GridFloor />
-          <FloatingCode />
-          <FloatingSymbols />
           <TerminalLines />
           <CameraRig />
         </BeatContext.Provider>
