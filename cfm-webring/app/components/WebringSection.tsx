@@ -17,20 +17,22 @@ const WebringBackground = dynamic(() => import('./WebringBackground'), { ssr: fa
 export default function WebringSection({ onVisibilityChange, audioRef, reducedMotion, sectionRefOut }: WebringSectionProps) {
   const { members: membersData } = useMembers();
 
-  const WEBRING_ENTRIES: WebringEntry[] = useMemo(() => membersData.map(m => ({
-    name: m.name,
-    url: m.url,
-    description: m.description ?? '',
-    cohort: m.cohort ?? m.year,
-    avatar: m.avatar,
-    websiteImage: m.websiteImage,
-    role: m.role,
-    location: m.location,
-    school: m.school,
-    blurb: m.blurb,
-    year: m.year,
-    socials: m.socials as Social[] | undefined,
-  })), [membersData]);
+  const WEBRING_ENTRIES: WebringEntry[] = useMemo(() => membersData
+    .filter(m => m.url && m.url !== '#')
+    .map(m => ({
+      name: m.name,
+      url: m.url,
+      description: m.description ?? '',
+      cohort: m.cohort ?? m.year,
+      avatar: m.avatar,
+      websiteImage: m.websiteImage,
+      role: m.role,
+      location: m.location,
+      school: m.school,
+      blurb: m.blurb,
+      year: m.year,
+      socials: m.socials as Social[] | undefined,
+    })), [membersData]);
 
   const ALL_COHORTS = useMemo(() => [...new Set(WEBRING_ENTRIES.map(e => e.cohort))].sort(), [WEBRING_ENTRIES]);
   const sentinelRef = useRef<HTMLDivElement>(null);
