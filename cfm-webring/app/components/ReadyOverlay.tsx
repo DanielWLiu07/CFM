@@ -80,7 +80,7 @@ const CFM_CONFIG = [
   { wickTop: 72, wickBot: 12, depth: 22, baseY: -65 },  // M — highest, longest shadow
 ];
 
-export default function ReadyOverlay({ onStart, muted, onToggleMute, volume, onVolumeChange, assetsReady, loadProgress }: { onStart: () => void; muted: boolean; onToggleMute: () => void; volume: number; onVolumeChange: (v: number) => void; assetsReady: boolean; loadProgress: number }) {
+export default function ReadyOverlay({ onStart, muted, onToggleMute, volume, onVolumeChange, assetsReady, loadProgress, audioDisabled }: { onStart: () => void; muted: boolean; onToggleMute: () => void; volume: number; onVolumeChange: (v: number) => void; assetsReady: boolean; loadProgress: number; audioDisabled?: boolean }) {
   const [leaving, setLeaving] = useState(false);
   const progressBarRef = useRef<HTMLDivElement>(null);
 
@@ -451,9 +451,35 @@ export default function ReadyOverlay({ onStart, muted, onToggleMute, volume, onV
         style={{ width: 380, height: 380, transform: 'rotate(20deg) scaleX(1.05)' }}
       />
 
+      {/* Effects hint — points down toward the page-level effects toggle button */}
+      <div
+        className="absolute z-[999] pointer-events-none select-none"
+        style={{
+          bottom: 60,
+          right: 56,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 4,
+          opacity: 1,
+        }}
+      >
+        <span style={{ fontFamily: 'var(--font-arcade)', fontSize: 14, letterSpacing: '0.15em', color: '#fff', whiteSpace: 'nowrap' }}>
+          ENABLE EFFECTS
+        </span>
+        <svg width="50" height="60" viewBox="0 0 50 60" fill="none" style={{ marginTop: 4 }}>
+          <defs>
+            <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" fill="#fff" />
+            </marker>
+          </defs>
+          <path d="M10 4 Q6 30, 20 44 Q30 52, 42 54" stroke="#fff" strokeWidth="2" strokeLinecap="round" fill="none" markerEnd="url(#arrowhead)" />
+        </svg>
+      </div>
+
       {/* Mute button — bottom right */}
       <div className="absolute bottom-4 right-4 z-[999]">
-        <MuteButton muted={muted} onToggle={onToggleMute} volume={volume} onVolumeChange={onVolumeChange} />
+        <MuteButton muted={muted} onToggle={onToggleMute} volume={volume} onVolumeChange={onVolumeChange} disabled={audioDisabled} />
       </div>
     </div>
   );

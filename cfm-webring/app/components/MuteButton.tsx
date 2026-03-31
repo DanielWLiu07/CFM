@@ -7,6 +7,7 @@ interface Props {
   onToggle: () => void;
   volume: number;
   onVolumeChange: (v: number) => void;
+  disabled?: boolean;
 }
 
 function VolumeIcon({ muted, volume }: { muted: boolean; volume: number }) {
@@ -36,16 +37,16 @@ function VolumeIcon({ muted, volume }: { muted: boolean; volume: number }) {
   );
 }
 
-export default function MuteButton({ muted, onToggle, volume, onVolumeChange }: Props) {
+export default function MuteButton({ muted, onToggle, volume, onVolumeChange, disabled }: Props) {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div className="flex flex-col items-center gap-2" style={{ opacity: disabled ? 0.35 : 1, transition: 'opacity 0.3s ease' }}>
       {/* Slider — toggle on click */}
       <div
         className="flex flex-col items-center rounded-lg overflow-hidden"
         style={{
-          height: expanded ? 120 : 0,
+          height: expanded && !disabled ? 120 : 0,
           padding: expanded ? '12px 0' : '0',
           opacity: expanded ? 1 : 0,
           width: 40,
@@ -92,11 +93,12 @@ export default function MuteButton({ muted, onToggle, volume, onVolumeChange }: 
 
       {/* Mute/unmute button — click toggles slider, right-click or double-click for mute */}
       <button
-        onClick={(e) => { e.stopPropagation(); setExpanded(prev => !prev); }}
-        onDoubleClick={(e) => { e.stopPropagation(); onToggle(); }}
-        onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); onToggle(); }}
+        onClick={(e) => { e.stopPropagation(); if (disabled) return; setExpanded(prev => !prev); }}
+        onDoubleClick={(e) => { e.stopPropagation(); if (disabled) return; onToggle(); }}
+        onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); if (disabled) return; onToggle(); }}
         className="mute-btn flex items-center justify-center w-10 h-10 rounded-lg border border-white/20 bg-white/10 backdrop-blur-md text-white/70 hover:text-white cursor-pointer"
-        aria-label={muted ? 'Unmute' : 'Mute'}
+        aria-label={disabled ? 'Audio loading...' : muted ? 'Unmute' : 'Mute'}
+        title={disabled ? 'Audio loading...' : undefined}
       >
         <VolumeIcon muted={muted} volume={volume} />
       </button>

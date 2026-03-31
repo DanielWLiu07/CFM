@@ -1,17 +1,19 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import Navbar, { type NavbarHandle } from './components/Navbar';
 import PixelTrail from './components/PixelTrail';
 import ReadyOverlay from './components/ReadyOverlay';
-import AboutSection from './components/AboutSection';
 import MuteButton from './components/MuteButton';
-import ClassSection from './components/ClassSection';
-import WebringSection from './components/WebringSection';
-import GithubSection from './components/GithubSection';
 import ScrollReveal from './components/ScrollReveal';
 import { useAssetPreloader } from './hooks/useAssetPreloader';
 import { BEAT_INTERVAL, BEAT_OFFSET } from './lib/beats';
+
+const AboutSection = dynamic(() => import('./components/AboutSection'), { ssr: false });
+const ClassSection = dynamic(() => import('./components/ClassSection'), { ssr: false });
+const WebringSection = dynamic(() => import('./components/WebringSection'), { ssr: false });
+const GithubSection = dynamic(() => import('./components/GithubSection'), { ssr: false });
 
 const isDev = false; // change to process.env.NODE_ENV === 'development' to re-enable tuners
 const GearTuner = isDev ? require('./components/GearTuner').default : () => null;
@@ -25,10 +27,11 @@ const DAMPING     = 0.72;  // < 1 = underdamped → overshoot/bounce
 
 export default function Home() {
   const [started, setStarted] = useState(false);
-  const [muted, setMuted] = useState(false);
+  const [muted, setMuted] = useState(true);
   const [volume, setVolume] = useState(1);
-  const [reducedMotion, setReducedMotion] = useState(false);
-  const reducedMotionRef = useRef(false);
+  const [audioReady, setAudioReady] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(true);
+  const reducedMotionRef = useRef(true);
   const navbarRef = useRef<NavbarHandle>(null);
   const githubPos = { mt: 0, bgH: 0, pt: 5, pb: 2 };
   const visibleSections = useRef(new Set<string>());
@@ -68,7 +71,18 @@ export default function Home() {
 
   const audioRef       = useRef<HTMLAudioElement>(null);
   const videoRef       = useRef<HTMLVideoElement>(null);
-  const { progress: loadProgress, ready: assetsReady } = useAssetPreloader(audioRef, videoRef);
+  const { progress: loadProgress, ready: assetsReady } = useAssetPreloader();
+
+  // Audio loads independently — track when it's ready so we can enable the mute button
+  useEffect(() => {
+    const el = audioRef.current;
+    if (!el) return;
+    if (el.readyState >= 4) { setAudioReady(true); return; }
+    const handler = () => { el.removeEventListener('canplaythrough', handler); setAudioReady(true); };
+    el.addEventListener('canplaythrough', handler);
+    el.load();
+    return () => el.removeEventListener('canplaythrough', handler);
+  }, []);
   const animFrameRef   = useRef<number>(0);
   const crushRef       = useRef<number>(0);
   const crushVelRef    = useRef<number>(0);
@@ -243,17 +257,27 @@ export default function Home() {
     animFrameRef.current = requestAnimationFrame(loop);
   };
 
-  // ── "ready?" click — start everything immediately ─────────────────────────
+  // ── "ready?" click — start video immediately, audio plays muted in background ──
   const handleStart = async () => {
     const video = videoRef.current;
     const audio = audioRef.current;
-    if (!video || !audio) return;
+    if (!video) return;
 
     setStarted(true);
     video.currentTime = 0;
-    audio.currentTime = 0;
-    audio.muted = muted;
-    await Promise.all([video.play(), audio.play()]);
+
+    if (!reducedMotionRef.current) {
+      await video.play();
+    }
+    // else video stays paused at first frame
+
+    // Start audio muted so it's synced to video time. User unmutes later.
+    if (audio) {
+      audio.currentTime = 0;
+      audio.muted = true;
+      audio.play().catch(() => {}); // may fail if not loaded yet — that's fine
+    }
+
     startLoop();
   };
 
@@ -270,15 +294,28 @@ export default function Home() {
   }, []);
 
   const toggleMute = useCallback(() => {
+    if (!audioReady) return; // can't toggle until audio is loaded
     setMuted(prev => {
       const next = !prev;
-      if (audioRef.current) audioRef.current.muted = next;
+      const audio = audioRef.current;
+      if (audio) {
+        if (!next) {
+          // Unmuting — sync audio position to video so beats line up
+          const video = videoRef.current;
+          if (video) audio.currentTime = video.currentTime % audio.duration || 0;
+          audio.muted = false;
+          audio.play().catch(() => {});
+        } else {
+          audio.muted = true;
+        }
+      }
       localStorage.setItem('cfm-muted', String(next));
       return next;
     });
-  }, []);
+  }, [audioReady]);
 
   const handleVolumeChange = useCallback((v: number) => {
+    if (!audioReady) return;
     setVolume(v);
     if (audioRef.current) audioRef.current.volume = v;
     if (v === 0) {
@@ -286,18 +323,19 @@ export default function Home() {
       if (audioRef.current) audioRef.current.muted = true;
     } else if (muted) {
       setMuted(false);
-      if (audioRef.current) audioRef.current.muted = false;
+      const audio = audioRef.current;
+      const video = videoRef.current;
+      if (audio && video) {
+        audio.currentTime = video.currentTime % audio.duration || 0;
+        audio.muted = false;
+        audio.play().catch(() => {});
+      }
     }
     localStorage.setItem('cfm-volume', String(v));
-  }, [muted]);
+  }, [muted, audioReady]);
 
-  // Restore mute/volume preferences from localStorage after hydration
+  // Restore volume preference from localStorage (mute always starts true)
   useEffect(() => {
-    const storedMuted = localStorage.getItem('cfm-muted') === 'true';
-    if (storedMuted) {
-      setMuted(true);
-      if (audioRef.current) audioRef.current.muted = true;
-    }
     const storedVol = localStorage.getItem('cfm-volume');
     if (storedVol !== null) {
       const v = parseFloat(storedVol);
@@ -318,6 +356,18 @@ export default function Home() {
     navbarRef.current?.setActiveRoute('/');
   }, []);
 
+  // Re-show overlay when Home is pressed
+  useEffect(() => {
+    const handler = () => {
+      if (audioRef.current) { audioRef.current.pause(); audioRef.current.currentTime = 0; }
+      if (videoRef.current) { videoRef.current.pause(); videoRef.current.currentTime = 0; }
+      cancelAnimationFrame(animFrameRef.current);
+      setStarted(false);
+    };
+    window.addEventListener('cfm-go-home', handler);
+    return () => window.removeEventListener('cfm-go-home', handler);
+  }, []);
+
   useEffect(() => {
     return () => {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
@@ -332,16 +382,16 @@ export default function Home() {
   ];
 
   return (
-    <div className={`bg-black${reducedMotion ? ' reduced-motion' : ''}`} style={{ overflowX: 'clip' }}>
+    <div className="bg-black" style={{ overflowX: 'clip' }}>
       <ScrollReveal />
 
-      <div className="fixed top-4 left-3 z-[100]">
+      <div className="fixed top-4 left-3 sm:left-3 z-[100] max-sm:left-1/2 max-sm:-translate-x-1/2">
         <Navbar ref={navbarRef} />
       </div>
 
-      <audio ref={audioRef} src="/music/thick_of_it_thomas_remix.mp3" loop preload="auto" />
+      <audio ref={audioRef} src="/music/thick_of_it_thomas_remix.mp3" loop preload="none" />
 
-      {!started && <ReadyOverlay onStart={handleStart} muted={muted} onToggleMute={toggleMute} volume={volume} onVolumeChange={handleVolumeChange} assetsReady={assetsReady} loadProgress={loadProgress} />}
+      {!started && <ReadyOverlay onStart={handleStart} muted={muted} onToggleMute={toggleMute} volume={volume} onVolumeChange={handleVolumeChange} assetsReady={assetsReady} loadProgress={loadProgress} audioDisabled={!audioReady} />}
 
       <div ref={videoWrapRef} className="relative h-screen" style={{ willChange: 'transform', zIndex: 2 }}>
 
@@ -516,7 +566,7 @@ export default function Home() {
             style={{
               bottom: '-2400%', left: '-22%',
               height: '900px', width: 'auto', zIndex: 5,
-              transformOrigin: '25% 89%', animation: reducedMotion ? 'none' : 'cat-bob 3s ease-in-out infinite',
+              transformOrigin: '25% 89%', animation: 'cat-bob 3s ease-in-out infinite',
             }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -538,7 +588,7 @@ export default function Home() {
       </div>
 
       <div style={{ position: 'relative' }}>
-        <div id="class" className="scroll-reveal reveal-glitch" style={{ position: 'relative', zIndex: 65 }}>
+        <div id="class" className="scroll-reveal reveal-glitch" style={{ position: 'relative', zIndex: 65, overflow: 'clip' }}>
           <ClassSection onVisibilityChange={handleClassVisibility} beatRef={classBeatRef} />
         </div>
       </div>
@@ -644,11 +694,28 @@ export default function Home() {
       <SizeTuner wrapperRef={webringWrapRef} sectionRef={webringSectionRef} defaultWrapperH={156} defaultSectionH={100} />
 
       <div className="fixed bottom-4 right-4 z-[999] flex items-end gap-2">
+        {/* Effects hint — visible when OTT is off after start, fades out on toggle */}
+        {started && reducedMotion && (
+          <span
+            className="effects-hint"
+            style={{
+              fontFamily: 'var(--font-arcade)',
+              fontSize: 9,
+              letterSpacing: '0.15em',
+              color: 'rgba(255,255,255,0.5)',
+              marginBottom: 12,
+              whiteSpace: 'nowrap',
+              animation: 'effects-hint-pulse 2s ease-in-out infinite',
+            }}
+          >
+            EFFECTS &rarr;
+          </span>
+        )}
         <button
           onClick={toggleReducedMotion}
           className="mute-btn flex items-center justify-center w-10 h-10 rounded-lg border border-white/20 bg-white/10 backdrop-blur-md text-white/70 hover:text-white cursor-pointer"
-          aria-label={reducedMotion ? 'Enable effects' : 'Reduce motion'}
-          title={reducedMotion ? 'Enable effects' : 'Reduce motion'}
+          aria-label={reducedMotion ? 'Enable animated effects' : 'Disable animated effects'}
+          title={reducedMotion ? 'Enable animated effects' : 'Disable animated effects'}
         >
           {reducedMotion ? (
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -661,7 +728,7 @@ export default function Home() {
             </svg>
           )}
         </button>
-        <MuteButton muted={muted} onToggle={toggleMute} volume={volume} onVolumeChange={handleVolumeChange} />
+        <MuteButton muted={muted} onToggle={toggleMute} volume={volume} onVolumeChange={handleVolumeChange} disabled={!audioReady} />
       </div>
 
       <GearTuner gears={[
