@@ -85,8 +85,8 @@ function AutoCamera({ textWidth, twoLine, fontSize }: { textWidth: number; twoLi
 
 // Character width lookup for the arcade classic font
 const CHAR_WIDTH: Record<string, number> = {
-  C: 764, L: 460, A: 764, S: 764, O: 764, F: 500, T: 480, M: 764,
-  '0': 764, '1': 460, '2': 764, '3': 764, '4': 764,
+  C: 764, L: 665, A: 764, S: 764, O: 764, F: 764, T: 665, M: 764,
+  '0': 764, '1': 764, '2': 764, '3': 764, '4': 764,
   '5': 764, '6': 764, '7': 764, '8': 764, '9': 764,
   ' ': 178,
 };
@@ -319,7 +319,7 @@ export default function ClassTitle3D({ year = '26', config = DEFAULT_CONFIG, bea
     return total;
   })();
 
-  const containerHeight = twoLine ? 'clamp(240px, 52vw, 380px)' : 'clamp(240px, 35vw, 450px)';
+  const containerHeight = twoLine ? 'clamp(240px, 42vw, 320px)' : 'clamp(260px, 40vw, 360px)';
 
   return (
     <div
