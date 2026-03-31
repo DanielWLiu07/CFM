@@ -8,10 +8,9 @@ Welcome to the CFM Webring! This is a list of current / past CFM cohorts, organi
 
 ## How to Join
 
-1. Open the `src/data/members.json` file
-2. Find your **graduation year section**
-3. Add your information following the structure below
-4. Submit a PR!
+1. Open the `cfm-backend/src/data/members.json` file
+2. Add your information to the array following the structure below
+3. Submit a PR!
 
 ---
 
@@ -22,13 +21,18 @@ Add your entry using this structure:
 ```json
 {
   "name": "Your Name",
-  "graduationYear": 2030,
   "url": "https://yourwebsite.com",
-  "role": "Your interests / focus (e.g. SWE, FinTech, Design)",
-  "blurb": "A short description about you",
-  "avatar": "/your-image.png",
-  "github": "https://github.com/yourusername",
-  "linkedin": "https://linkedin.com/in/yourprofile"
+  "description": "Short tagline / header",
+  "location": "Your City, Province",
+  "blurb": "A longer description about you",
+  "cohort": "graduating-year",
+  "avatar": "/images/avatars/yourname.png",
+  "hobbies": ["hobby1", "hobby2", "hobby3"],
+  "experiences": ["Experience 1", "Experience 2"],
+  "socials": [
+    { "type": "github", "url": "https://github.com/yourusername" },
+    { "type": "linkedin", "url": "https://linkedin.com/in/yourprofile" }
+  ]
 }
 ```
 
@@ -39,13 +43,18 @@ Add your entry using this structure:
 ```json
 {
   "name": "Aadya Khanna",
-  "graduationYear": 2030,
   "url": "https://aadyakhanna.com",
-  "role": "SWE / FinTech",
-  "blurb": "SLAY GIRLIE POP",
-  "avatar": "/aadya-khanna.png",
-  "github": "https://github.com/aadya-khanna",
-  "linkedin": "https://linkedin.com/in/aadyakhanna"
+  "description": "Builder, Creative-Techie, Guitarist",
+  "location": "Toronto, ON",
+  "blurb": "Drawn to the intersection of technology, creativity, and financial markets",
+  "cohort": "2030",
+  "avatar": "/images/avatars/aadyakhanna.png",
+  "hobbies": ["hackathons", "music", "guitar"],
+  "experiences": ["Product Engineer @ Zafin"],
+  "socials": [
+    { "type": "github", "url": "https://github.com/aadya-khanna" },
+    { "type": "linkedin", "url": "https://linkedin.com/in/aadya-khanna" }
+  ]
 }
 ```
 
@@ -53,7 +62,9 @@ Add your entry using this structure:
 
 ## Important Notes
 
-* Keep **entries within your graduation year**
+* The `members.json` file is a **flat array** of all members
 * Ensure **all links are valid and working**
 * Make sure your avatar path is correct
+* Use `#` for socials you don't have (or omit them entirely)
+* `cohort` is your graduation year (e.g. "2029")
 * Keep blurbs short and fun

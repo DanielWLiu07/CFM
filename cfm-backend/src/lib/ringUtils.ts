@@ -9,17 +9,17 @@ export function getMemberByUrl(members: Member[], url: string): Member | undefin
   return members.find((m) => m.url && normalizeUrl(m.url) === target);
 }
 
-function getSlice(members: Member[], year?: string): Member[] {
-  if (!year) return members;
-  return members.filter((m) => m.year === year);
+function getSlice(members: Member[], cohort?: string): Member[] {
+  if (!cohort) return members;
+  return members.filter((m) => m.cohort === cohort);
 }
 
 function findByUrl(members: Member[], normalizedUrl: string): number {
   return members.findIndex((m) => m.url && normalizeUrl(m.url) === normalizedUrl);
 }
 
-export function getNext(members: Member[], currentUrl: string, year?: string): Member | null {
-  const slice = getSlice(members, year);
+export function getNext(members: Member[], currentUrl: string, cohort?: string): Member | null {
+  const slice = getSlice(members, cohort);
   if (slice.length === 0) return null;
 
   const index = findByUrl(slice, normalizeUrl(currentUrl));
@@ -28,8 +28,8 @@ export function getNext(members: Member[], currentUrl: string, year?: string): M
   return slice[(index + 1) % slice.length] ?? null;
 }
 
-export function getPrev(members: Member[], currentUrl: string, year?: string): Member | null {
-  const slice = getSlice(members, year);
+export function getPrev(members: Member[], currentUrl: string, cohort?: string): Member | null {
+  const slice = getSlice(members, cohort);
   if (slice.length === 0) return null;
 
   const index = findByUrl(slice, normalizeUrl(currentUrl));

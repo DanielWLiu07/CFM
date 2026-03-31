@@ -5,13 +5,13 @@ const router = Router();
 
 router.get("/", (req, res) => {
   const members = loadMembers();
-  const yearParam = req.query.year as string | undefined;
+  const cohortParam = req.query.cohort as string | undefined;
 
-  if (!yearParam) {
+  if (!cohortParam) {
     return res.json(members);
   }
 
-  const filtered = members.filter((m) => m.year === yearParam);
+  const filtered = members.filter((m) => m.cohort === cohortParam);
   return res.json(filtered);
 });
 

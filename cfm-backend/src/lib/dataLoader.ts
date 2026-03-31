@@ -9,7 +9,7 @@ const __dirname = dirname(__filename);
 let cachedMembers: Member[] | null = null;
 
 function validateMember(member: Member): boolean {
-  return Boolean(member.name && member.year);
+  return Boolean(member.name && member.cohort);
 }
 
 export function loadMembers(): Member[] {

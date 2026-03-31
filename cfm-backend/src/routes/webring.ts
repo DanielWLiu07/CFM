@@ -5,10 +5,10 @@ const router = Router();
 
 router.get("/", (req, res) => {
   const members = loadMembers();
-  const year = req.query.year as string | undefined;
+  const cohort = req.query.cohort as string | undefined;
 
   let filtered = members.filter((m) => m.url && m.url !== "#");
-  if (year) filtered = filtered.filter((m) => m.year === year);
+  if (cohort) filtered = filtered.filter((m) => m.cohort === cohort);
 
   return res.json(filtered);
 });

@@ -7,7 +7,7 @@ const router = Router();
 router.get("/", (req, res) => {
   const url = req.query.url as string | undefined;
   const direction = req.query.direction as "next" | "prev" | undefined;
-  const year = req.query.year as string | undefined;
+  const cohort = req.query.cohort as string | undefined;
 
   if (!url || !direction) {
     return res.status(400).json({ error: "Missing url or direction parameter" });
@@ -19,7 +19,7 @@ router.get("/", (req, res) => {
 
   const members = loadMembers();
   const member =
-    direction === "next" ? getNext(members, url, year) : getPrev(members, url, year);
+    direction === "next" ? getNext(members, url, cohort) : getPrev(members, url, cohort);
 
   if (!member) {
     return res.status(404).json({ error: "Member not found in ring" });
