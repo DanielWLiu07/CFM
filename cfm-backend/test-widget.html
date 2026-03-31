@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CFM Webring Widget Test</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+    }
+    .test-section {
+      margin: 40px 0;
+      padding: 20px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+    }
+    .widget-container {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin: 20px 0;
+    }
+    .widget-container a {
+      display: flex;
+      align-items: center;
+      text-decoration: none;
+      color: #111;
+    }
+    .arrow-text {
+      font-size: 32px;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .arrow-text:hover {
+      transform: scale(1.2);
+    }
+    .hub-icon {
+      width: 50px;
+      height: 50px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .hub-icon:hover {
+      transform: scale(1.1);
+    }
+    .dark-bg {
+      background: #1a1a1a;
+      color: white;
+      padding: 20px;
+      border-radius: 8px;
+    }
+    .dark-bg a {
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <h1>CFM Webring Widget Test</h1>
+  
+  <div class="test-section">
+    <h2>Option 1: Text Arrows + Hub Icon (Inline SVG for Color Control)</h2>
+    <div class="widget-container">
+      <a href="http://localhost:3000/api/navigate?url=https://danielwliu.com&direction=prev&redirect=true">
+        <span class="arrow-text">←</span>
+      </a>
+      
+      <a href="https://uwaterloocfm.com" target="_blank">
+        <svg class="hub-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" style="color: #991b1b;">
+          <circle cx="50" cy="50" r="42" stroke="currentColor" stroke-width="3" fill="none" opacity="0.9"/>
+          <text x="50" y="58" text-anchor="middle" dominant-baseline="middle"
+                fill="currentColor" font-family="system-ui, -apple-system, sans-serif"
+                font-weight="700" font-size="22" letter-spacing="-0.5">CFM</text>
+        </svg>
+      </a>
+      
+      <a href="http://localhost:3000/api/navigate?url=https://danielwliu.com&direction=next&redirect=true">
+        <span class="arrow-text">→</span>
+      </a>
+    </div>
+    <p><small>Testing from Daniel's site - should go to Aadya (prev) and Timothy (next)</small></p>
+  </div>
+
+  <div class="test-section dark-bg">
+    <h2>Option 2: Text Arrows + Hub Icon (Dark Background - Inline SVG)</h2>
+    <div class="widget-container">
+      <a href="http://localhost:3000/api/navigate?url=https://aadyakhanna.com&direction=prev&redirect=true">
+        <span class="arrow-text">←</span>
+      </a>
+      
+      <a href="https://uwaterloocfm.com" target="_blank">
+        <svg class="hub-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" style="color: #fca5a5;">
+          <circle cx="50" cy="50" r="42" stroke="currentColor" stroke-width="3" fill="none" opacity="0.9"/>
+          <text x="50" y="58" text-anchor="middle" dominant-baseline="middle"
+                fill="currentColor" font-family="system-ui, -apple-system, sans-serif"
+                font-weight="700" font-size="22" letter-spacing="-0.5">CFM</text>
+        </svg>
+      </a>
+      
+      <a href="http://localhost:3000/api/navigate?url=https://aadyakhanna.com&direction=next&redirect=true">
+        <span class="arrow-text">→</span>
+      </a>
+    </div>
+    <p><small>Testing from Aadya's site (last in ring) - should wrap to Timothy (prev) and Daniel (next)</small></p>
+  </div>
+
+  <div class="test-section">
+    <h2>Option 3: Custom SVG Arrows + Inline Hub Icon</h2>
+    <div class="widget-container">
+      <a href="http://localhost:3000/api/navigate?url=https://timothyzheng.ca&direction=prev&redirect=true">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M15 18l-6-6 6-6"/>
+        </svg>
+      </a>
+      
+      <a href="https://uwaterloocfm.com" target="_blank">
+        <svg class="hub-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" style="color: #2563eb;">
+          <circle cx="50" cy="50" r="42" stroke="currentColor" stroke-width="3" fill="none" opacity="0.9"/>
+          <text x="50" y="58" text-anchor="middle" dominant-baseline="middle"
+                fill="currentColor" font-family="system-ui, -apple-system, sans-serif"
+                font-weight="700" font-size="22" letter-spacing="-0.5">CFM</text>
+        </svg>
+      </a>
+      
+      <a href="http://localhost:3000/api/navigate?url=https://timothyzheng.ca&direction=next&redirect=true">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 18l6-6-6-6"/>
+        </svg>
+      </a>
+    </div>
+    <p><small>Testing from Timothy's site - should go to Daniel (prev) and Aadya (next)</small></p>
+  </div>
+
+  <div class="test-section">
+    <h2>Testing Notes</h2>
+    <ul>
+      <li>Webring order: Daniel → Timothy → Aadya → (wraps to Daniel)</li>
+      <li>Click arrows to test navigation redirects</li>
+      <li>Click hub icon to test main site link</li>
+      <li>Try hovering for visual feedback</li>
+      <li>Hub icon color is customizable via CSS color property</li>
+    </ul>
+  </div>
+</body>
+</html>

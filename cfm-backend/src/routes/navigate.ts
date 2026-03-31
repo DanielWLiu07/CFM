@@ -8,6 +8,7 @@ router.get("/", (req, res) => {
   const url = req.query.url as string | undefined;
   const direction = req.query.direction as "next" | "prev" | undefined;
   const cohort = req.query.cohort as string | undefined;
+  const redirect = req.query.redirect === "true";
 
   if (!url || !direction) {
     return res.status(400).json({ error: "Missing url or direction parameter" });
@@ -23,6 +24,10 @@ router.get("/", (req, res) => {
 
   if (!member) {
     return res.status(404).json({ error: "Member not found in ring" });
+  }
+
+  if (redirect && member.url) {
+    return res.redirect(302, member.url);
   }
 
   return res.json({ member });
