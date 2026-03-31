@@ -97,6 +97,7 @@ Open the file and add a new entry to the appropriate year array:
   "socials": [                                      // optional, include any/all
     { "type": "github", "url": "https://github.com/you" },
     { "type": "linkedin", "url": "https://linkedin.com/in/you" },
+    { "type": "instagram", "url": "https://instagram.com/you" },
     { "type": "twitter", "url": "https://x.com/you" },
     { "type": "website", "url": "https://yoursite.com" }
   ]

@@ -28,11 +28,14 @@ export interface Node {
   index: number;
   sx: number; sy: number; scale: number; depth: number; screenR: number; // projection cache
   hoverAnim: number;
+  flashAnim: number; // 0→1 flash when packet arrives
+  flashGreen: boolean; // true=green, false=red
+  simValue: number; // running simulation value
   avatarImg: HTMLImageElement | null;
   lod: 0 | 1 | 2; // 0=dot, 1=simple, 2=full — persists to prevent flicker
 }
 
-export interface Edge { from: number; to: number; hoverAnim: number; }
+export interface Edge { from: number; to: number; hoverAnim: number; packetGreen: boolean; }
 
 export interface Camera {
   tx: number; ty: number; tz: number; // orbit target
