@@ -207,13 +207,26 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
               {/* Left — avatar with ink noise reveal (hidden on narrow) */}
               {!isNarrow && <div style={{
                 width: '40%', height: '100%', flexShrink: 0,
-                overflow: 'hidden', position: 'relative',
+                overflow: 'hidden', position: 'relative', background: '#080808',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
                 ...(phase === 'done' ? {
                   animation: 'panel-in 0.8s ease 0.1s both',
                 } : (phase === 'flash' || phase === 'shrink') ? {
                   animation: 'panel-out 0.3s ease forwards',
                 } : {}),
               }}>
+                {/* Screen bezel frame */}
+                <div style={{
+                  position: 'absolute', inset: 0,
+                  borderRight: '3px solid #222',
+                  boxShadow: 'inset 0 0 60px 20px rgba(0,0,0,0.8), inset 0 0 120px 40px rgba(0,0,0,0.4)',
+                  pointerEvents: 'none', zIndex: 15,
+                }} />
+                {/* Screen glare reflection */}
+                <div style={{
+                  position: 'absolute', inset: 0, zIndex: 14, pointerEvents: 'none',
+                  background: 'linear-gradient(135deg, rgba(255,255,255,0.04) 0%, transparent 40%, transparent 60%, rgba(255,255,255,0.015) 100%)',
+                }} />
                 {expandedMember.avatar ? (
                   <>
                     <svg
@@ -285,8 +298,8 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
               {/* Right — name top, socials bottom, middle scrolls */}
               <div style={{
                 flex: 1, display: 'flex', flexDirection: 'column',
-                overflow: 'hidden', background: 'rgba(255,255,255,0.85)', position: 'relative',
-                backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(0,0,0,0.02) 39px, rgba(0,0,0,0.02) 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(0,0,0,0.02) 39px, rgba(0,0,0,0.02) 40px)',
+                overflow: 'hidden', background: '#0c0c0c', position: 'relative',
+                backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,255,255,0.03) 39px, rgba(255,255,255,0.03) 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(255,255,255,0.03) 39px, rgba(255,255,255,0.03) 40px)',
                 ...(phase === 'done' ? {
                   animation: 'panel-in 1.2s ease 0.2s both',
                 } : (phase === 'flash' || phase === 'shrink') ? {
@@ -323,7 +336,7 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
                 <div style={{
                   padding: isNarrow ? '16px 20px 10px' : '20px 56px 10px', flexShrink: 0,
                   display: 'flex', flexDirection: isNarrow ? 'row' : 'column', gap: isNarrow ? 16 : 4,
-                  borderBottom: '2px solid #000',
+                  borderBottom: '1px solid #333',
                   animation: 'fade-in 0.4s cubic-bezier(0.16,1,0.3,1) 0.12s both',
                   alignItems: isNarrow ? 'center' : undefined,
                 }}>
@@ -331,7 +344,7 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
                   {isNarrow && expandedMember.avatar && (
                     <div style={{
                       width: 130, height: 130, flexShrink: 0,
-                      border: '3px solid #000', boxShadow: '4px 4px 0px #000',
+                      border: '2px solid #444', boxShadow: '4px 4px 0px rgba(0,0,0,0.5)',
                       overflow: 'hidden',
                       animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.12s both',
                     }}>
@@ -343,8 +356,8 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
                   {isNarrow && !expandedMember.avatar && (
                     <div style={{
                       width: 130, height: 130, flexShrink: 0,
-                      border: '3px solid #000', boxShadow: '4px 4px 0px #000',
-                      background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      border: '2px solid #444', boxShadow: '4px 4px 0px rgba(0,0,0,0.5)',
+                      background: '#1a1a1a', display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontFamily: 'var(--font-arcade)', fontSize: 32, color: '#333',
                       animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.12s both',
                     }}>
@@ -367,7 +380,7 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
                   </div>
                   <div style={{ animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.22s both', marginTop: isNarrow ? -24 : -43 }}>
                     <p style={{
-                      fontFamily: 'var(--font-arcade)', fontSize: isNarrow ? 22 : 32, color: '#000',
+                      fontFamily: 'var(--font-arcade)', fontSize: isNarrow ? 22 : 32, color: '#fff',
                       letterSpacing: '0.12em', margin: 0, textTransform: 'uppercase',
                     }}>
                       {expandedMember.role}
@@ -417,18 +430,18 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
                   {/* About Me */}
                   {expandedMember.hobbies && expandedMember.hobbies.length > 0 && (
                     <div style={{ animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.43s both', marginTop: 0 }}>
-                      <p style={{ fontFamily: 'var(--font-arcade)', fontSize: labelSize, color: '#888', letterSpacing: '0.18em', margin: '0 0 12px', textTransform: 'uppercase' }}>
+                      <p style={{ fontFamily: 'var(--font-arcade)', fontSize: labelSize, color: '#fff', letterSpacing: '0.18em', margin: '0 0 12px', textTransform: 'uppercase' }}>
                         <span style={{ color: '#22c55e', marginRight: 8 }}>$</span>INTERESTS
                       </p>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {expandedMember.hobbies.map((h, i) => (
                           <div key={i} style={{
                             display: 'flex', alignItems: 'center', gap: 10,
-                            background: '#fff', border: '3px solid #000', padding: `${hobbyPadV}px ${hobbyPadH}px`,
-                            boxShadow: '4px 4px 0px #000',
+                            background: '#1a1a1a', border: '1px solid #333', padding: `${hobbyPadV}px ${hobbyPadH}px`,
+                            boxShadow: '3px 3px 0px rgba(0,0,0,0.4)',
                           }}>
-                            <span style={{ color: '#000', fontFamily: 'var(--font-arcade)', fontSize: hobbySize }}>&gt;</span>
-                            <span style={{ fontFamily: 'var(--font-arcade)', fontSize: hobbySize, letterSpacing: '0.06em', color: '#000' }}>
+                            <span style={{ color: '#22c55e', fontFamily: 'var(--font-arcade)', fontSize: hobbySize }}>&gt;</span>
+                            <span style={{ fontFamily: 'var(--font-arcade)', fontSize: hobbySize, letterSpacing: '0.06em', color: '#e0e0e0' }}>
                               {h}
                             </span>
                           </div>
@@ -440,18 +453,18 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
                   {/* Experiences */}
                   {expandedMember.experiences && expandedMember.experiences.length > 0 && (
                     <div style={{ animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.5s both', marginTop: 0 }}>
-                      <p style={{ fontFamily: 'var(--font-arcade)', fontSize: labelSize, color: '#888', letterSpacing: '0.18em', margin: '0 0 12px', textTransform: 'uppercase' }}>
+                      <p style={{ fontFamily: 'var(--font-arcade)', fontSize: labelSize, color: '#fff', letterSpacing: '0.18em', margin: '0 0 12px', textTransform: 'uppercase' }}>
                         <span style={{ color: '#22c55e', marginRight: 8 }}>$</span>EXPERIENCE
                       </p>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {expandedMember.experiences.map((exp, i) => (
                           <div key={i} style={{
                             display: 'flex', alignItems: 'center', gap: 12,
-                            background: '#fff', border: '3px solid #000', padding: `${expPadV}px ${expPadH}px`,
-                            boxShadow: '4px 4px 0px #000',
+                            background: '#1a1a1a', border: '1px solid #333', padding: `${expPadV}px ${expPadH}px`,
+                            boxShadow: '3px 3px 0px rgba(0,0,0,0.4)',
                           }}>
-                            <span style={{ color: '#000', fontFamily: 'var(--font-arcade)', fontSize: expSize }}>&gt;</span>
-                            <span style={{ fontFamily: 'var(--font-arcade)', fontSize: expSize, color: '#000' }}>{exp}</span>
+                            <span style={{ color: '#22c55e', fontFamily: 'var(--font-arcade)', fontSize: expSize }}>&gt;</span>
+                            <span style={{ fontFamily: 'var(--font-arcade)', fontSize: expSize, color: '#e0e0e0' }}>{exp}</span>
                           </div>
                         ))}
                       </div>
@@ -461,20 +474,20 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
 
                 {/* Socials + Nav — pinned to bottom */}
                 <div style={{
-                  display: 'flex', alignItems: 'center', gap: isNarrow ? 8 : 14, padding: isNarrow ? '16px 20px' : '24px 56px', borderTop: '2px solid #000',
+                  display: 'flex', alignItems: 'center', gap: isNarrow ? 8 : 14, padding: isNarrow ? '16px 20px' : '24px 56px', borderTop: '1px solid #333',
                   flexShrink: 0,
                   animation: 'content-fade-up 0.6s cubic-bezier(0.16,1,0.3,1) 0.55s both',
                 }}>
                   {expandedMember.socials?.map((s, i) => (
                     <a key={i} href={s.url} target="_blank" rel="noopener noreferrer"
                       style={{
-                        color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        width: 44, height: 44, border: '3px solid #000', background: '#fff',
-                        boxShadow: '4px 4px 0px #000',
+                        color: '#ccc', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        width: 44, height: 44, border: '1px solid #444', background: '#1a1a1a',
+                        boxShadow: '3px 3px 0px rgba(0,0,0,0.4)',
                         textDecoration: 'none', transition: 'all 0.15s ease',
                       }}
-                      onMouseEnter={e => { e.currentTarget.style.background = '#000'; e.currentTarget.style.color = '#fff'; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#000'; }}
+                      onMouseEnter={e => { e.currentTarget.style.background = '#333'; e.currentTarget.style.color = '#fff'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = '#1a1a1a'; e.currentTarget.style.color = '#ccc'; }}
                       onClick={e => e.stopPropagation()}
                     >
                       <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }} dangerouslySetInnerHTML={{ __html: (SOCIAL_ICONS[s.type] || '').replace(/width="12" height="12"/g, 'width="18" height="18"') }} />
@@ -492,26 +505,32 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
                           <button
                             onClick={e => { e.stopPropagation(); onNavigate(prev); }}
                             style={{
-                              fontFamily: 'var(--font-arcade)', fontSize: 28,
-                              color: '#000', border: '3px solid #000', padding: '6px 18px',
-                              background: '#fff', boxShadow: '4px 4px 0px #000',
+                              fontFamily: 'var(--font-arcade)', fontSize: 20,
+                              color: '#ccc', border: '1px solid #444',
+                              width: 44, height: 44,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              padding: 0,
+                              background: '#1a1a1a', boxShadow: '3px 3px 0px rgba(0,0,0,0.4)',
                               cursor: 'pointer', transition: 'all 0.15s ease',
                             }}
-                            onMouseEnter={e => { e.currentTarget.style.background = '#000'; e.currentTarget.style.color = '#fff'; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#000'; }}
+                            onMouseEnter={e => { e.currentTarget.style.background = '#333'; e.currentTarget.style.color = '#fff'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = '#1a1a1a'; e.currentTarget.style.color = '#ccc'; }}
                           >
                             &lt;
                           </button>
                           <button
                             onClick={e => { e.stopPropagation(); onNavigate(next); }}
                             style={{
-                              fontFamily: 'var(--font-arcade)', fontSize: 28,
-                              color: '#000', border: '3px solid #000', padding: '6px 18px',
-                              background: '#fff', boxShadow: '4px 4px 0px #000',
+                              fontFamily: 'var(--font-arcade)', fontSize: 20,
+                              color: '#ccc', border: '1px solid #444',
+                              width: 44, height: 44,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              padding: 0,
+                              background: '#1a1a1a', boxShadow: '3px 3px 0px rgba(0,0,0,0.4)',
                               cursor: 'pointer', transition: 'all 0.15s ease',
                             }}
-                            onMouseEnter={e => { e.currentTarget.style.background = '#000'; e.currentTarget.style.color = '#fff'; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#000'; }}
+                            onMouseEnter={e => { e.currentTarget.style.background = '#333'; e.currentTarget.style.color = '#fff'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = '#1a1a1a'; e.currentTarget.style.color = '#ccc'; }}
                           >
                             &gt;
                           </button>
@@ -539,11 +558,11 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
                 {/* CRT scanlines + vignette on right panel */}
                 <div style={{
                   position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 20,
-                  background: 'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.015) 3px, rgba(0,0,0,0.015) 4px)',
+                  background: 'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(255,255,255,0.01) 3px, rgba(255,255,255,0.01) 4px)',
                 }} />
                 <div style={{
                   position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 21,
-                  background: 'radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.08) 100%)',
+                  background: 'radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.3) 100%)',
                 }} />
               </div>
             </div>
@@ -560,45 +579,9 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
             }} />
           )}
 
-          {/* ── TV BACKGROUND — faded person_tv + glitch effects (visible during done + close phases) ── */}
+          {/* ── SUBTLE CRT NOISE — visible during done + close phases ── */}
           {(phase === 'expand' || phase === 'done' || phase === 'flash' || phase === 'shrink') && (
             <>
-              {/* Faded TV background — fades in with stepped animation + color bleed loop */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/images/person_tv.webp"
-                alt=""
-                style={{
-                  position: 'absolute', inset: 0, zIndex: 0,
-                  width: '100%', height: '100%',
-                  objectFit: 'cover',
-                  imageRendering: 'pixelated' as React.CSSProperties['imageRendering'],
-                  pointerEvents: 'none',
-                  ...((phase === 'expand' || phase === 'done') ? {
-                    animation: 'tv-warmup 0.8s cubic-bezier(0.16,1,0.3,1) forwards, tv-color-bleed 6s ease-in-out infinite 0.8s',
-                  } : {
-                    animation: 'tv-warmdown 0.3s ease forwards',
-                  }),
-                }}
-              />
-
-              {/* Horizontal glitch tears — looping intermittent tears over the bg */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/images/person_tv.webp"
-                alt=""
-                style={{
-                  position: 'absolute', inset: 0, zIndex: 0,
-                  width: '100%', height: '100%',
-                  objectFit: 'cover',
-                  opacity: 0.05,
-                  filter: 'grayscale(1) contrast(2) brightness(1.5)',
-                  imageRendering: 'pixelated' as React.CSSProperties['imageRendering'],
-                  pointerEvents: 'none',
-                  animation: 'tv-glitch 3s steps(1) infinite',
-                }}
-              />
-
               {/* Persistent TV static noise */}
               <div style={{
                 position: 'absolute', inset: 0, zIndex: 1,
@@ -625,7 +608,6 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
                   animation: 'tv-band-slow 5s linear infinite',
                 }} />
               </div>
-
             </>
           )}
 
