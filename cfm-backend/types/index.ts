@@ -1,16 +1,21 @@
-export type Member = {
+export interface Social {
+  type: 'github' | 'linkedin' | 'twitter' | 'instagram' | 'website';
+  url: string;
+}
+
+export interface Member {
   name: string;
-  graduationYear: number;
-  url?: string;
-  role?: string;
-  blurb?: string;
+  url: string;
+  description: string;
+  role: string;
+  location: string;
+  school: string;
+  blurb: string;
+  year: string;
+  cohort?: string;
   avatar?: string;
-  github?: string;
-  linkedin?: string;
-  hasWebsite: boolean;
-};
-
-export type MembersData = {
-  [year: number]: Member[];
-};
-
+  websiteImage?: string;
+  hobbies?: string[];
+  experiences?: string[];
+  socials?: Social[];
+}
