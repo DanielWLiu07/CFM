@@ -263,7 +263,16 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
 
   // Lock scroll + ESC to close
   useEffect(() => {
-    if (phase === 'idle') return;
+    if (phase === 'idle') {
+      // Re-render scene after overlay closes — body overflow change can corrupt CSS3D layout
+      const renderer = rendererRef.current;
+      const scene = sceneRef.current;
+      const camera = cameraRef.current;
+      if (renderer && scene && camera) {
+        requestAnimationFrame(() => renderer.render(scene, camera));
+      }
+      return;
+    }
     document.body.style.overflow = 'hidden';
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') closeExpanded();

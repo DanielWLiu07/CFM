@@ -321,11 +321,13 @@ function CandlestickChart({ position, rotation: rot, scale: s = 1, count = 12 }:
   useFrame(({ clock }) => {
     if (!groupRef.current) return;
     const t = clock.elapsedTime;
-    // Gentle floating
+    // Gentle floating + slow rotation drift
     groupRef.current.position.x = position[0] + Math.sin(t * 0.02 + position[2]) * 1.5;
     groupRef.current.position.y = position[1] + Math.sin(t * 0.015 + position[0]) * 1.0;
     groupRef.current.position.z = position[2] + Math.cos(t * 0.012 + position[0]) * 0.8;
-    groupRef.current.rotation.y = (rot?.[1] ?? 0) + Math.sin(t * 0.018 + position[0]) * 0.1;
+    groupRef.current.rotation.x = (rot?.[0] ?? 0) + Math.sin(t * 0.01 + position[1]) * 0.08;
+    groupRef.current.rotation.y = (rot?.[1] ?? 0) + t * 0.008 + Math.sin(t * 0.018 + position[0]) * 0.1;
+    groupRef.current.rotation.z = (rot?.[2] ?? 0) + Math.sin(t * 0.007 + position[2]) * 0.05;
 
     // Animate each bar's height via scale.y
     let idx = 0;
@@ -423,9 +425,13 @@ function LineChart({ position, rotation: rot, scale: s = 1 }: { position: [numbe
 
   useFrame(({ clock }) => {
     if (!ref.current) return;
-    ref.current.position.x = position[0] + Math.sin(clock.elapsedTime * 0.018 + position[2]) * 1.5;
-    ref.current.position.y = position[1] + Math.sin(clock.elapsedTime * 0.013 + position[0]) * 1.0;
-    ref.current.position.z = position[2] + Math.cos(clock.elapsedTime * 0.01 + position[0]) * 0.8;
+    const t = clock.elapsedTime;
+    ref.current.position.x = position[0] + Math.sin(t * 0.018 + position[2]) * 1.5;
+    ref.current.position.y = position[1] + Math.sin(t * 0.013 + position[0]) * 1.0;
+    ref.current.position.z = position[2] + Math.cos(t * 0.01 + position[0]) * 0.8;
+    ref.current.rotation.x = (rot?.[0] ?? 0) + Math.sin(t * 0.009 + position[1]) * 0.06;
+    ref.current.rotation.y = (rot?.[1] ?? 0) + t * 0.006 + Math.sin(t * 0.015 + position[0]) * 0.08;
+    ref.current.rotation.z = (rot?.[2] ?? 0) + Math.sin(t * 0.006 + position[2]) * 0.04;
   });
 
   const line = useMemo(() => {
@@ -463,7 +469,9 @@ function BarChart({ position, rotation: rot, scale: s = 1, count = 14 }: { posit
     groupRef.current.position.x = position[0] + Math.sin(t * 0.018 + position[0]) * 1.5;
     groupRef.current.position.y = position[1] + Math.sin(t * 0.014 + position[2]) * 1.0;
     groupRef.current.position.z = position[2] + Math.cos(t * 0.011 + position[2]) * 0.8;
-    groupRef.current.rotation.y = (rot?.[1] ?? 0) + Math.sin(t * 0.016 + position[0]) * 0.1;
+    groupRef.current.rotation.x = (rot?.[0] ?? 0) + Math.sin(t * 0.008 + position[1]) * 0.07;
+    groupRef.current.rotation.y = (rot?.[1] ?? 0) + t * 0.007 + Math.sin(t * 0.016 + position[0]) * 0.1;
+    groupRef.current.rotation.z = (rot?.[2] ?? 0) + Math.sin(t * 0.005 + position[2]) * 0.04;
 
     // Animate bar heights
     let idx = 0;

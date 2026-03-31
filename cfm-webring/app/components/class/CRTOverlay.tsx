@@ -81,65 +81,61 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
             willChange: phase === 'done' ? 'auto' : 'transform, opacity',
             borderRadius: (phase === 'dot' || phase === 'dotout') ? '50%' : '0',
             overflow: 'hidden',
-            background:
-              phase === 'dotout' ? '#a0c4ff'
-              : phase === 'expand' ? '#000'
-              : phase === 'done' ? '#000'
-              : '#fff',
+            background: '#000',
             ...(phase === 'dot' ? {
-              transform: 'scaleX(0.006) scaleY(0.006)',
+              transform: 'scaleX(0.008) scaleY(0.008)',
               transition: 'none',
             } : phase === 'line' ? {
-              transform: 'scaleX(1) scaleY(0.006)',
-              transition: 'transform 0.12s cubic-bezier(0.22, 1.3, 0.36, 1), border-radius 0.06s ease',
+              transform: 'scaleX(1) scaleY(0.008)',
+              transition: 'transform 0.14s cubic-bezier(0.22, 1.3, 0.36, 1), border-radius 0.06s ease',
             } : phase === 'expand' ? {
               animation: 'crt-expand 0.4s cubic-bezier(0.16,1,0.3,1) forwards',
             } : phase === 'flash' ? {
               transform: 'scale(1)',
-              filter: 'brightness(2) saturate(0)',
-              transition: 'filter 0.05s ease',
+              filter: 'brightness(1.5)',
+              transition: 'filter 0.08s ease',
             } : phase === 'shrink' ? {
-              transform: 'scaleX(1) scaleY(0.006)',
-              filter: 'brightness(1.3)',
+              transform: 'scaleX(1) scaleY(0.008)',
               transition: 'transform 0.2s cubic-bezier(0.6,0,1,0.4), filter 0.2s ease, background 0.15s ease',
             } : phase === 'dotout' ? {
-              transform: 'scaleX(0.006) scaleY(0.006)',
+              transform: 'scaleX(0.008) scaleY(0.008)',
               transition: 'transform 0.18s cubic-bezier(0.7,0,0.84,0), border-radius 0.08s ease, background 0.1s ease',
             } : {
               transform: 'scale(1)',
-              transition: 'transform 0.1s ease-out',
+              transition: 'transform 0.1s ease-out, box-shadow 0.4s ease',
             }),
             boxShadow:
               (phase === 'dot' || phase === 'dotout')
-                ? '0 0 100px 40px rgba(160,196,255,1), 0 0 200px 80px rgba(160,196,255,0.5)'
+                ? '0 0 120px 50px rgba(34,197,94,1), 0 0 200px 80px rgba(34,197,94,0.4), inset 0 0 60px 20px rgba(34,197,94,0.6)'
               : (phase === 'line' || phase === 'shrink')
-                ? '0 0 60px 20px rgba(200,220,255,0.9), 0 0 120px 40px rgba(160,196,255,0.4)'
-              : 'none',
+                ? '0 0 80px 25px rgba(34,197,94,0.8), 0 0 150px 50px rgba(34,197,94,0.3), inset 0 0 40px 10px rgba(34,197,94,0.4)'
+              : '0 0 0px 0px rgba(34,197,94,0), 0 0 0px 0px rgba(34,197,94,0), inset 0 0 0px 0px rgba(34,197,94,0)',
           }}
         >
-          {/* ── STATIC NOISE — visible during expand + flash ── */}
-          {(phase === 'expand' || phase === 'flash' || phase === 'shrink') && (
+          {/* ── STATIC NOISE — visible during expand, fades out into done ── */}
+          {(phase === 'expand' || phase === 'done' || phase === 'flash' || phase === 'shrink') && (
             <div style={{
               position: 'absolute', inset: 0, zIndex: 3,
-              opacity: phase === 'flash' ? 0.4 : 0.25,
+              opacity: phase === 'flash' ? 0.4 : phase === 'done' ? 0 : 0.25,
+              transition: phase === 'done' ? 'opacity 0.4s ease' : 'none',
               backgroundImage: `
                 repeating-conic-gradient(#888 0% 25%, transparent 0% 50%),
                 repeating-conic-gradient(#666 0% 25%, transparent 0% 50%)
               `,
               backgroundSize: '4px 4px, 6px 6px',
               backgroundPosition: '0 0, 2px 2px',
-              animation: 'crt-noise 40ms steps(8) infinite',
+              animation: phase === 'done' ? 'none' : 'crt-noise 40ms steps(8) infinite',
               pointerEvents: 'none',
               mixBlendMode: 'overlay',
             }} />
           )}
 
-          {/* ── HARD FLICKER — during line + expand ── */}
-          {(phase === 'line' || phase === 'expand') && (
+          {/* ── HARD FLICKER — brief phosphor flash during line only ── */}
+          {phase === 'line' && (
             <div style={{
               position: 'absolute', inset: 0, zIndex: 4,
-              background: '#fff',
-              animation: 'crt-flicker 0.2s steps(1) 2',
+              background: 'rgba(34,197,94,0.1)',
+              animation: 'crt-flicker 0.12s steps(1) 1',
               pointerEvents: 'none',
             }} />
           )}
@@ -157,7 +153,7 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
               }}>
                 <div style={{
                   width: '100%', height: '12vh',
-                  background: 'linear-gradient(transparent 0%, rgba(255,255,255,0.08) 30%, rgba(255,255,255,0.15) 50%, rgba(255,255,255,0.08) 70%, transparent 100%)',
+                  background: 'linear-gradient(transparent 0%, rgba(34,197,94,0.06) 30%, rgba(34,197,94,0.1) 50%, rgba(34,197,94,0.06) 70%, transparent 100%)',
                   animation: 'crt-band-scroll 0.35s linear 2',
                 }} />
               </div>
@@ -482,13 +478,13 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
                   {expandedMember.socials?.map((s, i) => (
                     <a key={i} href={s.url} target="_blank" rel="noopener noreferrer"
                       style={{
-                        color: '#ccc', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
                         width: 44, height: 44, border: '1px solid #444', background: '#1a1a1a',
                         boxShadow: '3px 3px 0px rgba(0,0,0,0.4)',
-                        textDecoration: 'none', transition: 'all 0.15s ease',
+                        textDecoration: 'none', transition: 'all 0.2s ease',
                       }}
-                      onMouseEnter={e => { e.currentTarget.style.background = '#333'; e.currentTarget.style.color = '#fff'; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = '#1a1a1a'; e.currentTarget.style.color = '#ccc'; }}
+                      onMouseEnter={e => { e.currentTarget.style.background = '#22c55e'; e.currentTarget.style.color = '#000'; e.currentTarget.style.borderColor = '#22c55e'; e.currentTarget.style.boxShadow = '0 0 12px rgba(34,197,94,0.5), 3px 3px 0px rgba(0,0,0,0.4)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = '#1a1a1a'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#444'; e.currentTarget.style.boxShadow = '3px 3px 0px rgba(0,0,0,0.4)'; }}
                       onClick={e => e.stopPropagation()}
                     >
                       <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }} dangerouslySetInnerHTML={{ __html: (SOCIAL_ICONS[s.type] || '').replace(/width="12" height="12"/g, 'width="18" height="18"') }} />
@@ -507,15 +503,15 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
                             onClick={e => { e.stopPropagation(); onNavigate(prev); }}
                             style={{
                               fontFamily: 'var(--font-arcade)', fontSize: 20,
-                              color: '#ccc', border: '1px solid #444',
+                              color: '#fff', border: '1px solid #444',
                               width: 44, height: 44,
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
                               padding: 0,
                               background: '#1a1a1a', boxShadow: '3px 3px 0px rgba(0,0,0,0.4)',
-                              cursor: 'pointer', transition: 'all 0.15s ease',
+                              cursor: 'pointer', transition: 'all 0.2s ease',
                             }}
-                            onMouseEnter={e => { e.currentTarget.style.background = '#333'; e.currentTarget.style.color = '#fff'; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = '#1a1a1a'; e.currentTarget.style.color = '#ccc'; }}
+                            onMouseEnter={e => { e.currentTarget.style.background = '#22c55e'; e.currentTarget.style.color = '#000'; e.currentTarget.style.borderColor = '#22c55e'; e.currentTarget.style.boxShadow = '0 0 12px rgba(34,197,94,0.5), 3px 3px 0px rgba(0,0,0,0.4)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = '#1a1a1a'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#444'; e.currentTarget.style.boxShadow = '3px 3px 0px rgba(0,0,0,0.4)'; }}
                           >
                             &lt;
                           </button>
@@ -523,15 +519,15 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
                             onClick={e => { e.stopPropagation(); onNavigate(next); }}
                             style={{
                               fontFamily: 'var(--font-arcade)', fontSize: 20,
-                              color: '#ccc', border: '1px solid #444',
+                              color: '#fff', border: '1px solid #444',
                               width: 44, height: 44,
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
                               padding: 0,
                               background: '#1a1a1a', boxShadow: '3px 3px 0px rgba(0,0,0,0.4)',
-                              cursor: 'pointer', transition: 'all 0.15s ease',
+                              cursor: 'pointer', transition: 'all 0.2s ease',
                             }}
-                            onMouseEnter={e => { e.currentTarget.style.background = '#333'; e.currentTarget.style.color = '#fff'; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = '#1a1a1a'; e.currentTarget.style.color = '#ccc'; }}
+                            onMouseEnter={e => { e.currentTarget.style.background = '#22c55e'; e.currentTarget.style.color = '#000'; e.currentTarget.style.borderColor = '#22c55e'; e.currentTarget.style.boxShadow = '0 0 12px rgba(34,197,94,0.5), 3px 3px 0px rgba(0,0,0,0.4)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = '#1a1a1a'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#444'; e.currentTarget.style.boxShadow = '3px 3px 0px rgba(0,0,0,0.4)'; }}
                           >
                             &gt;
                           </button>
@@ -569,12 +565,11 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
             </div>
           )}
 
-          {/* ── WHITE FLASH on close — CRT brightness spike ── */}
+          {/* ── GREEN FLASH on close — CRT phosphor spike ── */}
           {phase === 'flash' && (
             <div style={{
               position: 'absolute', inset: 0, zIndex: 10,
-              background: '#fff',
-              opacity: 0.8,
+              background: 'rgba(34,197,94,0.3)',
               animation: 'crt-flicker 0.07s steps(1) 1',
               pointerEvents: 'none',
             }} />
@@ -615,7 +610,7 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
         </div>
       )}
 
-      {/* Phosphor afterglow — blue dot lingers after screen dies */}
+      {/* Phosphor afterglow — green dot lingers after screen dies */}
       {phase === 'afterglow' && (
         <div style={{
           position: 'absolute',
@@ -623,7 +618,7 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
           width: '300px', height: '300px',
           marginTop: '-150px', marginLeft: '-150px',
           borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(160,196,255,0.7) 0%, rgba(160,196,255,0.2) 30%, transparent 60%)',
+          background: 'radial-gradient(circle, rgba(34,197,94,0.6) 0%, rgba(34,197,94,0.15) 30%, transparent 60%)',
           animation: 'crt-afterglow 0.45s ease-out forwards',
           pointerEvents: 'none',
         }} />

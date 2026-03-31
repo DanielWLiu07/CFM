@@ -116,7 +116,7 @@ export default function ClassSection({ onVisibilityChange, beatRef }: ClassSecti
 
   return (
     <section
-      className="relative min-h-screen py-6 sm:py-10 px-4 sm:px-6 md:px-12 lg:px-20 flex flex-col items-center"
+      className="relative min-h-screen pt-0 pb-6 sm:pb-10 px-4 sm:px-6 md:px-12 lg:px-20 flex flex-col items-center"
       style={{ backgroundColor: 'transparent', transformStyle: 'flat' as const }}
     >
       <div ref={sentinelRef} className="absolute top-0 left-0 w-full h-24" />
@@ -166,7 +166,7 @@ export default function ClassSection({ onVisibilityChange, beatRef }: ClassSecti
           zIndex: 200,
           width: '100%',
           maxWidth: 600,
-          marginTop: `clamp(${titleConfig.titleGap}px, -12vw, ${titleConfig.titleGap / 2}px)`,
+          marginTop: `clamp(${titleConfig.titleGap}px, -10vw, ${titleConfig.titleGap / 3}px)`,
           transform: `translateY(${titleConfig.searchY}px)`,
           marginBottom: 'clamp(8px, 1.2vw, 14px)',
           position: 'relative',

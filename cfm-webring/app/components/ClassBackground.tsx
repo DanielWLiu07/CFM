@@ -6,9 +6,9 @@ import * as THREE from 'three';
 
 const BeatContext = createContext<RefObject<number>>({ current: 0 });
 
-// ── Twinkling Stars (fewer, subtler) ─────────────────────────────────────────
+// ── Twinkling Stars ─────────────────────────────────────────────────────────
 
-function Stars({ count = 200 }: { count?: number }) {
+function Stars({ count = 150 }: { count?: number }) {
   const ref = useRef<THREE.Points>(null);
   const matRef = useRef<THREE.ShaderMaterial>(null);
 
@@ -76,7 +76,7 @@ function Stars({ count = 200 }: { count?: number }) {
 
 // ── Floating Dust ────────────────────────────────────────────────────────────
 
-function FloatingDust({ count = 100 }: { count?: number }) {
+function FloatingDust({ count = 60 }: { count?: number }) {
   const ref = useRef<THREE.Points>(null);
 
   const positions = useMemo(() => {
@@ -112,222 +112,51 @@ function FloatingDust({ count = 100 }: { count?: number }) {
   );
 }
 
-// ── Concentric Rings ─────────────────────────────────────────────────────────
+// ── Floating Code Snippets ──────────────────────────────────────────────────
 
-function ConcentricRings() {
-  const groupRef = useRef<THREE.Group>(null);
-  const beatRef = useContext(BeatContext);
-
-  const rings = useMemo(() => [
-    { radius: 2.5, opacity: 0.05 },
-    { radius: 4, opacity: 0.035 },
-    { radius: 6, opacity: 0.02 },
-    { radius: 8.5, opacity: 0.012 },
-  ], []);
-
-  useFrame(({ clock }) => {
-    if (!groupRef.current) return;
-    const beat = beatRef.current ?? 0;
-    groupRef.current.rotation.x = Math.sin(clock.elapsedTime * 0.08) * 0.06;
-    groupRef.current.rotation.z = clock.elapsedTime * 0.015;
-    groupRef.current.scale.setScalar(1 + beat * 0.06);
-    groupRef.current.children.forEach((child) => {
-      const mat = (child as THREE.Mesh).material as THREE.MeshBasicMaterial;
-      if (mat.userData.baseOpacity === undefined) mat.userData.baseOpacity = mat.opacity;
-      mat.opacity = mat.userData.baseOpacity + beat * 0.03;
-    });
-  });
-
-  return (
-    <group ref={groupRef} position={[0, 0, -3]}>
-      {rings.map((ring, i) => (
-        <mesh key={i}>
-          <ringGeometry args={[ring.radius - 0.01, ring.radius + 0.01, 64]} />
-          <meshBasicMaterial color="#ffffff" transparent opacity={ring.opacity} side={THREE.DoubleSide} depthWrite={false} />
-        </mesh>
-      ))}
-    </group>
-  );
-}
-
-// ── Candlestick Charts (finance aesthetic) ───────────────────────────────────
-
-function CandlestickChart({ position, rotation: rot, scale: s = 1, count = 12 }: { position: [number, number, number]; rotation?: [number, number, number]; scale?: number; count?: number }) {
-  const groupRef = useRef<THREE.Group>(null);
-
-  const candles = useMemo(() => {
-    return Array.from({ length: count }, (_, i) => ({
-      x: (i - count / 2) * 0.45,
-      baseH: 0.4 + Math.random() * 1.5,
-      speed: 0.15 + Math.random() * 0.3,
-      phase: Math.random() * Math.PI * 2,
-      bullish: Math.random() > 0.4,
-    }));
-  }, [count]);
-
-  useFrame(({ clock }) => {
-    if (!groupRef.current) return;
-    const t = clock.elapsedTime;
-    groupRef.current.position.x = position[0] + Math.sin(t * 0.02 + position[2]) * 1.5;
-    groupRef.current.position.y = position[1] + Math.sin(t * 0.015 + position[0]) * 1.0;
-    groupRef.current.position.z = position[2] + Math.cos(t * 0.012 + position[0]) * 0.8;
-
-    let idx = 0;
-    groupRef.current.children.forEach(child => {
-      if (!(child as THREE.Mesh).isMesh) return;
-      const c = candles[Math.floor(idx / 2)];
-      if (!c) return;
-      const h = c.baseH * (0.6 + 0.4 * Math.sin(t * c.speed + c.phase));
-      child.scale.y = Math.max(0.1, h);
-      child.position.y = h * 0.25 - 0.8;
-      idx++;
-    });
-  });
-
-  return (
-    <group ref={groupRef} position={position} rotation={rot} scale={[s, s, s]}>
-      {candles.map((c, i) => (
-        <group key={i}>
-          <mesh position={[c.x, 0, 0]}>
-            <boxGeometry args={[0.2, 1, 0.01]} />
-            <meshBasicMaterial color={c.bullish ? '#00e676' : '#ff5252'} transparent opacity={0.05} depthWrite={false} blending={THREE.AdditiveBlending} />
-          </mesh>
-          <mesh position={[c.x, 0, 0]}>
-            <boxGeometry args={[0.03, 1.5, 0.01]} />
-            <meshBasicMaterial color="#ffffff" transparent opacity={0.03} depthWrite={false} blending={THREE.AdditiveBlending} />
-          </mesh>
-        </group>
-      ))}
-    </group>
-  );
-}
-
-// ── Line Chart (stock chart aesthetic) ───────────────────────────────────────
-
-function LineChart({ position, rotation: rot, scale: s = 1 }: { position: [number, number, number]; rotation?: [number, number, number]; scale?: number }) {
-  const ref = useRef<THREE.Line>(null);
-
-  const geo = useMemo(() => {
-    const points: THREE.Vector3[] = [];
-    let price = 1;
-    for (let i = 0; i < 50; i++) {
-      price += (Math.random() - 0.48) * 0.18;
-      price = Math.max(0.1, price);
-      points.push(new THREE.Vector3((i / 50) * 8 - 4, price - 1, 0));
-    }
-    return new THREE.BufferGeometry().setFromPoints(points);
-  }, []);
-
-  useFrame(({ clock }) => {
-    if (!ref.current) return;
-    ref.current.position.x = position[0] + Math.sin(clock.elapsedTime * 0.018 + position[2]) * 1.5;
-    ref.current.position.y = position[1] + Math.sin(clock.elapsedTime * 0.013 + position[0]) * 1.0;
-    ref.current.position.z = position[2] + Math.cos(clock.elapsedTime * 0.01 + position[0]) * 0.8;
-  });
-
-  const line = useMemo(() => {
-    return new THREE.Line(geo, new THREE.LineBasicMaterial({
-      color: '#00e676', transparent: true, opacity: 0.05, depthWrite: false, blending: THREE.AdditiveBlending,
-    }));
-  }, [geo]);
-
-  return (
-    <group position={position} rotation={rot} scale={[s, s, s]}>
-      <primitive ref={ref} object={line} />
-    </group>
-  );
-}
-
-// ── Bar Chart (vertical bars like a histogram) ──────────────────────────────
-
-function BarChart({ position, rotation: rot, scale: s = 1, count = 14 }: { position: [number, number, number]; rotation?: [number, number, number]; scale?: number; count?: number }) {
-  const groupRef = useRef<THREE.Group>(null);
-
-  const bars = useMemo(() => {
-    return Array.from({ length: count }, (_, i) => ({
-      x: (i - count / 2) * 0.35,
-      baseH: 0.3 + Math.random() * 2,
-      speed: 0.1 + Math.random() * 0.25,
-      phase: Math.random() * Math.PI * 2,
-      green: Math.random() > 0.35,
-    }));
-  }, [count]);
-
-  useFrame(({ clock }) => {
-    if (!groupRef.current) return;
-    const t = clock.elapsedTime;
-    groupRef.current.position.x = position[0] + Math.sin(t * 0.018 + position[0]) * 1.5;
-    groupRef.current.position.y = position[1] + Math.sin(t * 0.014 + position[2]) * 1.0;
-    groupRef.current.position.z = position[2] + Math.cos(t * 0.011 + position[2]) * 0.8;
-
-    let idx = 0;
-    groupRef.current.children.forEach(child => {
-      if (!(child as THREE.Mesh).isMesh) return;
-      const b = bars[idx];
-      if (!b) return;
-      const h = b.baseH * (0.5 + 0.5 * Math.sin(t * b.speed + b.phase));
-      child.scale.y = Math.max(0.05, h);
-      child.position.y = h * 0.3 - 0.6;
-      idx++;
-    });
-  });
-
-  return (
-    <group ref={groupRef} position={position} rotation={rot} scale={[s, s, s]}>
-      {bars.map((b, i) => (
-        <mesh key={i} position={[b.x, 0, 0]}>
-          <boxGeometry args={[0.2, 1, 0.01]} />
-          <meshBasicMaterial color={b.green ? '#00e676' : '#ff5252'} transparent opacity={0.05} depthWrite={false} blending={THREE.AdditiveBlending} />
-        </mesh>
-      ))}
-    </group>
-  );
-}
-
-// ── Floating Numbers (scrolling financial data) ─────────────────────────────
-
-function FloatingNumbers({ count = 20 }: { count?: number }) {
+function FloatingCode({ count = 16 }: { count?: number }) {
   const groupRef = useRef<THREE.Group>(null);
   const beatRef = useContext(BeatContext);
 
   const items = useMemo(() => {
+    const snippets = [
+      'const x = await fetch()', 'if (n % 2 === 0) {', 'return arr.filter(Boolean)',
+      'export default function', 'import { useState }', '<div className="grid">',
+      'async function main() {', 'for (let i = 0; i < n; i++)', '.then(res => res.json())',
+      'type Props = { id: string }', 'npm run build', 'git push origin main',
+      'SELECT * FROM users', 'console.log("hello")', 'def train(model, data):',
+      'class Node<T> {', '} catch (err) {', 'useEffect(() => {}, [])',
+      'fn main() -> Result<()>', 'while (left < right) {', 'docker compose up -d',
+    ];
+
     const canvas = document.createElement('canvas');
-    canvas.width = 128;
+    canvas.width = 512;
     canvas.height = 32;
     const ctx = canvas.getContext('2d')!;
 
     return Array.from({ length: count }, () => {
-      const texts = ['$142.87', '+3.2%', '0x4F2A', 'BTC', 'ETH', '$89.41', '-1.7%', 'AAPL', 'SPY', '10Y:4.2%', 'VIX:18', 'P/E:24', 'ROI:12%', 'EPS:3.41', 'YTD:+8%'];
-      const text = texts[Math.floor(Math.random() * texts.length)];
-      const green = !text.startsWith('-');
+      const text = snippets[Math.floor(Math.random() * snippets.length)];
+      const green = Math.random() > 0.3;
 
-      ctx.clearRect(0, 0, 128, 32);
-      ctx.fillStyle = green ? '#00e676' : '#ff5252';
-      ctx.font = '18px monospace';
+      ctx.clearRect(0, 0, 512, 32);
+      ctx.fillStyle = green ? '#00e676' : '#888888';
+      ctx.font = '16px monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(text, 64, 16);
+      ctx.fillText(text, 256, 16);
 
-      const texture = new THREE.CanvasTexture(canvas.cloneNode(true) as HTMLCanvasElement);
-      // Copy pixel data
-      const clone = texture.image as HTMLCanvasElement;
+      const clone = document.createElement('canvas');
+      clone.width = 512;
+      clone.height = 32;
       const cloneCtx = clone.getContext('2d')!;
-      cloneCtx.clearRect(0, 0, 128, 32);
-      cloneCtx.fillStyle = green ? '#00e676' : '#ff5252';
-      cloneCtx.font = '18px monospace';
-      cloneCtx.textAlign = 'center';
-      cloneCtx.textBaseline = 'middle';
-      cloneCtx.fillText(text, 64, 16);
+      cloneCtx.drawImage(canvas, 0, 0);
+      const texture = new THREE.CanvasTexture(clone);
       texture.needsUpdate = true;
 
       return {
         texture,
-        position: [
-          (Math.random() - 0.5) * 20,
-          (Math.random() - 0.5) * 12,
-          -4 - Math.random() * 14,
-        ] as [number, number, number],
-        speed: 0.05 + Math.random() * 0.15,
+        position: [(Math.random() - 0.5) * 24, (Math.random() - 0.5) * 16, -4 - Math.random() * 14] as [number, number, number],
+        speed: 0.03 + Math.random() * 0.1,
         phase: Math.random() * Math.PI * 2,
       };
     });
@@ -340,9 +169,9 @@ function FloatingNumbers({ count = 20 }: { count?: number }) {
       const item = items[i];
       const mesh = child as THREE.Mesh;
       mesh.position.y = item.position[1] + Math.sin(clock.elapsedTime * item.speed + item.phase) * 0.5;
-      mesh.rotation.y = Math.sin(clock.elapsedTime * 0.04 + item.phase) * 0.15;
+      mesh.rotation.y = Math.sin(clock.elapsedTime * 0.03 + item.phase) * 0.1;
       const mat = mesh.material as THREE.MeshBasicMaterial;
-      mat.opacity = 0.04 + beat * 0.02;
+      mat.opacity = 0.045 + beat * 0.02;
     });
   });
 
@@ -350,27 +179,96 @@ function FloatingNumbers({ count = 20 }: { count?: number }) {
     <group ref={groupRef}>
       {items.map((item, i) => (
         <mesh key={i} position={item.position}>
-          <planeGeometry args={[1.6, 0.4]} />
-          <meshBasicMaterial map={item.texture} transparent opacity={0.04} depthWrite={false} blending={THREE.AdditiveBlending} side={THREE.DoubleSide} />
+          <planeGeometry args={[4, 0.3]} />
+          <meshBasicMaterial map={item.texture} transparent opacity={0.045} depthWrite={false} blending={THREE.AdditiveBlending} side={THREE.DoubleSide} />
         </mesh>
       ))}
     </group>
   );
 }
 
-// ── Ticker Tape (scrolling horizontal price lines) ──────────────────────────
+// ── Floating Brackets & Symbols ─────────────────────────────────────────────
 
-function TickerTape({ count = 10 }: { count?: number }) {
+function FloatingSymbols({ count = 20 }: { count?: number }) {
   const groupRef = useRef<THREE.Group>(null);
   const beatRef = useContext(BeatContext);
 
-  const tapes = useMemo(() => {
+  const items = useMemo(() => {
+    const symbols = ['{ }', '< />', '( )', '[ ]', '=>', ';', '#', '$', '&&', '||', '!=', '==', '::', '/**/'];
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d')!;
+
     return Array.from({ length: count }, () => {
-      const len = 2 + Math.random() * 5;
-      const y = (Math.random() - 0.5) * 10;
+      const text = symbols[Math.floor(Math.random() * symbols.length)];
+
+      ctx.clearRect(0, 0, 128, 64);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 36px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, 64, 32);
+
+      const clone = document.createElement('canvas');
+      clone.width = 128;
+      clone.height = 64;
+      const cloneCtx = clone.getContext('2d')!;
+      cloneCtx.drawImage(canvas, 0, 0);
+      const texture = new THREE.CanvasTexture(clone);
+      texture.needsUpdate = true;
+
+      return {
+        texture,
+        position: [(Math.random() - 0.5) * 22, (Math.random() - 0.5) * 14, -3 - Math.random() * 16] as [number, number, number],
+        rotSpeed: (Math.random() - 0.5) * 0.1,
+        floatSpeed: 0.04 + Math.random() * 0.12,
+        phase: Math.random() * Math.PI * 2,
+        scale: 0.6 + Math.random() * 1.0,
+      };
+    });
+  }, [count]);
+
+  useFrame(({ clock }) => {
+    if (!groupRef.current) return;
+    const beat = beatRef.current ?? 0;
+    groupRef.current.children.forEach((child, i) => {
+      const item = items[i];
+      const mesh = child as THREE.Mesh;
+      mesh.position.y = item.position[1] + Math.sin(clock.elapsedTime * item.floatSpeed + item.phase) * 0.8;
+      mesh.position.x = item.position[0] + Math.cos(clock.elapsedTime * item.floatSpeed * 0.7 + item.phase) * 0.4;
+      mesh.rotation.z = Math.sin(clock.elapsedTime * item.rotSpeed + item.phase) * 0.15;
+      const mat = mesh.material as THREE.MeshBasicMaterial;
+      mat.opacity = 0.035 + beat * 0.02;
+    });
+  });
+
+  return (
+    <group ref={groupRef}>
+      {items.map((item, i) => (
+        <mesh key={i} position={item.position} scale={[item.scale, item.scale, 1]}>
+          <planeGeometry args={[1.2, 0.6]} />
+          <meshBasicMaterial map={item.texture} transparent opacity={0.035} depthWrite={false} blending={THREE.AdditiveBlending} side={THREE.DoubleSide} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+// ── Scrolling Terminal Lines ────────────────────────────────────────────────
+
+function TerminalLines({ count = 8 }: { count?: number }) {
+  const groupRef = useRef<THREE.Group>(null);
+  const beatRef = useContext(BeatContext);
+
+  const lines = useMemo(() => {
+    return Array.from({ length: count }, () => {
+      const len = 3 + Math.random() * 6;
+      const y = (Math.random() - 0.5) * 12;
       const z = -3 - Math.random() * 14;
-      const speed = 0.15 + Math.random() * 0.35;
-      const green = Math.random() > 0.4;
+      const speed = 0.08 + Math.random() * 0.2;
+      const green = Math.random() > 0.3;
       const points = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(len, 0, 0)];
       const geo = new THREE.BufferGeometry().setFromPoints(points);
       return { geo, y, z, speed, green, startX: (Math.random() - 0.5) * 20 };
@@ -381,7 +279,7 @@ function TickerTape({ count = 10 }: { count?: number }) {
     if (!groupRef.current) return;
     const beat = beatRef.current ?? 0;
     groupRef.current.children.forEach((child, i) => {
-      const t = tapes[i];
+      const t = lines[i];
       const mesh = child as THREE.Line;
       const offset = (clock.elapsedTime * t.speed) % 24 - 12;
       mesh.position.set(t.startX + offset, t.y, t.z);
@@ -392,9 +290,9 @@ function TickerTape({ count = 10 }: { count?: number }) {
 
   return (
     <group ref={groupRef}>
-      {tapes.map((t, i) => {
+      {lines.map((t, i) => {
         const line = new THREE.Line(t.geo, new THREE.LineBasicMaterial({
-          color: t.green ? '#00e676' : '#ff5252',
+          color: t.green ? '#00e676' : '#555555',
           transparent: true, opacity: 0.025, depthWrite: false, blending: THREE.AdditiveBlending,
         }));
         line.position.set(t.startX, t.y, t.z);
@@ -404,7 +302,7 @@ function TickerTape({ count = 10 }: { count?: number }) {
   );
 }
 
-// ── Grid Floor (trading floor grid) ─────────────────────────────────────────
+// ── Grid Floor ──────────────────────────────────────────────────────────────
 
 function GridFloor() {
   const ref = useRef<THREE.GridHelper>(null);
@@ -423,7 +321,7 @@ function GridFloor() {
   );
 }
 
-// ── Radial Glow ──────────────────────────────────────────────────────────────
+// ── Radial Glow ─────────────────────────────────────────────────────────────
 
 function RadialGlow() {
   const ref = useRef<THREE.Mesh>(null);
@@ -433,33 +331,22 @@ function RadialGlow() {
     uniforms: { uTime: { value: 0 }, uBeat: { value: 0 } },
     vertexShader: `
       varying vec2 vUv;
-      void main() {
-        vUv = uv;
-        gl_Position = vec4(position.xy, 0.0, 1.0);
-      }
+      void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }
     `,
     fragmentShader: `
       varying vec2 vUv;
       uniform float uTime;
       uniform float uBeat;
       void main() {
-        vec2 center = vec2(0.5, 0.5);
-        center.x += sin(uTime * 0.12) * 0.04;
-        center.y += cos(uTime * 0.1) * 0.03;
+        vec2 center = vec2(0.5 + sin(uTime * 0.12) * 0.04, 0.5 + cos(uTime * 0.1) * 0.03);
         float dist = distance(vUv, center);
         float glow = smoothstep(0.6, 0.0, dist) * (0.04 + uBeat * 0.03);
         float halo = smoothstep(0.9, 0.2, dist) * (0.015 + uBeat * 0.01);
-        float alpha = glow + halo;
-        vec3 warm = vec3(0.95, 0.92, 0.88);
-        vec3 cool = vec3(0.82, 0.85, 1.0);
-        vec3 color = mix(cool, warm, smoothstep(0.4, 0.0, dist));
-        gl_FragColor = vec4(color, alpha);
+        vec3 color = mix(vec3(0.82, 0.85, 1.0), vec3(0.95, 0.92, 0.88), smoothstep(0.4, 0.0, dist));
+        gl_FragColor = vec4(color, glow + halo);
       }
     `,
-    transparent: true,
-    depthWrite: false,
-    depthTest: false,
-    blending: THREE.AdditiveBlending,
+    transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending,
   }), []);
 
   useFrame(({ clock }) => {
@@ -477,7 +364,7 @@ function RadialGlow() {
   );
 }
 
-// ── Camera Rig (mouse parallax) ──────────────────────────────────────────────
+// ── Camera Rig ──────────────────────────────────────────────────────────────
 
 function CameraRig() {
   const { camera } = useThree();
@@ -494,7 +381,7 @@ function CameraRig() {
   return null;
 }
 
-// ── Main Export ──────────────────────────────────────────────────────────────
+// ── Main Export ─────────────────────────────────────────────────────────────
 
 export default function ClassBackground({ beatRef, paused }: { beatRef?: RefObject<number>; paused?: boolean }) {
   const fallbackRef = useRef(0);
@@ -512,28 +399,12 @@ export default function ClassBackground({ beatRef, paused }: { beatRef?: RefObje
         <BeatContext.Provider value={activeBeatRef}>
           <fog attach="fog" args={['#000000', 12, 30]} />
           <RadialGlow />
-          <Stars count={150} />
-          <FloatingDust count={60} />
-          <ConcentricRings />
+          <Stars />
+          <FloatingDust />
           <GridFloor />
-
-          {/* Finance: candlesticks — spread out, angled */}
-          <CandlestickChart position={[-9, 3, -7]} rotation={[0.1, 0.25, -0.05]} scale={1.5} />
-          <CandlestickChart position={[8, -3, -10]} rotation={[-0.1, -0.3, 0.08]} scale={1.3} />
-          <CandlestickChart position={[3, 5, -14]} rotation={[0.15, 0.1, 0.1]} scale={1.0} />
-
-          {/* Finance: line charts — angled */}
-          <LineChart position={[-6, -2, -9]} rotation={[0.08, -0.2, 0.04]} scale={1.4} />
-          <LineChart position={[6, 3, -12]} rotation={[-0.05, 0.25, -0.08]} scale={1.1} />
-
-          {/* Finance: bar charts */}
-          <BarChart position={[-4, 1, -10]} rotation={[0.05, 0.15, 0]} scale={1.2} />
-
-          {/* Finance: floating numbers */}
-          <FloatingNumbers count={12} />
-
-          {/* Finance: ticker tape streams */}
-          <TickerTape count={10} />
+          <FloatingCode />
+          <FloatingSymbols />
+          <TerminalLines />
           <CameraRig />
         </BeatContext.Provider>
       </Canvas>
