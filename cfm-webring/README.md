@@ -93,7 +93,10 @@ Open the file and add a new entry to the appropriate year array:
   "avatar": "/images/avatars/yourname.png",
   "websiteImage": "/images/websites/yourname.png", // optional
   "hobbies": ["hobby1", "hobby2", "hobby3"],       // optional
-  "experiences": ["Role @ Company"],                // optional
+  "experiences": [                                   // optional, string or {title, logo}
+    "Role @ Company",
+    { "title": "SWE Intern @ Google", "logo": "/images/logos/google.png" }
+  ],
   "socials": [                                      // optional, include any/all
     { "type": "github", "url": "https://github.com/you" },
     { "type": "linkedin", "url": "https://linkedin.com/in/you" },

@@ -240,16 +240,12 @@ export function createCardElement(member: ClassMember, cardW: number, cardH: num
   `;
   info.appendChild(blurbEl);
 
-  body.appendChild(info);
-
-  // ── SOCIALS BAR — pinned to bottom of card ──
+  // Socials — absolute bottom-right of body, overlaid
   if (member.socials && member.socials.length > 0) {
-    const socialsBar = document.createElement('div');
-    socialsBar.style.cssText = `
-      display: flex; gap: 4px; padding: 6px 14px 8px;
-      position: relative; z-index: 4;
-      border-top: 1px solid #222;
-      justify-content: flex-end;
+    const row = document.createElement('div');
+    row.style.cssText = `
+      position: absolute; bottom: 10px; right: 14px; z-index: 8;
+      display: flex; gap: 4px;
     `;
     for (const social of member.socials) {
       const btn = document.createElement('a');
@@ -265,10 +261,12 @@ export function createCardElement(member: ClassMember, cardW: number, cardH: num
       btn.addEventListener('mouseenter', () => { btn.style.background = '#22c55e'; btn.style.color = '#000'; btn.style.borderColor = '#22c55e'; });
       btn.addEventListener('mouseleave', () => { btn.style.background = '#1a1a1a'; btn.style.color = '#fff'; btn.style.borderColor = '#333'; });
       btn.addEventListener('click', (e) => e.stopPropagation());
-      socialsBar.appendChild(btn);
+      row.appendChild(btn);
     }
-    inner.appendChild(socialsBar);
+    inner.appendChild(row);
   }
+
+  body.appendChild(info);
 
   // ── CLICK → CRT power-on punch, then expand ──
   wrapper.addEventListener('click', (e) => {

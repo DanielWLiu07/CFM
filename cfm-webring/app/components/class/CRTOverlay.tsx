@@ -431,20 +431,43 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
                   {/* About Me */}
                   {expandedMember.hobbies && expandedMember.hobbies.length > 0 && (
                     <div style={{ animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.43s both', marginTop: 0 }}>
-                      <p style={{ fontFamily: 'var(--font-arcade)', fontSize: labelSize, color: '#fff', letterSpacing: '0.18em', margin: '0 0 12px', textTransform: 'uppercase', textShadow: '2px 2px 0 #000, 0 0 8px rgba(255,255,255,0.15)' }}>
-                        <span style={{ color: '#22c55e', marginRight: 8 }}>$</span>INTERESTS
+                      <p style={{
+                        fontFamily: 'var(--font-arcade)', fontSize: labelSize, letterSpacing: '0.18em', margin: '0 0 16px', textTransform: 'uppercase',
+                        color: 'transparent',
+                        WebkitTextStroke: '1.5px #fff',
+                        textShadow: '0 0 20px rgba(255,255,255,0.3), 0 4px 8px rgba(0,0,0,0.5)',
+                        paintOrder: 'stroke fill' as React.CSSProperties['paintOrder'],
+                      }}>
+                        <span style={{ color: '#22c55e', WebkitTextStroke: '0px', textShadow: '0 0 12px rgba(34,197,94,0.6), 0 0 30px rgba(34,197,94,0.3)', marginRight: 10 }}>$</span>INTERESTS
                       </p>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                         {expandedMember.hobbies.map((h, i) => (
                           <div key={i} style={{
-                            display: 'flex', alignItems: 'center', gap: 10,
-                            background: 'linear-gradient(90deg, rgba(34,197,94,0.08) 0%, #1a1a1a 30%)',
-                            borderLeft: '3px solid #22c55e', borderTop: '1px solid #333', borderRight: '1px solid #333', borderBottom: '1px solid #333',
-                            padding: `${hobbyPadV}px ${hobbyPadH}px`,
-                            boxShadow: '3px 3px 0px rgba(0,0,0,0.4), inset 0 0 20px rgba(0,0,0,0.3)',
-                          }}>
-                            <span style={{ color: '#22c55e', fontFamily: 'var(--font-arcade)', fontSize: hobbySize }}>&gt;</span>
-                            <span style={{ fontFamily: 'var(--font-arcade)', fontSize: hobbySize, letterSpacing: '0.06em', color: '#e0e0e0', textShadow: '1px 1px 0 #000' }}>
+                            display: 'flex', alignItems: 'center', gap: 12,
+                            background: 'linear-gradient(135deg, rgba(34,197,94,0.06) 0%, rgba(20,20,20,0.9) 40%, #1a1a1a 100%)',
+                            borderLeft: '3px solid #22c55e',
+                            border: '1px solid rgba(34,197,94,0.2)',
+                            borderLeftWidth: '3px',
+                            padding: `${hobbyPadV + 2}px ${hobbyPadH}px`,
+                            boxShadow: '4px 4px 0px rgba(34,197,94,0.15), 0 0 15px rgba(34,197,94,0.05), inset 0 0 20px rgba(0,0,0,0.4)',
+                            transition: 'all 0.2s ease',
+                          }}
+                          onMouseEnter={e => {
+                            e.currentTarget.style.borderColor = 'rgba(34,197,94,0.5)';
+                            e.currentTarget.style.boxShadow = '4px 4px 0px rgba(34,197,94,0.25), 0 0 25px rgba(34,197,94,0.1), inset 0 0 20px rgba(0,0,0,0.4)';
+                            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(34,197,94,0.12) 0%, rgba(20,20,20,0.9) 40%, #1a1a1a 100%)';
+                          }}
+                          onMouseLeave={e => {
+                            e.currentTarget.style.borderColor = 'rgba(34,197,94,0.2)';
+                            e.currentTarget.style.boxShadow = '4px 4px 0px rgba(34,197,94,0.15), 0 0 15px rgba(34,197,94,0.05), inset 0 0 20px rgba(0,0,0,0.4)';
+                            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(34,197,94,0.06) 0%, rgba(20,20,20,0.9) 40%, #1a1a1a 100%)';
+                          }}
+                          >
+                            <span style={{ color: '#22c55e', fontFamily: 'var(--font-arcade)', fontSize: hobbySize, textShadow: '0 0 6px rgba(34,197,94,0.5)' }}>&gt;</span>
+                            <span style={{
+                              fontFamily: 'var(--font-arcade)', fontSize: hobbySize, letterSpacing: '0.08em', color: '#fff',
+                              textShadow: '1px 1px 0 #000, 0 0 8px rgba(34,197,94,0.2)',
+                            }}>
                               {h}
                             </span>
                           </div>
@@ -456,20 +479,45 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
                   {/* Experiences */}
                   {expandedMember.experiences && expandedMember.experiences.length > 0 && (
                     <div style={{ animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.5s both', marginTop: 0 }}>
-                      <p style={{ fontFamily: 'var(--font-arcade)', fontSize: labelSize, color: '#fff', letterSpacing: '0.18em', margin: '0 0 12px', textTransform: 'uppercase', textShadow: '2px 2px 0 #000, 0 0 8px rgba(255,255,255,0.15)' }}>
-                        <span style={{ color: '#22c55e', marginRight: 8 }}>$</span>EXPERIENCE
+                      <p style={{
+                        fontFamily: 'var(--font-arcade)', fontSize: labelSize, letterSpacing: '0.18em', margin: '0 0 16px', textTransform: 'uppercase',
+                        color: 'transparent',
+                        WebkitTextStroke: '1.5px #fff',
+                        textShadow: '0 0 20px rgba(255,255,255,0.3), 0 4px 8px rgba(0,0,0,0.5)',
+                        paintOrder: 'stroke fill' as React.CSSProperties['paintOrder'],
+                      }}>
+                        <span style={{ color: '#22c55e', WebkitTextStroke: '0px', textShadow: '0 0 12px rgba(34,197,94,0.6), 0 0 30px rgba(34,197,94,0.3)', marginRight: 10 }}>$</span>EXPERIENCE
                       </p>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                         {expandedMember.experiences.map((exp, i) => (
                           <div key={i} style={{
                             display: 'flex', alignItems: 'center', gap: 12,
-                            background: 'linear-gradient(90deg, rgba(34,197,94,0.08) 0%, #1a1a1a 30%)',
-                            borderLeft: '3px solid #22c55e', borderTop: '1px solid #333', borderRight: '1px solid #333', borderBottom: '1px solid #333',
-                            padding: `${expPadV}px ${expPadH}px`,
-                            boxShadow: '3px 3px 0px rgba(0,0,0,0.4), inset 0 0 20px rgba(0,0,0,0.3)',
-                          }}>
-                            <span style={{ color: '#22c55e', fontFamily: 'var(--font-arcade)', fontSize: expSize }}>&gt;</span>
-                            <span style={{ fontFamily: 'var(--font-arcade)', fontSize: expSize, color: '#e0e0e0', textShadow: '1px 1px 0 #000' }}>{exp}</span>
+                            background: 'linear-gradient(135deg, rgba(34,197,94,0.06) 0%, rgba(20,20,20,0.9) 40%, #1a1a1a 100%)',
+                            border: '1px solid rgba(34,197,94,0.2)',
+                            borderLeftWidth: '3px',
+                            padding: `${expPadV + 2}px ${expPadH}px`,
+                            boxShadow: '4px 4px 0px rgba(34,197,94,0.15), 0 0 15px rgba(34,197,94,0.05), inset 0 0 20px rgba(0,0,0,0.4)',
+                            transition: 'all 0.2s ease',
+                          }}
+                          onMouseEnter={e => {
+                            e.currentTarget.style.borderColor = 'rgba(34,197,94,0.5)';
+                            e.currentTarget.style.boxShadow = '4px 4px 0px rgba(34,197,94,0.25), 0 0 25px rgba(34,197,94,0.1), inset 0 0 20px rgba(0,0,0,0.4)';
+                            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(34,197,94,0.12) 0%, rgba(20,20,20,0.9) 40%, #1a1a1a 100%)';
+                          }}
+                          onMouseLeave={e => {
+                            e.currentTarget.style.borderColor = 'rgba(34,197,94,0.2)';
+                            e.currentTarget.style.boxShadow = '4px 4px 0px rgba(34,197,94,0.15), 0 0 15px rgba(34,197,94,0.05), inset 0 0 20px rgba(0,0,0,0.4)';
+                            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(34,197,94,0.06) 0%, rgba(20,20,20,0.9) 40%, #1a1a1a 100%)';
+                          }}
+                          >
+                            {typeof exp === 'object' && exp.logo && (
+                              <img src={exp.logo} alt="" style={{ width: 24, height: 24, objectFit: 'contain', flexShrink: 0, borderRadius: 4, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }} />
+                            )}
+                            <span style={{ color: '#22c55e', fontFamily: 'var(--font-arcade)', fontSize: expSize, textShadow: '0 0 6px rgba(34,197,94,0.5)' }}>&gt;</span>
+                            <span style={{
+                              fontFamily: 'var(--font-arcade)', fontSize: expSize, letterSpacing: '0.08em', color: '#fff',
+                              textShadow: '1px 1px 0 #000, 0 0 8px rgba(34,197,94,0.2)',
+                            }}>{typeof exp === 'string' ? exp : exp.title}</span>
                           </div>
                         ))}
                       </div>

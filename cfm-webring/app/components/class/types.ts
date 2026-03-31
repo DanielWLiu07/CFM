@@ -3,6 +3,11 @@ export interface Social {
   url: string;
 }
 
+export interface Experience {
+  title: string;
+  logo?: string;
+}
+
 export interface ClassMember {
   name: string;
   url: string;
@@ -17,7 +22,7 @@ export interface ClassMember {
   websiteImage?: string;
   socials?: Social[];
   hobbies?: string[];
-  experiences?: string[];
+  experiences?: (string | Experience)[];
 }
 
 export interface ClassCards3DProps {

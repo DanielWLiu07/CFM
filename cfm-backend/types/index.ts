@@ -16,6 +16,6 @@ export interface Member {
   avatar?: string;
   websiteImage?: string;
   hobbies?: string[];
-  experiences?: string[];
+  experiences?: (string | { title: string; logo?: string })[];
   socials?: Social[];
 }
