@@ -292,24 +292,34 @@ export default function ClassTitle3D({ year = '26', config = DEFAULT_CONFIG, bea
 
   const twoLine = screenW < 800;
 
+  // Scale down edge width and bump up text size on small screens
+  const responsiveConfig = { ...config };
+  if (screenW < 600) {
+    responsiveConfig.size = config.size * 1.6;
+    responsiveConfig.edgeWidth = Math.max(2, config.edgeWidth * 0.35);
+  } else if (screenW < 900) {
+    responsiveConfig.size = config.size * 1.3;
+    responsiveConfig.edgeWidth = Math.max(3, config.edgeWidth * 0.5);
+  }
+
   // Use the wider line for camera framing — "OF CFM" (6 chars, 1 space) may be wider than "CLASS" (5 chars)
   const longestLine = twoLine ? `OF ${displayedYear === 'ALL' ? 'CFM' : displayedYear}` : `CLASS OF ${displayedYear === 'ALL' ? 'CFM' : displayedYear}`;
   const textWidth = (() => {
     let total = 0;
     const chars = longestLine.split('');
-    for (const ch of chars) total += ((CHAR_WIDTH[ch] || 764) / 1000) * config.size + 0.06 * config.size;
-    total -= 0.06 * config.size;
+    for (const ch of chars) total += ((CHAR_WIDTH[ch] || 764) / 1000) * responsiveConfig.size + 0.06 * responsiveConfig.size;
+    total -= 0.06 * responsiveConfig.size;
     // In two-line mode, also check "CLASS"
     if (twoLine) {
       let classW = 0;
-      for (const ch of 'CLASS'.split('')) classW += ((CHAR_WIDTH[ch] || 764) / 1000) * config.size + 0.06 * config.size;
-      classW -= 0.06 * config.size;
+      for (const ch of 'CLASS'.split('')) classW += ((CHAR_WIDTH[ch] || 764) / 1000) * responsiveConfig.size + 0.06 * responsiveConfig.size;
+      classW -= 0.06 * responsiveConfig.size;
       return Math.max(total, classW);
     }
     return total;
   })();
 
-  const containerHeight = twoLine ? 'clamp(300px, 70vw, 500px)' : 'clamp(240px, 35vw, 450px)';
+  const containerHeight = twoLine ? 'clamp(240px, 52vw, 380px)' : 'clamp(240px, 35vw, 450px)';
 
   return (
     <div
@@ -333,17 +343,17 @@ export default function ClassTitle3D({ year = '26', config = DEFAULT_CONFIG, bea
           imageRendering: 'pixelated',
         }}
         className="class-title-canvas"
-        dpr={config.dpr}
+        dpr={responsiveConfig.dpr}
         frameloop={visible ? 'always' : 'demand'}
       >
-        <AutoCamera textWidth={textWidth} twoLine={twoLine} fontSize={config.size} />
-        <ambientLight intensity={config.ambient} />
-        <directionalLight position={[0, 0, 10]} intensity={config.frontLight} />
-        <directionalLight position={[0, 14, 2]} intensity={config.topLight} />
+        <AutoCamera textWidth={textWidth} twoLine={twoLine} fontSize={responsiveConfig.size} />
+        <ambientLight intensity={responsiveConfig.ambient} />
+        <directionalLight position={[0, 0, 10]} intensity={responsiveConfig.frontLight} />
+        <directionalLight position={[0, 14, 2]} intensity={responsiveConfig.topLight} />
         <directionalLight position={[-12, 4, 6]} intensity={0.6} color="#4488ff" />
         <directionalLight position={[12, -2, 6]} intensity={0.4} color="#ffaa44" />
         <directionalLight position={[0, 2, -10]} intensity={0.3} color="#7766ff" />
-        <AllLetters year={displayedYear} config={config} twoLine={twoLine} beatRef={beatRef} />
+        <AllLetters year={displayedYear} config={responsiveConfig} twoLine={twoLine} beatRef={beatRef} />
       </Canvas>
     </div>
   );

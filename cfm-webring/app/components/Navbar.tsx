@@ -45,7 +45,7 @@ const Navbar = forwardRef<NavbarHandle>(function Navbar(_, ref) {
   return (
     <NavigationMenu.Root className="relative z-10">
       <NavigationMenu.List
-        className="flex items-center m-0 list-none flex-wrap"
+        className="flex items-center m-0 list-none flex-nowrap whitespace-nowrap"
         style={{
           background: '#fff',
           border: '2px solid #000',
@@ -59,6 +59,7 @@ const Navbar = forwardRef<NavbarHandle>(function Navbar(_, ref) {
             e.preventDefault();
             if (href === '/') {
               window.scrollTo({ top: 0, behavior: 'smooth' });
+              window.dispatchEvent(new CustomEvent('cfm-go-home'));
             } else {
               const el = document.getElementById(href.slice(1));
               el?.scrollIntoView({ behavior: 'smooth' });
@@ -76,9 +77,9 @@ const Navbar = forwardRef<NavbarHandle>(function Navbar(_, ref) {
                     className="nav-link block no-underline select-none outline-none transition-colors"
                     style={{
                       fontFamily: 'var(--font-arcade)',
-                      fontSize: 'clamp(11px, 2.2vw, 18px)',
+                      fontSize: 'clamp(16px, 2.5vw, 18px)',
                       letterSpacing: '0.08em',
-                      padding: 'clamp(3px, 0.6vw, 5px) clamp(8px, 1.8vw, 16px)',
+                      padding: 'clamp(5px, 0.8vw, 6px) clamp(12px, 2vw, 16px)',
                       color: '#000',
                       background: 'transparent',
                     }}
