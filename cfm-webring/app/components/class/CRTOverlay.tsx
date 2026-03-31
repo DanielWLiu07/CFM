@@ -205,10 +205,11 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
               pointerEvents: phase === 'done' ? 'auto' : 'none',
             }}>
               {/* Left — avatar with ink noise reveal (hidden on narrow) */}
-              {!isNarrow && <div style={{
+              {!isNarrow && <div onClick={closeExpanded} style={{
                 width: '40%', height: '100%', flexShrink: 0,
                 overflow: 'hidden', position: 'relative', background: '#080808',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer',
                 ...(phase === 'done' ? {
                   animation: 'panel-in 0.8s ease 0.1s both',
                 } : (phase === 'flash' || phase === 'shrink') ? {
