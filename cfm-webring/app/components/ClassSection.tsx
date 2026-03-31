@@ -1,10 +1,9 @@
 'use client';
 
-import { useRef, useEffect, useState, useMemo } from 'react';
+import { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { DEFAULT_CONFIG } from './ClassTitle3D';
-import membersData from '../../data/members.json';
-import type { ClassMember } from './class/types';
+import { useMembers } from '../hooks/useMembers';
 
 const ClassCards3D = dynamic(() => import('./ClassCards3D'), { ssr: false });
 const ClassTitle3D = dynamic(() => import('./ClassTitle3D'), { ssr: false });
@@ -15,17 +14,17 @@ interface ClassSectionProps {
   beatRef?: React.RefObject<number>;
 }
 
-const MEMBERS: ClassMember[] = membersData as ClassMember[];
-
-const YEARS = ['ALL', ...Array.from(new Set(MEMBERS.map(m => m.year))).sort()];
-
 
 export default function ClassSection({ onVisibilityChange, beatRef }: ClassSectionProps) {
+  const { members: MEMBERS } = useMembers();
+  const YEARS = useMemo(() => ['ALL', ...Array.from(new Set(MEMBERS.map(m => m.year))).sort()], [MEMBERS]);
+
   const sentinelRef = useRef<HTMLDivElement>(null);
   const [sectionVisible, setSectionVisible] = useState(false);
   const [selectedYear, setSelectedYear] = useState('ALL');
   const [search, setSearch] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
+  const [shuffleSeed, setShuffleSeed] = useState(0);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const titleWrapRef = useRef<HTMLDivElement>(null);
@@ -91,7 +90,7 @@ export default function ClassSection({ onVisibilityChange, beatRef }: ClassSecti
   }, [bgX, bgY, bgScale, bgMaxW, bgOpacity, titleY]);
 
   const filtered = useMemo(() => {
-    return MEMBERS.filter(m => {
+    const result = MEMBERS.filter(m => {
       const matchesYear = selectedYear === 'ALL' || m.year === selectedYear;
       const q = search.toLowerCase();
       const matchesSearch = !q
@@ -102,7 +101,16 @@ export default function ClassSection({ onVisibilityChange, beatRef }: ClassSecti
         || m.blurb.toLowerCase().includes(q);
       return matchesYear && matchesSearch;
     });
-  }, [selectedYear, search]);
+    if (shuffleSeed > 0) {
+      const shuffled = [...result];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(((Math.sin(i * shuffleSeed * 9301 + 49297) % 1) + 1) % 1 * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      return shuffled;
+    }
+    return result;
+  }, [selectedYear, search, shuffleSeed]);
 
   const hasFilters = selectedYear !== 'ALL' || search !== '';
 
@@ -127,6 +135,8 @@ export default function ClassSection({ onVisibilityChange, beatRef }: ClassSecti
         style={{
           zIndex: 1,
           mixBlendMode: 'screen',
+          maskImage: 'radial-gradient(ellipse 50% 50% at center, black 30%, transparent 100%)',
+          WebkitMaskImage: 'radial-gradient(ellipse 50% 50% at center, black 30%, transparent 100%)',
         }}
       />
 
@@ -156,7 +166,7 @@ export default function ClassSection({ onVisibilityChange, beatRef }: ClassSecti
           zIndex: 200,
           width: '100%',
           maxWidth: 600,
-          marginTop: `clamp(${titleConfig.titleGap}px, -8vw, -20px)`,
+          marginTop: `clamp(${titleConfig.titleGap}px, -12vw, -20px)`,
           transform: `translateY(${titleConfig.searchY}px)`,
           marginBottom: 'clamp(8px, 1.2vw, 14px)',
           position: 'relative',
@@ -196,7 +206,7 @@ export default function ClassSection({ onVisibilityChange, beatRef }: ClassSecti
               position: 'absolute',
               top: '100%',
               left: 0,
-              marginTop: 2,
+              marginTop: -3,
               background: '#fff',
               border: '3px solid #000',
               zIndex: 9999,
@@ -284,6 +294,28 @@ export default function ClassSection({ onVisibilityChange, beatRef }: ClassSecti
           )}
         </div>
 
+        {/* Shuffle */}
+        <button
+          onClick={() => setShuffleSeed(s => s + 1)}
+          title="Shuffle members"
+          style={{
+            fontFamily: 'var(--font-arcade)',
+            fontSize: 'clamp(22px, 2.8vw, 28px)',
+            padding: 'clamp(5px, 0.8vw, 8px) clamp(10px, 1.4vw, 14px)',
+            border: '3px solid #000',
+            background: '#fff',
+            color: '#000',
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+            lineHeight: 1,
+            transition: 'background 0.15s ease, color 0.15s ease',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = '#000'; e.currentTarget.style.color = '#fff'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#000'; }}
+        >
+          ⟳
+        </button>
+
         {/* Clear all */}
         {hasFilters && (
           <button
@@ -368,61 +400,7 @@ export default function ClassSection({ onVisibilityChange, beatRef }: ClassSecti
         </div>
       )}
 
-      {/* BG Tuner */}
-      <button
-        onClick={() => setShowTuner(t => !t)}
-        style={{
-          position: 'fixed', bottom: 10, right: 10, zIndex: 99999,
-          background: '#000', color: '#fff', border: '2px solid #fff',
-          fontFamily: 'var(--font-arcade)', fontSize: 12, padding: '6px 12px', cursor: 'pointer',
-        }}
-      >
-        {showTuner ? 'HIDE' : 'TUNE BG'}
-      </button>
-      {showTuner && (
-        <div
-          style={{
-            position: 'fixed', bottom: 50 - tunerPos.y, right: 10 - tunerPos.x, zIndex: 99999,
-            background: 'rgba(0,0,0,0.9)', border: '2px solid #fff', padding: 0,
-            fontFamily: 'var(--font-arcade)', fontSize: 11, color: '#fff',
-            display: 'flex', flexDirection: 'column', minWidth: 220,
-          }}
-        >
-          {/* Drag handle */}
-          <div
-            style={{
-              padding: '6px 12px', cursor: 'grab', borderBottom: '1px solid #555',
-              userSelect: 'none', background: 'rgba(255,255,255,0.1)', fontSize: 10,
-              letterSpacing: '0.15em',
-            }}
-            onMouseDown={e => {
-              e.preventDefault();
-              dragRef.current = { startX: e.clientX, startY: e.clientY, originX: tunerPos.x, originY: tunerPos.y };
-              const onMove = (ev: MouseEvent) => {
-                if (!dragRef.current) return;
-                setTunerPos({
-                  x: dragRef.current.originX + (ev.clientX - dragRef.current.startX),
-                  y: dragRef.current.originY + (ev.clientY - dragRef.current.startY),
-                });
-              };
-              const onUp = () => { dragRef.current = null; window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
-              window.addEventListener('mousemove', onMove);
-              window.addEventListener('mouseup', onUp);
-            }}
-          >
-            ≡ DRAG TO MOVE
-          </div>
-          <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label>BG X: {bgX}px<input type="range" min={-200} max={200} value={bgX} onChange={e => setBgX(+e.target.value)} style={{ width: '100%' }} /></label>
-            <label>BG Y: {bgY}px<input type="range" min={-200} max={200} value={bgY} onChange={e => setBgY(+e.target.value)} style={{ width: '100%' }} /></label>
-            <label>BG Scale: {bgScale}%<input type="range" min={30} max={200} value={bgScale} onChange={e => setBgScale(+e.target.value)} style={{ width: '100%' }} /></label>
-            <label>BG MaxW: {bgMaxW}px<input type="range" min={400} max={1600} value={bgMaxW} onChange={e => setBgMaxW(+e.target.value)} style={{ width: '100%' }} /></label>
-            <label>BG Opacity: {bgOpacity}<input type="range" min={0} max={100} value={bgOpacity * 100} onChange={e => setBgOpacity(+e.target.value / 100)} style={{ width: '100%' }} /></label>
-            <label>Title Y: {titleY}px<input type="range" min={-200} max={200} value={titleY} onChange={e => setTitleY(+e.target.value)} style={{ width: '100%' }} /></label>
-            <p style={{ fontSize: 9, color: '#888', margin: 0 }}>Copy values to DEFAULT_CONFIG when done</p>
-          </div>
-        </div>
-      )}
+      {/* BG Tuner — disabled for production */}
     </section>
   );
 }

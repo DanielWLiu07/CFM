@@ -2,8 +2,8 @@
 
 import { useRef, useEffect, useState, useCallback, useMemo, type RefObject } from 'react';
 import dynamic from 'next/dynamic';
-import membersData from '../../data/members.json';
 import { BEAT_INTERVAL, BEAT_OFFSET } from '../lib/beats';
+import { useMembers } from '../hooks/useMembers';
 
 import type { WebringEntry, Social, Node, Edge, Camera, FlyTo, BoundingSphere, WebringSectionProps } from './webring/types';
 import { buildGraph, computeLayout, computeBoundingSphere } from './webring/graph';
@@ -14,34 +14,39 @@ import ControlsBar from './webring/ControlsBar';
 
 const WebringBackground = dynamic(() => import('./WebringBackground'), { ssr: false });
 
-const WEBRING_ENTRIES: WebringEntry[] = membersData.map(m => ({
-  name: m.name,
-  url: m.url,
-  description: m.description,
-  cohort: m.cohort,
-  avatar: m.avatar,
-  websiteImage: (m as Record<string, unknown>).websiteImage as string | undefined,
-  role: (m as Record<string, unknown>).role as string | undefined,
-  location: (m as Record<string, unknown>).location as string | undefined,
-  school: (m as Record<string, unknown>).school as string | undefined,
-  blurb: (m as Record<string, unknown>).blurb as string | undefined,
-  year: (m as Record<string, unknown>).year as string | undefined,
-  socials: (m as Record<string, unknown>).socials as Social[] | undefined,
-}));
-
-const ALL_COHORTS = [...new Set(WEBRING_ENTRIES.map(e => e.cohort))].sort();
-
-// ── Component ────────────────────────────────────────────────────────────────
-
 export default function WebringSection({ onVisibilityChange, audioRef, reducedMotion, sectionRefOut }: WebringSectionProps) {
+  const { members: membersData } = useMembers();
+
+  const WEBRING_ENTRIES: WebringEntry[] = useMemo(() => membersData.map(m => ({
+    name: m.name,
+    url: m.url,
+    description: m.description ?? '',
+    cohort: m.cohort ?? m.year,
+    avatar: m.avatar,
+    websiteImage: m.websiteImage,
+    role: m.role,
+    location: m.location,
+    school: m.school,
+    blurb: m.blurb,
+    year: m.year,
+    socials: m.socials as Social[] | undefined,
+  })), [membersData]);
+
+  const ALL_COHORTS = useMemo(() => [...new Set(WEBRING_ENTRIES.map(e => e.cohort))].sort(), [WEBRING_ENTRIES]);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [search, setSearch] = useState('');
   const [selectedCohorts, setSelectedCohorts] = useState<Set<string>>(new Set());
   const [hoveredNode, setHoveredNode] = useState(-1);
   const [selectedNode, setSelectedNode] = useState(-1);
+  const hoveredNodeRef = useRef(-1);
+  const selectedNodeRef = useRef(-1);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; entry: WebringEntry } | null>(null);
   const lastEntryRef = useRef<WebringEntry | null>(null);
+
+  // Keep refs in sync with state so the render loop reads them without restarting
+  hoveredNodeRef.current = hoveredNode;
+  selectedNodeRef.current = selectedNode;
 
   // Mobile detection
   const [isMobile, setIsMobile] = useState(false);
@@ -50,6 +55,12 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
     check();
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
+  }, []);
+
+  // Periodically sync sim values to React state for search panel
+  useEffect(() => {
+    const id = setInterval(() => setSimTick(t => t + 1), 1000);
+    return () => clearInterval(id);
   }, []);
 
   // Right panel state
@@ -104,12 +115,17 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
   const mousePosRef = useRef({ x: 0, y: 0 });
   // Beat
   const beatPulseRef = useRef(0);
+  const reducedMotionRef = useRef(reducedMotion);
+  reducedMotionRef.current = reducedMotion ?? false;
   const lastBeatIdxRef = useRef(-1);
   const centerGlowRef = useRef<HTMLDivElement>(null);
   // Last frame time for fly-to
   const lastTimeRef = useRef(0);
   // Cached depth-sorted node indices (avoids alloc+sort every frame)
   const depthSortedRef = useRef<number[]>([]);
+  const matchingIndicesRef = useRef<Set<number>>(new Set());
+  const simValuesRef = useRef<Record<number, number>>({});
+  const [simTick, setSimTick] = useState(0);
 
   // Search panel state
   const panelRef = useRef<HTMLDivElement>(null);
@@ -150,6 +166,7 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
     });
     return set;
   }, [search, selectedCohorts]);
+  matchingIndicesRef.current = matchingIndices;
 
   // Panel drag
   const handleDragStart = useCallback((e: React.MouseEvent) => {
@@ -352,32 +369,30 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
 
       // ── Camera auto-rotate (when not interacting and not in scroll-rotation) ──
       const srActive = false;
-      if (!reducedMotion && !orbitDragRef.current && !panDragRef.current && !ft && !srActive) {
+      if (!orbitDragRef.current && !panDragRef.current && !ft && !srActive) {
         cam.orbitThetaVel *= 0.97;
         if (Math.abs(cam.orbitThetaVel) < 0.002) {
           cam.orbitThetaVel += (0.0008 - cam.orbitThetaVel) * 0.01;
         }
         cam.orbitTheta += cam.orbitThetaVel;
       }
-      if (!reducedMotion) cam.bobPhase += 0.006;
+      cam.bobPhase += 0.006;
 
-      // ── Beat detection ────────────────────────────────────────────────
-      if (audioRef.current && !audioRef.current.paused && !reducedMotion) {
+      // ── Beat detection (OTT only) ────────────────────────────────────
+      if (audioRef.current && !audioRef.current.paused && !reducedMotionRef.current) {
         const t = audioRef.current.currentTime;
         const beatIdx = Math.floor((t - BEAT_OFFSET) / BEAT_INTERVAL);
+        if (beatIdx < lastBeatIdxRef.current) lastBeatIdxRef.current = -1; // audio looped
         if (beatIdx > lastBeatIdxRef.current) {
           lastBeatIdxRef.current = beatIdx;
           beatPulseRef.current = 1;
         }
       }
-      if (reducedMotion) beatPulseRef.current = 0;
+      if (reducedMotionRef.current) beatPulseRef.current = 0;
       else beatPulseRef.current *= 0.96;
       const beat = beatPulseRef.current;
 
-      if (centerGlowRef.current) {
-        centerGlowRef.current.style.opacity = String(0.02 + beat * 0.05);
-        centerGlowRef.current.style.transform = `scale(${1 + beat * 0.06})`;
-      }
+      // Center glow — static, no pulsing
 
       // ── Camera basis ──────────────────────────────────────────────────
       const eye = getCameraEye(cam);
@@ -410,13 +425,12 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
       // ── Project all nodes ─────────────────────────────────────────────
       for (const n of nodes) {
         // Idle drift (visual only — don't mutate positions)
-        const driftX = reducedMotion ? 0 : Math.sin(time * 0.5 + n.index * 1.7) * 2;
-        const driftY = reducedMotion ? 0 : Math.cos(time * 0.4 + n.index * 2.3) * 1.5;
-        const driftZ = reducedMotion ? 0 : Math.sin(time * 0.3 + n.index * 3.1) * 1.8;
+        const driftX = Math.sin(time * 0.5 + n.index * 1.7) * 2;
+        const driftY = Math.cos(time * 0.4 + n.index * 2.3) * 1.5;
+        const driftZ = Math.sin(time * 0.3 + n.index * 3.1) * 1.8;
         const p = project(n.x + driftX, n.y + driftY, n.z + driftZ, eye, right, up, fwd, cx, cy);
         n.sx = p.sx; n.sy = p.sy; n.scale = p.scale; n.depth = p.depth;
-        const beatSize = 1 + beat * 0.15;
-        n.screenR = (22 + n.hoverAnim * 8) * p.scale * beatSize;
+        n.screenR = (22 + n.hoverAnim * 8) * p.scale;
         // LOD with hysteresis — need 30% past threshold to switch, prevents flicker
         if (n.lod === 0 && n.screenR > LOD_DOT * 1.3) n.lod = 1;
         else if (n.lod === 1 && n.screenR < LOD_DOT * 0.7) n.lod = 0;
@@ -429,16 +443,19 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
       ctx.scale(dpr, dpr);
       ctx.clearRect(0, 0, w, h);
 
-      // Animate hoverAnim
+      // Read refs so the loop doesn't depend on React state
+      const _hovered = hoveredNodeRef.current;
+      const _selected = selectedNodeRef.current;
+      const _matching = matchingIndicesRef.current;
       for (const n of nodes) {
-        const t = (hoveredNode === n.index || selectedNode === n.index) ? 1 : 0;
+        const t = (_hovered === n.index || _selected === n.index) ? 1 : 0;
         n.hoverAnim += (t - n.hoverAnim) * 0.12;
         if (Math.abs(n.hoverAnim - t) < 0.01) n.hoverAnim = t;
       }
 
       // Animate edge hoverAnim
       for (const edge of edges) {
-        const eitherHovered = hoveredNode === edge.from || hoveredNode === edge.to;
+        const eitherHovered = _hovered === edge.from || _hovered === edge.to;
         const t = eitherHovered ? 1 : 0;
         edge.hoverAnim += (t - edge.hoverAnim) * 0.10;
         if (Math.abs(edge.hoverAnim - t) < 0.01) edge.hoverAnim = t;
@@ -450,7 +467,7 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
         // Edge LOD: skip if both are dot-level and neither hovered
         if (a.screenR < LOD_DOT && b.screenR < LOD_DOT && edge.hoverAnim < 0.01) continue;
 
-        const aMatch = matchingIndices.has(a.index), bMatch = matchingIndices.has(b.index);
+        const aMatch = _matching.has(a.index), bMatch = _matching.has(b.index);
         const bothMatch = aMatch && bMatch;
         const eh = edge.hoverAnim;
         const edgeOpacity = Math.min(a.nodeOpacity, b.nodeOpacity);
@@ -462,33 +479,62 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
         ctx.moveTo(a.sx, a.sy);
         ctx.lineTo(b.sx, b.sy);
         ctx.strokeStyle = '#fff';
-        const beatEdge = beat * 0.25;
         // Blend between base state and hovered state using edge.hoverAnim
-        const baseAlpha = bothMatch ? (0.12 + beatEdge) : (0.03 + beatEdge);
-        const baseWidth = bothMatch ? Math.max(0.3, (1 + beat) * avgScale) : Math.max(0.2, (0.5 + beat * 0.8) * avgScale);
+        const baseAlpha = bothMatch ? 0.12 : 0.03;
+        const baseWidth = bothMatch ? Math.max(0.3, avgScale) : Math.max(0.2, 0.5 * avgScale);
         ctx.globalAlpha = (baseAlpha + (0.6 - baseAlpha) * eh) * avgFog;
         ctx.lineWidth = baseWidth + (2 * avgScale - baseWidth) * eh;
         ctx.stroke();
         ctx.globalAlpha = 1;
       }
 
-      // ── Data packets (with distance culling) ──────────────────────────
+      // ── Data packets (simulation — flash node + update value on arrival) ─
       for (const edge of edges) {
         const a = nodes[edge.from], b = nodes[edge.to];
-        if (!matchingIndices.has(a.index) && !matchingIndices.has(b.index)) continue;
+        if (!_matching.has(a.index) && !_matching.has(b.index)) continue;
         const avgDepth = (a.depth + b.depth) / 2;
         if (avgDepth > cam.orbitDist * 1.5) continue;
-        const t = ((time * 0.3 + edge.from * 0.5) % 1);
+        const period = 3 + (edge.from * 0.7 + edge.to * 0.3) % 4;
+        const rawT = ((time * 0.3 + edge.from * 0.5) % period) / period;
+        const t = Math.min(1, rawT);
+
+        // Detect arrival at destination node (t wraps near 1)
+        const prevT = (((time - dt) * 0.3 + edge.from * 0.5) % period) / period;
+        if (prevT > 0.9 && rawT < 0.1) {
+          // Packet arrived at b — flash it and update sim value
+          b.flashAnim = 1;
+          b.flashGreen = edge.packetGreen;
+          const delta = edge.packetGreen ? (1 + Math.random() * 5) : -(1 + Math.random() * 5);
+          b.simValue = Math.max(0, Math.round((b.simValue + delta) * 100) / 100);
+          // Re-randomize packet color for next cycle
+          edge.packetGreen = Math.random() > 0.4;
+        }
+
         const px3 = a.x + (b.x - a.x) * t, py3 = a.y + (b.y - a.y) * t, pz3 = a.z + (b.z - a.z) * t;
         const p = project(px3, py3, pz3, eye, right, up, fwd, cx, cy);
         const fog = depthFog(p.depth, cam.orbitDist);
         if (fog < 0.01) continue;
         ctx.beginPath();
-        ctx.arc(p.sx, p.sy, Math.max(0.5, (1.5 + beat * 2) * p.scale), 0, TAU);
-        ctx.globalAlpha = (0.5 + beat * 0.4) * fog;
-        ctx.fillStyle = '#fff';
+        ctx.arc(p.sx, p.sy, Math.max(0.5, (1.5 + (1 - t) * 0.5) * p.scale), 0, TAU);
+        ctx.globalAlpha = 0.6 * fog;
+        ctx.fillStyle = edge.packetGreen ? '#00e676' : '#ff5252';
         ctx.fill();
         ctx.globalAlpha = 1;
+      }
+
+      // Decay flash animations
+      for (const n of nodes) {
+        if (n.flashAnim > 0) {
+          n.flashAnim *= 0.92;
+          if (n.flashAnim < 0.01) n.flashAnim = 0;
+        }
+      }
+
+      // Update simValues ref for search panel
+      if (simValuesRef.current) {
+        for (const n of nodes) {
+          simValuesRef.current[n.index] = n.simValue;
+        }
       }
 
       // ── Nodes (back to front, cached sort) ─────────────────────────────
@@ -498,15 +544,15 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
         for (let i = 0; i < nodes.length; i++) sortArr.push(i);
       }
       sortArr.sort((a, b) => {
-        if (hoveredNode === a) return 1;
-        if (hoveredNode === b) return -1;
+        if (_hovered === a) return 1;
+        if (_hovered === b) return -1;
         return nodes[b].depth - nodes[a].depth;
       });
 
       for (const idx of sortArr) {
         const node = nodes[idx];
-        const isMatch = matchingIndices.has(node.index);
-        const isHovered = hoveredNode === node.index;
+        const isMatch = _matching.has(node.index);
+        const isHovered = _hovered === node.index;
         const ha = node.hoverAnim;
         const effectiveScale = node.scale * (1 + ha * 0.4);
         const fog = depthFog(node.depth, cam.orbitDist);
@@ -607,8 +653,8 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
         }
         ctx.restore();
 
-        // Border
-        const beatGlow = beat * 0.4;
+        // Border — beat glow only when effects enabled
+        const beatGlow = reducedMotionRef.current ? 0 : beat * 0.4;
         const strokeAlpha = (isMatch ? 0.5 : 0.1) + ha * 0.5 + beatGlow;
         ctx.beginPath();
         ctx.arc(node.sx, node.sy, r, 0, TAU);
@@ -616,13 +662,33 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
         ctx.lineWidth = (1.5 + ha * 1.5 + beat * 1.5) * effectiveScale;
         ctx.stroke();
 
-        // Beat pulse ring
-        if (beat > 0.1 && brightenedFog > 0.1) {
+        // Beat pulse ring — only when effects enabled
+        if (!reducedMotionRef.current && beat > 0.1 && brightenedFog > 0.1) {
           const pulseR = r + 8 * beat * effectiveScale;
           ctx.beginPath();
           ctx.arc(node.sx, node.sy, pulseR, 0, TAU);
           ctx.strokeStyle = `rgba(255,255,255,${beat * 0.25 * brightenedFog})`;
           ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+
+        // Simulation flash — green/red glow when packet arrives
+        if (node.flashAnim > 0.01 && brightenedFog > 0.05) {
+          const flashColor = node.flashGreen ? '0,230,118' : '255,82,82';
+          const flashR = r + 12 * node.flashAnim * effectiveScale;
+          const grad = ctx.createRadialGradient(node.sx, node.sy, r * 0.5, node.sx, node.sy, flashR);
+          grad.addColorStop(0, `rgba(${flashColor},${0.4 * node.flashAnim * brightenedFog})`);
+          grad.addColorStop(0.5, `rgba(${flashColor},${0.15 * node.flashAnim * brightenedFog})`);
+          grad.addColorStop(1, `rgba(${flashColor},0)`);
+          ctx.beginPath();
+          ctx.arc(node.sx, node.sy, flashR, 0, TAU);
+          ctx.fillStyle = grad;
+          ctx.fill();
+          // Flash border
+          ctx.beginPath();
+          ctx.arc(node.sx, node.sy, r, 0, TAU);
+          ctx.strokeStyle = `rgba(${flashColor},${0.6 * node.flashAnim * brightenedFog})`;
+          ctx.lineWidth = 2 * effectiveScale;
           ctx.stroke();
         }
 
@@ -655,7 +721,7 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
     rafRef.current = requestAnimationFrame(draw);
     window.addEventListener('resize', resize);
     return () => { cancelAnimationFrame(rafRef.current); window.removeEventListener('resize', resize); };
-  }, [matchingIndices, hoveredNode, selectedNode, reducedMotion]);
+  }, []);
 
   // ── Hit testing ───────────────────────────────────────────────────────────
   const findNodeAt = useCallback((mx: number, my: number) => {
@@ -948,7 +1014,7 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
       <div className="absolute top-0 left-0 w-full pointer-events-none" style={{ zIndex: 50, height: '120px', background: 'linear-gradient(to bottom, #000 0%, transparent 100%)' }} />
 
       {/* Three.js background scene */}
-      <WebringBackground beatRef={beatPulseRef} paused={reducedMotion || !sectionVisible} />
+      <WebringBackground beatRef={beatPulseRef} paused={!sectionVisible} />
 
       {/* Center glow — beat-synced radial pulse */}
       <div
@@ -992,6 +1058,8 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
         allCohorts={ALL_COHORTS}
         webringEntries={WEBRING_ENTRIES}
         listMaxHeight={listMaxHeight}
+        simValues={simValuesRef.current}
+        simTick={simTick}
       />
 
       {/* Right-side profile panel — draggable + resizable, matches left panel */}

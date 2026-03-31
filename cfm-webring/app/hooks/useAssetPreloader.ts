@@ -14,16 +14,13 @@ const CRITICAL_IMAGES = [
   '/images/title_bg.webp',
 ];
 
-const TIMEOUT_MS = 15_000;
+const TIMEOUT_MS = 10_000;
 
 /**
- * Tracks loading of all critical assets (fonts, audio, video, images)
- * so the overlay can show true progress. Falls back after 15 s.
+ * Preloads fonts + critical images only.
+ * Audio and video load independently — they don't block the ready screen.
  */
-export function useAssetPreloader(
-  audioRef: React.RefObject<HTMLAudioElement | null>,
-  videoRef: React.RefObject<HTMLVideoElement | null>,
-) {
+export function useAssetPreloader() {
   const [progress, setProgress] = useState(0);
   const [ready, setReady] = useState(false);
   const trackerRef = useRef({ loaded: 0, total: 0, done: false });
@@ -32,7 +29,7 @@ export function useAssetPreloader(
     const tracker = trackerRef.current;
     if (tracker.done) return;
 
-    tracker.total = 3 + CRITICAL_IMAGES.length; // fonts + audio + video + images
+    tracker.total = 1 + CRITICAL_IMAGES.length; // fonts + images
     tracker.loaded = 0;
     setProgress(0);
 
@@ -46,27 +43,7 @@ export function useAssetPreloader(
     // 1. Fonts
     promises.push(document.fonts.ready.then(() => { tick(); }));
 
-    // 2. Audio
-    promises.push(new Promise<void>(resolve => {
-      const el = audioRef.current;
-      if (!el) { tick(); resolve(); return; }
-      if (el.readyState >= 4) { tick(); resolve(); return; }
-      const handler = () => { el.removeEventListener('canplaythrough', handler); tick(); resolve(); };
-      el.addEventListener('canplaythrough', handler);
-      el.load();
-    }));
-
-    // 3. Video
-    promises.push(new Promise<void>(resolve => {
-      const el = videoRef.current;
-      if (!el) { tick(); resolve(); return; }
-      if (el.readyState >= 4) { tick(); resolve(); return; }
-      const handler = () => { el.removeEventListener('canplaythrough', handler); tick(); resolve(); };
-      el.addEventListener('canplaythrough', handler);
-      el.load();
-    }));
-
-    // 4. Critical images
+    // 2. Critical images
     for (const src of CRITICAL_IMAGES) {
       promises.push(new Promise<void>(resolve => {
         const img = new Image();
@@ -90,7 +67,7 @@ export function useAssetPreloader(
     }, TIMEOUT_MS);
 
     return () => clearTimeout(timeout);
-  }, [audioRef, videoRef]);
+  }, []);
 
   return { progress, ready };
 }
