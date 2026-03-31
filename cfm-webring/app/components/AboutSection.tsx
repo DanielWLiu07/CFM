@@ -29,9 +29,14 @@ const CARDS = [
         <p style={{ color: '#fff', fontFamily: 'var(--font-arcade)', fontSize: 'clamp(11px, 1.8vw, 15px)', letterSpacing: '0.05em', borderBottom: '1px solid #333', paddingBottom: 6, marginBottom: 2 }}>
           Computing and Financial Management
         </p>
-        <p><Dim>{'>'} </Dim>CFM is a <G>5-year co-operative education degree</G> offered at the University of Waterloo. It is the only undergraduate program in Canada that fully integrates computer science with accounting and finance into a single interdisciplinary degree.</p>
-        <p><Dim>{'>'} </Dim>Students graduate with a <G>Bachelor of Computing and Financial Management (BCFM)</G>. The program is offered jointly by the <G>Faculty of Mathematics</G> and the <G>School of Accounting and Finance</G>, meaning students take the same core courses as students in both Computer Science and Accounting/Financial Management.</p>
-        <p><Dim>{'>'} </Dim>Each incoming class is around <G>~50 students</G>. Admission is competitive and requires strong grades in mathematics, English, and computer science or related courses.</p>
+        <p style={{ color: '#333' }}>{'─'.repeat(50)}</p>
+        <p><Dim>{'>'} </Dim>The <G>only program of its kind in Canada</G> combining computer science and finance into a single interdisciplinary degree.</p>
+        <p><Dim>{'>'} </Dim>Degree: <G>Bachelor of Computing and Financial Management (BCFM)</G></p>
+        <p><Dim>{'>'} </Dim>Double Major: <G>Computer Science & Finance</G></p>
+        <p><Dim>{'>'} </Dim>Duration: <G>5 years</G> (co-op only)</p>
+        <p><Dim>{'>'} </Dim>Faculties: <G>Mathematics (David R. Cheriton School of Computer Science)</G> + <G>Accounting and Finance</G></p>
+        <p style={{ color: '#333' }}>{'─'.repeat(50)}</p>
+        <p><Dim>{'>'} </Dim><G>86%</G> graduation rate. <G>90%+</G> employed within 6 months of graduating.</p>
       </div>
     ),
   },
