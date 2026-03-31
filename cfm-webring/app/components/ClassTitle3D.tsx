@@ -37,7 +37,7 @@ export const DEFAULT_CONFIG: ClassTitle3DConfig = {
   frontLight: 7.0,
   topLight: 2.5,
   ambient: 0.15,
-  titleGap: -100,
+  titleGap: -200,
   bgScale: 130,
   bgOpacity: 1.0,
   bgX: 0,
