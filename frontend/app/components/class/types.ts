@@ -11,6 +11,7 @@ export interface Experience {
 export interface ClassMember {
   name: string;
   url: string;
+  tagline?: string;
   description?: string;
   role: string;
   location: string;

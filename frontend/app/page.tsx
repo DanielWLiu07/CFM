@@ -415,9 +415,11 @@ export default function Home() {
             <div className="absolute inset-y-0 left-0 w-24 pointer-events-none" style={{ background: 'linear-gradient(to right, black, transparent)' }} />
             <div className="absolute inset-y-0 right-0 w-24 pointer-events-none" style={{ background: 'linear-gradient(to left, black, transparent)' }} />
           </div>
-          <div className="absolute inset-0 pointer-events-none">
-            <PixelTrail gridSize={100} trailSize={0.02} maxAge={250} interpolate={2} color="#ffffff" />
-          </div>
+          {!reducedMotion && (
+            <div className="absolute inset-0 pointer-events-none">
+              <PixelTrail gridSize={100} trailSize={0.02} maxAge={250} interpolate={2} color="#ffffff" />
+            </div>
+          )}
           {/* Clickable panel areas */}
           <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 h-full" style={{ aspectRatio: '3024 / 1964', zIndex: 40 }}>
             {CLICKABLE_PANELS.map(p => (

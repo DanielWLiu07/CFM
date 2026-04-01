@@ -59,7 +59,9 @@ function AutoCamera({ textWidth, twoLine, fontSize }: { textWidth: number; twoLi
     prevH.current = size.height;
     const cam = camera as THREE.OrthographicCamera;
     const aspect = size.width / size.height;
-    let halfW = (textWidth / 2) * 1.45;
+    // Less padding on narrow screens so text fills more of the canvas
+    const pad = size.width < 600 ? 1.12 : size.width < 900 ? 1.25 : 1.45;
+    let halfW = (textWidth / 2) * pad;
     let halfH = halfW / aspect;
     // In two-line mode, ensure enough vertical room for both lines + gap + depth/tilt
     // Scale both axes proportionally to avoid squashing
@@ -290,7 +292,7 @@ export default function ClassTitle3D({ year = '26', config = DEFAULT_CONFIG, bea
     return () => { if (timeoutRef.current) clearTimeout(timeoutRef.current); };
   }, [year, displayedYear]);
 
-  const twoLine = screenW < 800;
+  const twoLine = false;
 
   // Scale down edge width and bump up text size on small screens
   const responsiveConfig = { ...config };
@@ -319,7 +321,7 @@ export default function ClassTitle3D({ year = '26', config = DEFAULT_CONFIG, bea
     return total;
   })();
 
-  const containerHeight = twoLine ? 'clamp(240px, 42vw, 320px)' : 'clamp(260px, 40vw, 360px)';
+  const containerHeight = twoLine ? 'clamp(240px, 42vw, 320px)' : 'clamp(180px, 28vw, 360px)';
 
   return (
     <div

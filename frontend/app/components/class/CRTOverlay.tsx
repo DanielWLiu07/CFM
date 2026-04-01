@@ -370,8 +370,8 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
                       WebkitTextStroke: isNarrow ? '2px #000' : '2.5px #000',
                       paintOrder: 'stroke fill' as React.CSSProperties['paintOrder'],
                       textShadow: isNarrow
-                        ? '2px 2px 0 #000, 3px 3px 0 rgba(0,0,0,0.4)'
-                        : '3px 3px 0 #000, 4px 4px 0 #000, 5px 5px 0 rgba(0,0,0,0.4), 6px 6px 0 rgba(0,0,0,0.2)',
+                        ? '1px 1px 0 #000, 2px 2px 0 #000, 3px 3px 0 #111, 4px 4px 0 #111, 5px 5px 0 rgba(0,0,0,0.4), 6px 6px 0 rgba(255,255,255,0.35), 0 0 20px rgba(255,255,255,0.15)'
+                        : '1px 1px 0 #000, 2px 2px 0 #000, 3px 3px 0 #000, 4px 4px 0 #111, 5px 5px 0 #111, 6px 6px 0 #111, 7px 7px 0 #222, 8px 8px 0 rgba(0,0,0,0.4), 9px 9px 0 rgba(0,0,0,0.2), 10px 10px 0 rgba(255,255,255,0.35), 0 0 30px rgba(255,255,255,0.1)',
                     }}>
                       {expandedMember.name}
                     </h2>
@@ -387,10 +387,18 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
                       {expandedMember.role}
                     </p>
                   </div>
+                  {expandedMember.tagline && (
+                    <div style={{ animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.26s both', marginTop: isNarrow ? -6 : -10 }}>
+                      <p style={{ fontFamily: 'monospace', fontSize: isNarrow ? 13 : 15, color: '#22c55e', letterSpacing: '0.04em', margin: 0, fontStyle: 'italic', textShadow: '0 0 8px rgba(34,197,94,0.3)' }}>
+                        {expandedMember.tagline}
+                      </p>
+                    </div>
+                  )}
+
                   <div style={{
                     display: 'flex', flexDirection: 'column', gap: 2,
                     animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.29s both',
-                    marginTop: isNarrow ? -8 : -13,
+                    marginTop: isNarrow ? -4 : -6,
                   }}>
                     <p style={{ fontFamily: 'var(--font-arcade)', fontSize: isNarrow ? 14 : 16, color: '#999', letterSpacing: '0.08em', margin: 0, textShadow: '1px 1px 0 #000' }}>
                       {expandedMember.location}  //  {expandedMember.school}
@@ -410,11 +418,11 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
                   }}
                   onClick={e => e.stopPropagation()}
                 >
-                  {/* Blurb — terminal style */}
+                  {/* Blurb terminal box */}
                   <div style={{
                     background: '#0a0a0a', border: '2px solid #333', padding: '16px 20px',
                     boxShadow: '4px 4px 0px #000, inset 0 0 30px rgba(0,255,100,0.03)',
-                    animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.36s both',
+                    animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.34s both',
                   }}>
                     <div style={{ fontFamily: 'monospace', fontSize: 10, color: '#555', marginBottom: 8, letterSpacing: '0.1em' }}>
                       {'>'} cat ~/about.txt
@@ -429,16 +437,46 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
                   </div>
 
                   {/* About Me */}
+                  {expandedMember.description && (
+                    <>
+                      <div style={{ animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.36s both' }}>
+                        <p style={{
+                          fontFamily: 'var(--font-arcade)', fontSize: labelSize, letterSpacing: '0.18em', margin: '0 0 12px', textTransform: 'uppercase',
+                          color: '#fff',
+                          WebkitTextStroke: '1.5px #000',
+                          paintOrder: 'stroke fill' as React.CSSProperties['paintOrder'],
+                          textShadow: '1px 1px 0 #000, 2px 2px 0 #000, 3px 3px 0 #111, 4px 4px 0 rgba(0,0,0,0.4), 5px 5px 0 rgba(255,255,255,0.35), 0 0 15px rgba(255,255,255,0.1)',
+                        }}>
+                          <span style={{ color: '#22c55e', WebkitTextStroke: '0px', textShadow: '1px 1px 0 #000, 2px 2px 0 #000, 3px 3px 0 rgba(0,0,0,0.4), 4px 4px 0 rgba(34,197,94,0.35), 0 0 12px rgba(34,197,94,0.6)', marginRight: 10 }}>$</span>ABOUT ME
+                        </p>
+                      </div>
+                      <div style={{
+                        background: '#0a0a0a', border: '2px solid #333', padding: '16px 20px',
+                        boxShadow: '4px 4px 0px #000, inset 0 0 30px rgba(0,255,100,0.03)',
+                        animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.38s both',
+                        marginTop: -16,
+                      }}>
+                        <p style={{
+                          fontFamily: 'monospace', fontSize: 14, color: '#aaa',
+                          lineHeight: 1.7, margin: 0,
+                        }}>
+                          {expandedMember.description}
+                        </p>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Interests */}
                   {expandedMember.hobbies && expandedMember.hobbies.length > 0 && (
                     <div style={{ animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.43s both', marginTop: 0 }}>
                       <p style={{
                         fontFamily: 'var(--font-arcade)', fontSize: labelSize, letterSpacing: '0.18em', margin: '0 0 16px', textTransform: 'uppercase',
-                        color: 'transparent',
-                        WebkitTextStroke: '1.5px #fff',
-                        textShadow: '0 0 20px rgba(255,255,255,0.3), 0 4px 8px rgba(0,0,0,0.5)',
+                        color: '#fff',
+                        WebkitTextStroke: '1.5px #000',
                         paintOrder: 'stroke fill' as React.CSSProperties['paintOrder'],
+                        textShadow: '1px 1px 0 #000, 2px 2px 0 #000, 3px 3px 0 #111, 4px 4px 0 rgba(0,0,0,0.4), 5px 5px 0 rgba(255,255,255,0.35), 0 0 15px rgba(255,255,255,0.1)',
                       }}>
-                        <span style={{ color: '#22c55e', WebkitTextStroke: '0px', textShadow: '0 0 12px rgba(34,197,94,0.6), 0 0 30px rgba(34,197,94,0.3)', marginRight: 10 }}>$</span>INTERESTS
+                        <span style={{ color: '#22c55e', WebkitTextStroke: '0px', textShadow: '1px 1px 0 #000, 2px 2px 0 #000, 3px 3px 0 rgba(0,0,0,0.4), 4px 4px 0 rgba(34,197,94,0.35), 0 0 12px rgba(34,197,94,0.6)', marginRight: 10 }}>$</span>INTERESTS
                       </p>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                         {expandedMember.hobbies.map((h, i) => (
@@ -446,19 +484,19 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
                             display: 'flex', alignItems: 'center', gap: 12,
                             background: 'linear-gradient(135deg, rgba(34,197,94,0.06) 0%, rgba(20,20,20,0.9) 40%, #1a1a1a 100%)',
                             borderLeft: '3px solid #22c55e',
-                            border: '1px solid rgba(34,197,94,0.2)',
+                            border: '2px solid rgba(255,255,255,0.25)',
                             borderLeftWidth: '3px',
                             padding: `${hobbyPadV + 2}px ${hobbyPadH}px`,
                             boxShadow: '4px 4px 0px rgba(34,197,94,0.15), 0 0 15px rgba(34,197,94,0.05), inset 0 0 20px rgba(0,0,0,0.4)',
                             transition: 'all 0.2s ease',
                           }}
                           onMouseEnter={e => {
-                            e.currentTarget.style.borderColor = 'rgba(34,197,94,0.5)';
+                            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.45)';
                             e.currentTarget.style.boxShadow = '4px 4px 0px rgba(34,197,94,0.25), 0 0 25px rgba(34,197,94,0.1), inset 0 0 20px rgba(0,0,0,0.4)';
                             e.currentTarget.style.background = 'linear-gradient(135deg, rgba(34,197,94,0.12) 0%, rgba(20,20,20,0.9) 40%, #1a1a1a 100%)';
                           }}
                           onMouseLeave={e => {
-                            e.currentTarget.style.borderColor = 'rgba(34,197,94,0.2)';
+                            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)';
                             e.currentTarget.style.boxShadow = '4px 4px 0px rgba(34,197,94,0.15), 0 0 15px rgba(34,197,94,0.05), inset 0 0 20px rgba(0,0,0,0.4)';
                             e.currentTarget.style.background = 'linear-gradient(135deg, rgba(34,197,94,0.06) 0%, rgba(20,20,20,0.9) 40%, #1a1a1a 100%)';
                           }}
@@ -481,31 +519,31 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
                     <div style={{ animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.5s both', marginTop: 0 }}>
                       <p style={{
                         fontFamily: 'var(--font-arcade)', fontSize: labelSize, letterSpacing: '0.18em', margin: '0 0 16px', textTransform: 'uppercase',
-                        color: 'transparent',
-                        WebkitTextStroke: '1.5px #fff',
-                        textShadow: '0 0 20px rgba(255,255,255,0.3), 0 4px 8px rgba(0,0,0,0.5)',
+                        color: '#fff',
+                        WebkitTextStroke: '1.5px #000',
                         paintOrder: 'stroke fill' as React.CSSProperties['paintOrder'],
+                        textShadow: '1px 1px 0 #000, 2px 2px 0 #000, 3px 3px 0 #111, 4px 4px 0 rgba(0,0,0,0.4), 5px 5px 0 rgba(255,255,255,0.35), 0 0 15px rgba(255,255,255,0.1)',
                       }}>
-                        <span style={{ color: '#22c55e', WebkitTextStroke: '0px', textShadow: '0 0 12px rgba(34,197,94,0.6), 0 0 30px rgba(34,197,94,0.3)', marginRight: 10 }}>$</span>EXPERIENCE
+                        <span style={{ color: '#22c55e', WebkitTextStroke: '0px', textShadow: '1px 1px 0 #000, 2px 2px 0 #000, 3px 3px 0 rgba(0,0,0,0.4), 4px 4px 0 rgba(34,197,94,0.35), 0 0 12px rgba(34,197,94,0.6)', marginRight: 10 }}>$</span>EXPERIENCE
                       </p>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                         {expandedMember.experiences.map((exp, i) => (
                           <div key={i} style={{
                             display: 'flex', alignItems: 'center', gap: 12,
                             background: 'linear-gradient(135deg, rgba(34,197,94,0.06) 0%, rgba(20,20,20,0.9) 40%, #1a1a1a 100%)',
-                            border: '1px solid rgba(34,197,94,0.2)',
+                            border: '2px solid rgba(255,255,255,0.25)',
                             borderLeftWidth: '3px',
                             padding: `${expPadV + 2}px ${expPadH}px`,
                             boxShadow: '4px 4px 0px rgba(34,197,94,0.15), 0 0 15px rgba(34,197,94,0.05), inset 0 0 20px rgba(0,0,0,0.4)',
                             transition: 'all 0.2s ease',
                           }}
                           onMouseEnter={e => {
-                            e.currentTarget.style.borderColor = 'rgba(34,197,94,0.5)';
+                            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.45)';
                             e.currentTarget.style.boxShadow = '4px 4px 0px rgba(34,197,94,0.25), 0 0 25px rgba(34,197,94,0.1), inset 0 0 20px rgba(0,0,0,0.4)';
                             e.currentTarget.style.background = 'linear-gradient(135deg, rgba(34,197,94,0.12) 0%, rgba(20,20,20,0.9) 40%, #1a1a1a 100%)';
                           }}
                           onMouseLeave={e => {
-                            e.currentTarget.style.borderColor = 'rgba(34,197,94,0.2)';
+                            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)';
                             e.currentTarget.style.boxShadow = '4px 4px 0px rgba(34,197,94,0.15), 0 0 15px rgba(34,197,94,0.05), inset 0 0 20px rgba(0,0,0,0.4)';
                             e.currentTarget.style.background = 'linear-gradient(135deg, rgba(34,197,94,0.06) 0%, rgba(20,20,20,0.9) 40%, #1a1a1a 100%)';
                           }}

@@ -140,6 +140,17 @@ export default function ProfilePanel({
                 </p>
               )}
 
+              {entry.description && (
+                <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #222' }}>
+                  <p style={{ fontFamily: 'var(--font-arcade)', fontSize: 8, color: '#555', letterSpacing: '0.1em', margin: 0, marginBottom: 4, textTransform: 'uppercase' }}>
+                    // ABOUT
+                  </p>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: '#aaa', margin: 0, lineHeight: 1.6 }}>
+                    {entry.description}
+                  </p>
+                </div>
+              )}
+
               {/* Socials (website filtered out — shown as VISIT button) */}
               {entry.socials && entry.socials.filter(s => s.type !== 'website').length > 0 && (
                 <div className="flex gap-2 mt-3">
