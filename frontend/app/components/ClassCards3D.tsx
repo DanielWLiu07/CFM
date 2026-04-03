@@ -94,15 +94,15 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
       if (containerW < 100) return; // wait for layout
       if (members.length === 0) { renderer.setSize(containerW, 0); renderer.domElement.style.overflow = 'visible'; container.style.height = '0px'; renderer.render(scene, camera); return; }
 
-      const responsiveCols = containerW >= 900 ? COLS : containerW >= 550 ? 2 : 1;
+      const responsiveCols = containerW >= 1000 ? COLS : containerW >= 700 ? 3 : containerW >= 450 ? 2 : 1;
       const cols = Math.min(responsiveCols, members.length);
       const rows = Math.ceil(members.length / cols);
 
       const fillPct = cols === 1 ? 0.85 : 0.95;
-      const normalCardW = Math.floor((containerW * 0.95 - (3 - 1) * COL_GAP) / 3);
+      const normalCardW = Math.floor((containerW * 0.95 - (COLS - 1) * COL_GAP) / COLS);
       const rawCardW = Math.floor((containerW * fillPct - (cols - 1) * COL_GAP) / cols);
-      const cardW = cols >= 3 ? Math.min(rawCardW, normalCardW) : rawCardW;
-      const effectiveAspect = cols === 1 ? Math.min(ASPECT, 1.4) : cols === 2 ? Math.min(ASPECT, 1.8) : ASPECT;
+      const cardW = cols >= COLS ? Math.min(rawCardW, normalCardW) : rawCardW;
+      const effectiveAspect = cols === 1 ? Math.max(ASPECT, 0.6) : ASPECT;
       const cardH = Math.floor(cardW / effectiveAspect);
       const gridH = rows * cardH + (rows - 1) * ROW_GAP;
       const PAD = 40;
@@ -136,9 +136,8 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
           setTimeout(() => setPhase('done'), 600);
         }, col, cols);
 
-        // Start invisible for staggered fade-in
-        el.style.opacity = '0';
-        el.style.transition = 'opacity 0.3s ease';
+        // Cards start visible but screen content is clipped (off)
+        el.style.opacity = '1';
 
         const obj = new CSS3DObject(el);
         const x = (col - (cols - 1) / 2) * (cardW + COL_GAP);
@@ -160,23 +159,34 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
 
       renderer.render(scene, camera);
 
-      // Staggered fade-in
-      requestAnimationFrame(() => {
-        objectsRef.current.forEach((obj, i) => {
-          setTimeout(() => { obj.element.style.opacity = '1'; }, 60 + i * 50);
-        });
-        setTimeout(() => renderer.render(scene, camera), 20);
-      });
+      // Single shared IntersectionObserver for all cards — instant on/off
+      const obs = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            const el = entry.target as any;
+            if (entry.isIntersecting) {
+              el._crtTurnOn?.();
+            } else {
+              el._crtTurnOff?.();
+            }
+          }
+        },
+        { threshold: 0.1 }
+      );
+      objectsRef.current.forEach(obj => obs.observe(obj.element));
+      (container as any)._crtObserver = obs;
     };
 
-    // If there are existing cards, fade them out first, then swap
+    // If there are existing cards, turn off then swap
+    const prevObs = (container as any)._crtObserver as IntersectionObserver | undefined;
+    if (prevObs) prevObs.disconnect();
+
     if (objectsRef.current.length > 0) {
       objectsRef.current.forEach(obj => {
-        obj.element.style.transition = 'opacity 0.2s ease';
-        obj.element.style.opacity = '0';
+        (obj.element as any)._crtTurnOff?.();
       });
       renderer.render(scene, camera);
-      swapTimeoutRef.current = setTimeout(buildNewCards, 240);
+      swapTimeoutRef.current = setTimeout(buildNewCards, 350);
     } else {
       buildNewCards();
     }
@@ -267,12 +277,14 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
       return;
     }
     document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') closeExpanded();
     };
     window.addEventListener('keydown', onKey);
     return () => {
       document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
       window.removeEventListener('keydown', onKey);
     };
   }, [phase]);

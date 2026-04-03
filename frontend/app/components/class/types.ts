@@ -30,10 +30,10 @@ export interface ClassCards3DProps {
   members: ClassMember[];
 }
 
-export const ASPECT = 1511 / 716;
-export const COL_GAP = 30;
-export const ROW_GAP = 30;
-export const COLS = 3;
+export const ASPECT = 3 / 4;
+export const COL_GAP = 22;
+export const ROW_GAP = 22;
+export const COLS = 4;
 export const TILT_DEG = 5;
 
 export const SOCIAL_ICONS: Record<string, string> = {
