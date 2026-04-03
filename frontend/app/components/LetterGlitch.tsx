@@ -16,7 +16,8 @@ const LetterGlitch = ({
   centerVignette = false,
   outerVignette = true,
   smooth = true,
-  characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%*()-_+=/[]{};:<>.,0123456789'
+  characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%*()-_+=/[]{};:<>.,0123456789',
+  codeLines,
 }: {
   glitchColors?: string[];
   className?: string;
@@ -25,6 +26,7 @@ const LetterGlitch = ({
   outerVignette?: boolean;
   smooth?: boolean;
   characters?: string;
+  codeLines?: string[];
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>(0);
@@ -35,6 +37,7 @@ const LetterGlitch = ({
   const canvasSizeRef = useRef({ w: 0, h: 0 });
 
   const lettersAndSymbols = useMemo(() => Array.from(characters), [characters]);
+  const glitchChars = useMemo(() => Array.from('{}()[]<>;:=/!&|#$_.*+-~^%@?\\'), []);
 
   // Pre-parse colors to RGB once — avoids regex every frame
   const parsedColors = useMemo(() => {
@@ -51,16 +54,32 @@ const LetterGlitch = ({
   const fontStr = `${fontSize}px monospace`;
 
   const getRandomChar = () => lettersAndSymbols[Math.floor(Math.random() * lettersAndSymbols.length)];
+  const getGlitchChar = () => glitchChars[Math.floor(Math.random() * glitchChars.length)];
   const getRandomColorRgb = () => parsedColors[Math.floor(Math.random() * parsedColors.length)];
+
+  // Get a character for position (col, row) from code lines
+  const getCodeChar = (col: number, row: number, columns: number) => {
+    if (!codeLines || codeLines.length === 0) return getRandomChar();
+    const line = codeLines[row % codeLines.length];
+    // Pad/repeat line to fill row
+    if (col < line.length) return line[col];
+    // After line ends, fill with spaces or wrap
+    const padded = line + '    '; // gap between repeats
+    const idx = col % padded.length;
+    return padded[idx];
+  };
 
   const initializeLetters = (columns: number, rows: number) => {
     grid.current = { columns, rows };
     const len = columns * rows;
     const arr = new Array<LetterData>(len);
     for (let i = 0; i < len; i++) {
+      const col = i % columns;
+      const row = (i / columns) | 0;
       const c = getRandomColorRgb();
       const tc = getRandomColorRgb();
-      arr[i] = { char: getRandomChar(), r: c.r, g: c.g, b: c.b, tr: tc.r, tg: tc.g, tb: tc.b, colorProgress: 1 };
+      const char = codeLines ? getCodeChar(col, row, columns) : getRandomChar();
+      arr[i] = { char, r: c.r, g: c.g, b: c.b, tr: tc.r, tg: tc.g, tb: tc.b, colorProgress: 1 };
     }
     letters.current = arr;
   };
@@ -84,11 +103,23 @@ const LetterGlitch = ({
   const updateLetters = () => {
     const arr = letters.current;
     if (!arr.length) return;
+    const cols = grid.current.columns;
     const updateCount = Math.max(1, (arr.length * 0.05) | 0);
     for (let i = 0; i < updateCount; i++) {
       const index = Math.floor(Math.random() * arr.length);
       const letter = arr[index];
-      letter.char = getRandomChar();
+      if (codeLines) {
+        // 70% chance: restore original code char, 30% chance: glitch symbol
+        if (Math.random() < 0.7) {
+          const col = index % cols;
+          const row = (index / cols) | 0;
+          letter.char = getCodeChar(col, row, cols);
+        } else {
+          letter.char = getGlitchChar();
+        }
+      } else {
+        letter.char = getRandomChar();
+      }
       const tc = getRandomColorRgb();
       letter.tr = tc.r; letter.tg = tc.g; letter.tb = tc.b;
       if (!smooth) {

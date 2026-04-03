@@ -590,7 +590,7 @@ export default function Home() {
       </div>
 
       <div style={{ position: 'relative' }}>
-        <div id="class" className="scroll-reveal reveal-glitch" style={{ position: 'relative', zIndex: 65, overflow: 'clip' }}>
+        <div id="class" className="scroll-reveal reveal-glitch" style={{ position: 'relative', zIndex: 55, overflow: 'visible' }}>
           <ClassSection onVisibilityChange={handleClassVisibility} beatRef={classBeatRef} />
         </div>
       </div>

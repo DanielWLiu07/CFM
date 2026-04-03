@@ -8,6 +8,7 @@ import { useMembers } from '../hooks/useMembers';
 const ClassCards3D = dynamic(() => import('./ClassCards3D'), { ssr: false });
 const ClassTitle3D = dynamic(() => import('./ClassTitle3D'), { ssr: false });
 const ClassBackground = dynamic(() => import('./ClassBackground'), { ssr: false });
+const LetterGlitch = dynamic(() => import('./LetterGlitch'), { ssr: false });
 
 interface ClassSectionProps {
   onVisibilityChange: (visible: boolean) => void;
@@ -117,14 +118,61 @@ export default function ClassSection({ onVisibilityChange, beatRef }: ClassSecti
   return (
     <section
       className="relative min-h-screen pt-0 pb-6 sm:pb-10 px-4 sm:px-6 md:px-12 lg:px-20 flex flex-col items-center"
-      style={{ backgroundColor: 'transparent', transformStyle: 'flat' as const }}
+      style={{ backgroundColor: 'transparent', transformStyle: 'flat' as const, isolation: 'isolate' }}
     >
       <div ref={sentinelRef} className="absolute top-0 left-0 w-full h-24" />
 
-      {/* Three.js background decoration */}
-      <ClassBackground beatRef={beatRef} paused={!sectionVisible} />
+      {/* Letter glitch (z:1) → ClassBackground gears (z:2) */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          zIndex: 1,
+          maskImage: 'linear-gradient(180deg, transparent 0%, black 8%, black 92%, transparent 100%), linear-gradient(90deg, black 0%, black 8%, transparent 30%, transparent 70%, black 92%, black 100%)',
+          WebkitMaskImage: 'linear-gradient(180deg, transparent 0%, black 8%, black 92%, transparent 100%), linear-gradient(90deg, black 0%, black 8%, transparent 30%, transparent 70%, black 92%, black 100%)',
+          maskComposite: 'intersect',
+          WebkitMaskComposite: 'destination-in',
+        }}
+      >
+        <LetterGlitch
+          glitchColors={['#111', '#1a1a1a', '#fff', '#222']}
+          glitchSpeed={70}
+          outerVignette={false}
+          centerVignette={false}
+          smooth
+          codeLines={[
+            'const members = await fetch("/api/members").then(r => r.json());',
+            'export default function ClassSection({ beatRef }: Props) {',
+            '  const [selected, setSelected] = useState<Member | null>(null);',
+            'if (member.cohort === "2026") return <Card key={member.id} />;',
+            'import { useEffect, useState, useRef } from "react";',
+            '  const filtered = members.filter(m => m.year === year);',
+            'async function loadMembers(): Promise<Member[]> {',
+            '  return db.query("SELECT * FROM members WHERE active = $1", [true]);',
+            'interface Member { name: string; role: string; avatar?: string }',
+            'git push origin main && npm run build && npm run deploy',
+            'const ring = members.map((m, i) => ({ ...m, next: members[(i+1) % n] }));',
+            'export const GET = async (req: NextRequest) => {',
+            '  const { searchParams } = new URL(req.url);',
+            '  sudo systemctl restart nginx && curl -s localhost:3000/health',
+            'type WebRing = { prev: Member; current: Member; next: Member };',
+            'const [phase, setPhase] = useState<"idle" | "dot" | "line" | "done">("idle");',
+            'docker compose up -d && docker logs -f cfm-backend',
+            '  useEffect(() => { observer.observe(el); return () => observer.disconnect(); }, []);',
+            'for (let i = arr.length - 1; i > 0; i--) { [arr[i], arr[j]] = [arr[j], arr[i]]; }',
+            'ssh deploy@cfm.uwaterloo.ca "cd /var/www && git pull && pm2 restart all"',
+            'const cardW = Math.floor((containerW * 0.95 - (cols - 1) * GAP) / cols);',
+            '  res.status(200).json({ members, total: members.length, ring: true });',
+            'npx prisma migrate dev --name add_cohort_field && npx prisma generate',
+            'const scene = new THREE.Scene(); const camera = new THREE.PerspectiveCamera(45);',
+            'CREATE TABLE members (id SERIAL PRIMARY KEY, name TEXT NOT NULL, cohort TEXT);',
+          ]}
+        />
+      </div>
+      <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 2 }}>
+        <ClassBackground beatRef={beatRef} paused={!sectionVisible} />
+      </div>
 
-      {/* Title bg glow — between ClassBackground (z:0) and title (z:70) */}
+      {/* Title bg glow — between ClassBackground (z:1) and title (z:70) */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src="/images/title_bg.webp"
@@ -133,7 +181,7 @@ export default function ClassSection({ onVisibilityChange, beatRef }: ClassSecti
         id="class-title-bg"
         ref={titleBgRef}
         style={{
-          zIndex: 1,
+          zIndex: 3,
           mixBlendMode: 'screen',
           maskImage: 'radial-gradient(ellipse 50% 50% at center, black 30%, transparent 100%)',
           WebkitMaskImage: 'radial-gradient(ellipse 50% 50% at center, black 30%, transparent 100%)',
@@ -249,8 +297,8 @@ export default function ClassSection({ onVisibilityChange, beatRef }: ClassSecti
             background: '#fff',
             padding: 'clamp(7px, 1vw, 10px) clamp(10px, 1.4vw, 14px)',
             gap: 8,
-            flex: '1 1 180px',
-            minWidth: 150,
+            flex: '1 1 0%',
+            minWidth: 180,
           }}
         >
           <span style={{ color: '#000', fontSize: 15, fontFamily: 'var(--font-arcade)', flexShrink: 0 }}>&gt;</span>
@@ -316,27 +364,26 @@ export default function ClassSection({ onVisibilityChange, beatRef }: ClassSecti
           ⟳
         </button>
 
-        {/* Clear all */}
-        {hasFilters && (
-          <button
-            onClick={() => { setSelectedYear('ALL'); setSearch(''); }}
-            style={{
-              fontFamily: 'var(--font-arcade)',
-              fontSize: 'clamp(14px, 1.6vw, 16px)',
-              letterSpacing: '0.1em',
-              padding: 'clamp(8px, 1.2vw, 11px) clamp(12px, 1.6vw, 16px)',
-              border: '3px solid #000',
-              background: '#000',
-              color: '#fff',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#000'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = '#000'; e.currentTarget.style.color = '#fff'; }}
-          >
-            CLEAR
-          </button>
-        )}
+        {/* Clear all — always rendered to prevent layout shift */}
+        <button
+          onClick={() => { setSelectedYear('ALL'); setSearch(''); }}
+          style={{
+            fontFamily: 'var(--font-arcade)',
+            fontSize: 'clamp(14px, 1.6vw, 16px)',
+            letterSpacing: '0.1em',
+            padding: 'clamp(8px, 1.2vw, 11px) clamp(12px, 1.6vw, 16px)',
+            border: '3px solid #000',
+            background: '#000',
+            color: '#fff',
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+            opacity: hasFilters ? 1 : 0.3,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#000'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = '#000'; e.currentTarget.style.color = '#fff'; }}
+        >
+          CLEAR
+        </button>
       </div>
 
       {/* Result count */}
@@ -360,45 +407,56 @@ export default function ClassSection({ onVisibilityChange, beatRef }: ClassSecti
       <ClassCards3D members={filtered} />
 
       {/* Empty state */}
-      {filtered.length === 0 && (
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateRows: filtered.length === 0 ? '1fr' : '0fr',
+          transition: 'grid-template-rows 0.4s ease, opacity 0.4s ease, transform 0.4s ease',
+          opacity: filtered.length === 0 ? 1 : 0,
+          transform: filtered.length === 0 ? 'translateY(0) scale(1)' : 'translateY(-20px) scale(0.95)',
+          pointerEvents: filtered.length === 0 ? 'auto' : 'none',
+          zIndex: 20,
+        }}
+      >
+        <div style={{ overflow: 'hidden' }}>
         <div
           style={{
-            zIndex: 20,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             gap: 12,
-            marginTop: 'clamp(40px, 8vw, 80px)',
-            marginBottom: 'clamp(40px, 8vw, 80px)',
+            padding: filtered.length === 0 ? 'clamp(40px, 8vw, 80px) 8px' : '0 8px',
+            transition: 'padding 0.4s ease',
           }}
         >
-          <p
-            style={{
-              fontFamily: 'var(--font-arcade)',
-              fontSize: 'clamp(28px, 4vw, 48px)',
-              color: '#000',
-              WebkitTextStroke: '1.5px #fff',
-              paintOrder: 'stroke fill',
-              letterSpacing: '0.12em',
-              margin: 0,
-              textAlign: 'center',
-            }}
-          >
-            NO MEMBERS FOUND
-          </p>
-          <p
-            style={{
-              fontFamily: 'var(--font-arcade)',
-              fontSize: 'clamp(10px, 1.4vw, 14px)',
-              color: '#666',
-              letterSpacing: '0.15em',
-              margin: 0,
-            }}
-          >
-            TRY A DIFFERENT SEARCH
-          </p>
+        <p
+          style={{
+            fontFamily: 'var(--font-arcade)',
+            fontSize: 'clamp(28px, 4vw, 48px)',
+            color: '#000',
+            WebkitTextStroke: '1.5px #fff',
+            paintOrder: 'stroke fill',
+            letterSpacing: '0.12em',
+            margin: 0,
+            textAlign: 'center',
+          }}
+        >
+          NO MEMBERS FOUND
+        </p>
+        <p
+          style={{
+            fontFamily: 'var(--font-arcade)',
+            fontSize: 'clamp(10px, 1.4vw, 14px)',
+            color: '#666',
+            letterSpacing: '0.15em',
+            margin: 0,
+          }}
+        >
+          TRY A DIFFERENT SEARCH
+        </p>
         </div>
-      )}
+        </div>
+      </div>
 
       {/* BG Tuner — disabled for production */}
     </section>
