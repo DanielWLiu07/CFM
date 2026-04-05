@@ -22,6 +22,7 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
     .map(m => ({
       name: m.name,
       url: m.url,
+      tagline: m.tagline,
       description: m.description ?? '',
       cohort: m.cohort ?? m.year,
       avatar: m.avatar,
@@ -694,14 +695,17 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
           ctx.stroke();
         }
 
-        // Hover glow
+        // Hover glow — radial gradient instead of shadowBlur to avoid edge clipping
         if (ha > 0.1 && brightenedFog > 0.2) {
-          ctx.shadowColor = '#fff';
-          ctx.shadowBlur = 15 * effectiveScale * ha;
+          const glowR = r + 15 * effectiveScale * ha;
+          const grad = ctx.createRadialGradient(node.sx, node.sy, r * 0.8, node.sx, node.sy, glowR);
+          grad.addColorStop(0, `rgba(255,255,255,${0.3 * ha * brightenedFog})`);
+          grad.addColorStop(0.5, `rgba(255,255,255,${0.1 * ha * brightenedFog})`);
+          grad.addColorStop(1, 'rgba(255,255,255,0)');
           ctx.beginPath();
-          ctx.arc(node.sx, node.sy, r, 0, TAU);
-          ctx.stroke();
-          ctx.shadowBlur = 0;
+          ctx.arc(node.sx, node.sy, glowR, 0, TAU);
+          ctx.fillStyle = grad;
+          ctx.fill();
         }
 
         // Name label
@@ -1029,6 +1033,49 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
           transition: 'none',
         }}
       />
+
+      {/* Green arrow decoration */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/images/arrow_green.png"
+        alt=""
+        className="absolute pointer-events-none select-none"
+        style={{
+          bottom: '-10%',
+          left: 0,
+          width: 'min(600px, 55vw)',
+          height: 'auto',
+          opacity: 0.12,
+          zIndex: 2,
+          filter: 'drop-shadow(0 0 40px rgba(0,200,80,0.3))',
+          animation: 'webring-arrow-float 8s ease-in-out infinite',
+        }}
+      />
+
+      {/* Red arrow decoration — top right, flipped */}
+      <div
+        className="absolute pointer-events-none select-none"
+        style={{
+          top: '-50%',
+          right: '-25%',
+          width: 'min(1400px, 100vw)',
+          zIndex: 2,
+          animation: 'webring-arrow-float-red 9s ease-in-out infinite',
+        }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/images/arrow_red.png"
+          alt=""
+          style={{
+            width: '100%',
+            height: 'auto',
+            opacity: 0.12,
+            transform: 'scaleX(-1)',
+            filter: 'drop-shadow(0 0 40px rgba(200,50,30,0.3))',
+          }}
+        />
+      </div>
 
       {/* Circular vignette */}
       <div className="absolute inset-0 pointer-events-none" style={{

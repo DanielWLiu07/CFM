@@ -151,7 +151,7 @@ export default function SearchPanel({
 >CLEAR</button>}
           </div>
 
-          <div className="mt-3 flex flex-col gap-1 flex-1 overflow-y-auto" style={{ maxHeight: Math.max(80, listMaxHeight) }}>
+          <div className="mt-3 flex flex-col gap-1 flex-1 overflow-y-auto" style={{ maxHeight: Math.max(80, listMaxHeight), marginRight: -16, paddingRight: 16 }}>
             {webringEntries.map((entry, i) => {
               if (!matchingIndices.has(i)) return null;
               const isSelected = selectedNode === i;
