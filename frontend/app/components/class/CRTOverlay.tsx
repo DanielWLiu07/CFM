@@ -201,96 +201,172 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
               transition: phase === 'flash' ? 'opacity 0.25s ease 0.05s' : phase === 'shrink' ? 'opacity 0.2s ease' : 'opacity 0.35s ease',
               pointerEvents: phase === 'done' ? 'auto' : 'none',
             }}>
-              {/* Left — avatar with ink noise reveal (hidden on narrow) */}
+              {/* Left — floating terminal phone card (hidden on narrow) */}
               {!isNarrow && <div onClick={closeExpanded} style={{
                 width: '40%', height: '100%', flexShrink: 0,
                 overflow: 'hidden', position: 'relative', background: '#080808',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 cursor: 'pointer',
+                borderRight: '3px solid #222',
                 ...(phase === 'done' ? {
                   animation: 'panel-in 0.8s ease 0.1s both',
                 } : (phase === 'flash' || phase === 'shrink') ? {
                   animation: 'panel-out 0.3s ease forwards',
                 } : {}),
               }}>
-                {/* Screen bezel frame */}
+                {/* CRT monitor card — 3D tilted toward right, matches class page exactly */}
+                {/* Perspective container — rotation applied here like Three.js does */}
                 <div style={{
-                  position: 'absolute', inset: 0,
-                  borderRight: '3px solid #222',
-                  boxShadow: 'inset 0 0 60px 20px rgba(0,0,0,0.8), inset 0 0 120px 40px rgba(0,0,0,0.4)',
-                  pointerEvents: 'none', zIndex: 15,
-                }} />
-                {/* Screen glare reflection */}
-                <div style={{
-                  position: 'absolute', inset: 0, zIndex: 14, pointerEvents: 'none',
-                  background: 'linear-gradient(135deg, rgba(255,255,255,0.04) 0%, transparent 40%, transparent 60%, rgba(255,255,255,0.015) 100%)',
-                }} />
-                {expandedMember.avatar ? (
-                  <>
-                    <svg
-                      key={inkKey}
-                      width="100%"
-                      height="100%"
-                      xmlns="http://www.w3.org/2000/svg"
-                      style={{ position: 'absolute', inset: 0, display: 'block' }}
-                    >
-                      <defs>
-                        <filter id="inkNoiseReveal" x="-20%" y="-20%" width="140%" height="140%">
-                          <feTurbulence type="fractalNoise" baseFrequency={noiseFreq / 1000} numOctaves="3" result="noise" />
-                          <feDisplacementMap in="SourceGraphic" in2="noise" scale="200" xChannelSelector="R" yChannelSelector="G">
-                            <animate attributeName="scale" values={`200;${noiseScale}`} dur="3s" begin="0s" calcMode="spline" keySplines="0.2 0.8 0.3 1" fill="freeze" />
-                          </feDisplacementMap>
-                        </filter>
-                        <mask id="inkMask">
-                          <rect x="0" y="0" width="100%" height="100%" fill="black" />
-                          <rect x="50%" y="50%" width="0%" height="0%" fill="white" filter="url(#inkNoiseReveal)">
-                            <animate attributeName="x" values={`50%;${maskLeft}%`} dur="3s" begin="0s" calcMode="spline" keySplines="0.2 0.8 0.3 1" fill="freeze" />
-                            <animate attributeName="y" values={`50%;${maskTop}%`} dur="3s" begin="0s" calcMode="spline" keySplines="0.2 0.8 0.3 1" fill="freeze" />
-                            <animate attributeName="width" values={`0%;${100 - maskLeft - maskRight}%`} dur="3s" begin="0s" calcMode="spline" keySplines="0.2 0.8 0.3 1" fill="freeze" />
-                            <animate attributeName="height" values={`0%;${100 - maskTop - maskBottom}%`} dur="3s" begin="0s" calcMode="spline" keySplines="0.2 0.8 0.3 1" fill="freeze" />
-                          </rect>
-                        </mask>
-                      </defs>
-                      <image
-                        href={expandedMember.avatar}
-                        x={`${imgX}%`}
-                        y={`${imgY}%`}
-                        width={`${imgScale}%`}
-                        height={`${imgScale}%`}
-                        preserveAspectRatio="xMidYMid slice"
-                        mask="url(#inkMask)"
-                      />
-                      {/* Debug: green dashed = mask boundary */}
-                      {showDebug && (
-                        <rect
-                          x={`${maskLeft}%`} y={`${maskTop}%`}
-                          width={`${100 - maskLeft - maskRight}%`} height={`${100 - maskTop - maskBottom}%`}
-                          fill="none" stroke="lime" strokeWidth="2" strokeDasharray="6 4"
-                        />
-                      )}
-                    </svg>
-                    {/* Debug: red = image container boundary */}
-                    {showDebug && (
-                      <div style={{ position: 'absolute', inset: 0, border: '2px solid red', pointerEvents: 'none', zIndex: 10 }} />
-                    )}
-                    {/* CRT scanline overlay on image */}
-                    <div style={{
-                      position: 'absolute', inset: 0,
-                      background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px)',
-                      pointerEvents: 'none',
-                    }} />
-                  </>
-                ) : (
-                  <div style={{
+                  width: 'min(380px, 85%)',
+                  aspectRatio: '3 / 4',
+                  position: 'relative',
+                  zIndex: 10,
+                  transformStyle: 'preserve-3d',
+                  perspective: 900,
+                  animation: 'content-fade-up 0.6s cubic-bezier(0.16,1,0.3,1) 0.2s both',
+                }}>
+                  {/* 3D rotated wrapper — like CSS3DObject rotation */}
+                  <div className="crt-phone-card" style={{
                     width: '100%', height: '100%',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    background: '#000',
-                    fontFamily: 'var(--font-arcade)', fontSize: 64, color: '#333', letterSpacing: '0.1em',
-                    animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.2s both',
+                    position: 'relative',
+                    transform: 'rotateY(5deg)',
+                    transformStyle: 'preserve-3d',
                   }}>
-                    {expandedMember.name.split(' ').map(w => w[0]).join('')}
+                    {/* Depth layers — shift left (dx=-1 for left column card) */}
+                    {[6,5,4,3,2,1].map(i => {
+                      const v = Math.round(140 + (i/6) * 115);
+                      return (
+                        <div key={i} style={{
+                          position: 'absolute', inset: 0,
+                          background: `rgb(${v}, ${v}, ${v})`,
+                          borderRadius: 8,
+                          transform: `translate(${i * -1}px, ${i}px)`,
+                          zIndex: -1,
+                        }} />
+                      );
+                    })}
+
+                    {/* Outer bezel */}
+                    <div style={{
+                      width: '100%', height: '100%',
+                      boxSizing: 'border-box',
+                      display: 'flex', flexDirection: 'column',
+                      background: 'rgba(12,12,12,0.7)',
+                      backdropFilter: 'blur(20px) saturate(1.3)',
+                      WebkitBackdropFilter: 'blur(20px) saturate(1.3)',
+                      border: '1px solid rgba(255,255,255,0.12)',
+                      borderRadius: 8,
+                      padding: 6,
+                      boxShadow: '0 8px 32px rgba(0,0,0,0.6), 0 0 30px rgba(255,255,255,0.06), inset 0 1px 0 rgba(255,255,255,0.1), inset 0 0 0 1px rgba(255,255,255,0.04)',
+                      position: 'relative',
+                      transition: 'box-shadow 0.4s ease, border-color 0.4s ease',
+                    }}>
+                      {/* Power LED */}
+                      <div style={{
+                        position: 'absolute', bottom: -1, left: 14, zIndex: 10,
+                        width: 6, height: 6, borderRadius: '50%',
+                        background: '#22c55e', boxShadow: '0 0 4px rgba(34,197,94,0.6)',
+                        transition: 'box-shadow 0.3s ease',
+                      }} />
+
+                      {/* Inner screen */}
+                      <div style={{
+                        display: 'flex', flexDirection: 'column',
+                        width: '100%', flex: 1, minHeight: 0, boxSizing: 'border-box',
+                        background: '#0a0a0a',
+                        borderRadius: 3,
+                        position: 'relative', overflow: 'hidden',
+                        animation: 'crt-screen-flicker 4s ease-in-out infinite',
+                      }}>
+                        {/* Scanlines */}
+                        <div style={{
+                          position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 5,
+                          background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.1) 2px, rgba(0,0,0,0.1) 4px)',
+                        }} />
+                        {/* Vignette */}
+                        <div style={{
+                          position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 6,
+                          background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.6) 100%)',
+                          borderRadius: 3,
+                        }} />
+                        {/* Sweep bar */}
+                        <div style={{
+                          position: 'absolute', left: 0, right: 0, height: 80, pointerEvents: 'none', zIndex: 7,
+                          background: 'linear-gradient(180deg, transparent 0%, rgba(255,255,255,0.06) 20%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.06) 80%, transparent 100%)',
+                          animation: 'crt-scanline-sweep 3s linear infinite',
+                        }} />
+
+                        {/* Avatar region */}
+                        <div style={{
+                          flex: 1, minHeight: 0, overflow: 'hidden',
+                          position: 'relative', background: '#0a0a0a',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                          {expandedMember.avatar ? (
+                            <>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={expandedMember.avatar}
+                                alt={expandedMember.name}
+                                style={{
+                                  width: '100%', height: '100%', objectFit: 'cover',
+                                  filter: 'saturate(0.8) contrast(1.1) brightness(0.95)',
+                                }}
+                              />
+                              {/* RGB pixel grid */}
+                              <div style={{
+                                position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1,
+                                backgroundImage: 'repeating-linear-gradient(90deg, rgba(255,0,0,0.03) 0px, rgba(255,0,0,0.03) 1px, rgba(0,255,0,0.03) 1px, rgba(0,255,0,0.03) 2px, rgba(0,100,255,0.03) 2px, rgba(0,100,255,0.03) 3px, transparent 3px, transparent 4px)',
+                                mixBlendMode: 'screen',
+                              }} />
+                            </>
+                          ) : (
+                            <div style={{
+                              fontFamily: 'var(--font-arcade)', fontSize: 64, color: '#333', letterSpacing: '0.1em',
+                            }}>
+                              {expandedMember.name.split(' ').map(w => w[0]).join('')}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Name bar */}
+                        <div style={{
+                          position: 'relative',
+                          padding: '8px 12px 7px',
+                          borderTop: '1px solid #222',
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          flexShrink: 0,
+                        }}>
+                          <div style={{
+                            fontFamily: 'var(--font-arcade)', fontSize: 16, letterSpacing: '0.1em',
+                            color: '#fff', textShadow: '2px 2px 0 #000',
+                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                          }}>
+                            <span style={{ color: '#22c55e', textShadow: '0 0 6px rgba(34,197,94,0.5)' }}>&gt; </span>
+                            {expandedMember.name}
+                          </div>
+                          <div style={{
+                            fontFamily: 'var(--font-arcade)', fontSize: 12, letterSpacing: '0.1em',
+                            color: '#fff', background: 'rgba(255,255,255,0.08)', padding: '2px 8px',
+                            border: '1px solid rgba(255,255,255,0.2)',
+                            flexShrink: 0, marginLeft: 8,
+                          }}>
+                            &apos;{expandedMember.year}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                )}
+
+                  {/* Background glow */}
+                  <div style={{
+                    position: 'absolute', top: '50%', left: '50%',
+                    width: '90%', height: '90%',
+                    transform: 'translate(-50%, -50%)',
+                    background: 'radial-gradient(ellipse at center, rgba(34,197,94,0.08) 0%, transparent 70%)',
+                    pointerEvents: 'none', zIndex: -2,
+                  }} />
+                </div>
               </div>}
 
               {/* Right — name top, socials bottom, middle scrolls */}
@@ -466,101 +542,6 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
                     </>
                   )}
 
-                  {/* Interests */}
-                  {expandedMember.hobbies && expandedMember.hobbies.length > 0 && (
-                    <div style={{ animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.43s both', marginTop: 0 }}>
-                      <p style={{
-                        fontFamily: 'var(--font-arcade)', fontSize: labelSize, letterSpacing: '0.18em', margin: '0 0 16px', textTransform: 'uppercase',
-                        color: '#fff',
-                        WebkitTextStroke: '1.5px #000',
-                        paintOrder: 'stroke fill' as React.CSSProperties['paintOrder'],
-                        textShadow: '1px 1px 0 #000, 2px 2px 0 #000, 3px 3px 0 #111, 4px 4px 0 rgba(0,0,0,0.4), 5px 5px 0 rgba(255,255,255,0.35), 0 0 15px rgba(255,255,255,0.1)',
-                      }}>
-                        <span style={{ color: '#22c55e', WebkitTextStroke: '0px', textShadow: '1px 1px 0 #000, 2px 2px 0 #000, 3px 3px 0 rgba(0,0,0,0.4), 4px 4px 0 rgba(34,197,94,0.35), 0 0 12px rgba(34,197,94,0.6)', marginRight: 10 }}>$</span>INTERESTS
-                      </p>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        {expandedMember.hobbies.map((h, i) => (
-                          <div key={i} style={{
-                            display: 'flex', alignItems: 'center', gap: 12,
-                            background: 'linear-gradient(135deg, rgba(34,197,94,0.06) 0%, rgba(20,20,20,0.9) 40%, #1a1a1a 100%)',
-                            borderLeft: '3px solid #22c55e',
-                            border: '2px solid rgba(255,255,255,0.25)',
-                            borderLeftWidth: '3px',
-                            padding: `${hobbyPadV + 2}px ${hobbyPadH}px`,
-                            boxShadow: '4px 4px 0px rgba(34,197,94,0.15), 0 0 15px rgba(34,197,94,0.05), inset 0 0 20px rgba(0,0,0,0.4)',
-                            transition: 'all 0.2s ease',
-                          }}
-                          onMouseEnter={e => {
-                            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.45)';
-                            e.currentTarget.style.boxShadow = '4px 4px 0px rgba(34,197,94,0.25), 0 0 25px rgba(34,197,94,0.1), inset 0 0 20px rgba(0,0,0,0.4)';
-                            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(34,197,94,0.12) 0%, rgba(20,20,20,0.9) 40%, #1a1a1a 100%)';
-                          }}
-                          onMouseLeave={e => {
-                            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)';
-                            e.currentTarget.style.boxShadow = '4px 4px 0px rgba(34,197,94,0.15), 0 0 15px rgba(34,197,94,0.05), inset 0 0 20px rgba(0,0,0,0.4)';
-                            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(34,197,94,0.06) 0%, rgba(20,20,20,0.9) 40%, #1a1a1a 100%)';
-                          }}
-                          >
-                            <span style={{ color: '#22c55e', fontFamily: 'var(--font-arcade)', fontSize: hobbySize, textShadow: '0 0 6px rgba(34,197,94,0.5)' }}>&gt;</span>
-                            <span style={{
-                              fontFamily: 'var(--font-arcade)', fontSize: hobbySize, letterSpacing: '0.08em', color: '#fff',
-                              textShadow: '1px 1px 0 #000, 0 0 8px rgba(34,197,94,0.2)',
-                            }}>
-                              {h}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Experiences */}
-                  {expandedMember.experiences && expandedMember.experiences.length > 0 && (
-                    <div style={{ animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.5s both', marginTop: 0 }}>
-                      <p style={{
-                        fontFamily: 'var(--font-arcade)', fontSize: labelSize, letterSpacing: '0.18em', margin: '0 0 16px', textTransform: 'uppercase',
-                        color: '#fff',
-                        WebkitTextStroke: '1.5px #000',
-                        paintOrder: 'stroke fill' as React.CSSProperties['paintOrder'],
-                        textShadow: '1px 1px 0 #000, 2px 2px 0 #000, 3px 3px 0 #111, 4px 4px 0 rgba(0,0,0,0.4), 5px 5px 0 rgba(255,255,255,0.35), 0 0 15px rgba(255,255,255,0.1)',
-                      }}>
-                        <span style={{ color: '#22c55e', WebkitTextStroke: '0px', textShadow: '1px 1px 0 #000, 2px 2px 0 #000, 3px 3px 0 rgba(0,0,0,0.4), 4px 4px 0 rgba(34,197,94,0.35), 0 0 12px rgba(34,197,94,0.6)', marginRight: 10 }}>$</span>EXPERIENCE
-                      </p>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        {expandedMember.experiences.map((exp, i) => (
-                          <div key={i} style={{
-                            display: 'flex', alignItems: 'center', gap: 12,
-                            background: 'linear-gradient(135deg, rgba(34,197,94,0.06) 0%, rgba(20,20,20,0.9) 40%, #1a1a1a 100%)',
-                            border: '2px solid rgba(255,255,255,0.25)',
-                            borderLeftWidth: '3px',
-                            padding: `${expPadV + 2}px ${expPadH}px`,
-                            boxShadow: '4px 4px 0px rgba(34,197,94,0.15), 0 0 15px rgba(34,197,94,0.05), inset 0 0 20px rgba(0,0,0,0.4)',
-                            transition: 'all 0.2s ease',
-                          }}
-                          onMouseEnter={e => {
-                            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.45)';
-                            e.currentTarget.style.boxShadow = '4px 4px 0px rgba(34,197,94,0.25), 0 0 25px rgba(34,197,94,0.1), inset 0 0 20px rgba(0,0,0,0.4)';
-                            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(34,197,94,0.12) 0%, rgba(20,20,20,0.9) 40%, #1a1a1a 100%)';
-                          }}
-                          onMouseLeave={e => {
-                            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)';
-                            e.currentTarget.style.boxShadow = '4px 4px 0px rgba(34,197,94,0.15), 0 0 15px rgba(34,197,94,0.05), inset 0 0 20px rgba(0,0,0,0.4)';
-                            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(34,197,94,0.06) 0%, rgba(20,20,20,0.9) 40%, #1a1a1a 100%)';
-                          }}
-                          >
-                            {typeof exp === 'object' && exp.logo && (
-                              <img src={exp.logo} alt="" style={{ width: 24, height: 24, objectFit: 'contain', flexShrink: 0, borderRadius: 4, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }} />
-                            )}
-                            <span style={{ color: '#22c55e', fontFamily: 'var(--font-arcade)', fontSize: expSize, textShadow: '0 0 6px rgba(34,197,94,0.5)' }}>&gt;</span>
-                            <span style={{
-                              fontFamily: 'var(--font-arcade)', fontSize: expSize, letterSpacing: '0.08em', color: '#fff',
-                              textShadow: '1px 1px 0 #000, 0 0 8px rgba(34,197,94,0.2)',
-                            }}>{typeof exp === 'string' ? exp : exp.title}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </div>
 
                 {/* Socials + Nav — pinned to bottom */}
