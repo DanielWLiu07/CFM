@@ -2,8 +2,11 @@
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import dynamic from 'next/dynamic';
 import type { ClassMember } from './types';
 import { SOCIAL_ICONS } from './types';
+
+const LightPillar = dynamic(() => import('./LightPillar'), { ssr: false });
 
 type CRTPhase = 'idle' | 'dot' | 'line' | 'expand' | 'done' | 'flash' | 'shrink' | 'dotout' | 'afterglow';
 
@@ -66,7 +69,12 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
     window.addEventListener('mouseup', onUp);
   }, [panelPos]);
 
-  if (phase === 'idle') return null;
+  // Pre-warm LightPillar WebGL context even during idle — hidden 1x1 offscreen
+  if (phase === 'idle') return (
+    <div style={{ position: 'fixed', top: -9999, left: -9999, width: 1, height: 1, overflow: 'hidden', pointerEvents: 'none' }}>
+      <LightPillar paused quality="low" />
+    </div>
+  );
 
   const overlay = createPortal(
     <div style={{ position: 'fixed', inset: 0, zIndex: 99999, pointerEvents: phase === 'afterglow' ? 'none' : 'auto' }}>
@@ -358,15 +366,77 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
                     </div>
                   </div>
 
-                  {/* Background glow */}
-                  <div style={{
-                    position: 'absolute', top: '50%', left: '50%',
-                    width: '90%', height: '90%',
-                    transform: 'translate(-50%, -50%)',
-                    background: 'radial-gradient(ellipse at center, rgba(34,197,94,0.08) 0%, transparent 70%)',
-                    pointerEvents: 'none', zIndex: -2,
-                  }} />
                 </div>
+
+                {/* ── Background effects ── */}
+                {/* Light pillar — WebGL pre-warmed during idle, just unpauses here */}
+                <div style={{
+                  position: 'absolute', inset: -20, zIndex: 1, pointerEvents: 'none',
+                  opacity: 0.85,
+                }}>
+                  <LightPillar
+                    topColor="#22c55e"
+                    bottomColor="#0a3d1a"
+                    intensity={1.0}
+                    rotationSpeed={0.3}
+                    glowAmount={0.004}
+                    pillarWidth={4.0}
+                    pillarHeight={0.4}
+                    noiseIntensity={0.4}
+                    pillarRotation={25}
+                    mixBlendMode="screen"
+                    quality="low"
+                  />
+                </div>
+
+                {/* Scrolling grid overlay */}
+                <div className="crt-bg-grid" style={{
+                  position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 2,
+                }} />
+
+                {/* Rotating rings */}
+                <div className="crt-bg-ring" style={{
+                  position: 'absolute', top: '50%', left: '50%',
+                  width: '120%', height: '120%',
+                  pointerEvents: 'none', zIndex: 2,
+                }} />
+                <div className="crt-bg-ring" style={{
+                  position: 'absolute', top: '50%', left: '50%',
+                  width: '80%', height: '80%',
+                  borderStyle: 'dashed',
+                  pointerEvents: 'none', zIndex: 2,
+                }} />
+
+                {/* Corner decorations */}
+                {[[0,0],[1,0],[0,1],[1,1]].map(([x,y], i) => (
+                  <div key={i} style={{
+                    position: 'absolute',
+                    [y ? 'bottom' : 'top']: 30,
+                    [x ? 'right' : 'left']: 30,
+                    width: 20, height: 20,
+                    borderTop: y ? 'none' : '1px solid rgba(34,197,94,0.15)',
+                    borderBottom: y ? '1px solid rgba(34,197,94,0.15)' : 'none',
+                    borderLeft: x ? 'none' : '1px solid rgba(34,197,94,0.15)',
+                    borderRight: x ? '1px solid rgba(34,197,94,0.15)' : 'none',
+                    pointerEvents: 'none', zIndex: 3,
+                  }} />
+                ))}
+
+                {/* Crosshair center */}
+                <div style={{
+                  position: 'absolute', top: '50%', left: '50%',
+                  width: 1, height: 40,
+                  transform: 'translate(-50%, -50%)',
+                  background: 'rgba(34,197,94,0.1)',
+                  pointerEvents: 'none', zIndex: 2,
+                }} />
+                <div style={{
+                  position: 'absolute', top: '50%', left: '50%',
+                  width: 40, height: 1,
+                  transform: 'translate(-50%, -50%)',
+                  background: 'rgba(34,197,94,0.1)',
+                  pointerEvents: 'none', zIndex: 2,
+                }} />
               </div>}
 
               {/* Right — name top, socials bottom, middle scrolls */}
