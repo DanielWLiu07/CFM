@@ -4,14 +4,19 @@ function normalizeUrl(url: string): string {
   return url.replace(/\/+$/, "").trim();
 }
 
+function hasNavigableUrl(member: Member): boolean {
+  return Boolean(member.url && member.url !== "#");
+}
+
 export function getMemberByUrl(members: Member[], url: string): Member | undefined {
   const target = normalizeUrl(url);
   return members.find((m) => m.url && normalizeUrl(m.url) === target);
 }
 
 function getSlice(members: Member[], cohort?: string): Member[] {
-  if (!cohort) return members;
-  return members.filter((m) => m.cohort === cohort);
+  const navigableMembers = members.filter(hasNavigableUrl);
+  if (!cohort) return navigableMembers;
+  return navigableMembers.filter((m) => m.cohort === cohort);
 }
 
 function findByUrl(members: Member[], normalizedUrl: string): number {

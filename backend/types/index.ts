@@ -6,7 +6,6 @@ export interface Social {
 export interface Member {
   name: string;
   url: string;
-  tagline?: string;
   description: string;
   location: string;
   blurb: string;
