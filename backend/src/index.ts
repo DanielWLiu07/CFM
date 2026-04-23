@@ -1,4 +1,3 @@
-// #region agent log
 import express from "express";
 import cors from "cors";
 import membersRouter from "./routes/members.js";

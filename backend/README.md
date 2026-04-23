@@ -20,6 +20,7 @@ Add your entry using this structure:
 
 Note
 - if you don't have a website, leave it "#"
+- please put your avatar in the following directory: ./images/avatars/ (file types: png, jpeg, webp, svg)
 
 ```json
 {
@@ -29,7 +30,7 @@ Note
   "location": "Your City, Province",
   "blurb": "A longer description about you",
   "cohort": "graduating-year",
-  "avatar": "/images/avatars/yourname.png",
+  "avatar": "/images/avatars/fullname.png",
   "hobbies": ["hobby1", "hobby2", "hobby3"],
   "experiences": ["Experience 1", "Experience 2"],
   "socials": [
@@ -51,7 +52,7 @@ Note
   "location": "Toronto, ON",
   "blurb": "Drawn to the intersection of technology, creativity, and financial markets",
   "cohort": "2030",
-  "avatar": "/images/avatars/aadyakhanna.png",
+  "avatar": "/images/avatars/aadyakhanna.jpeg",
   "hobbies": ["hackathons", "music", "guitar"],
   "experiences": ["Product Engineer @ Zafin"],
   "socials": [
