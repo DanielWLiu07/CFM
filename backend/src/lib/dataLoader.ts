@@ -13,7 +13,9 @@ function validateMember(member: Member): boolean {
 }
 
 export function loadMembers(): Member[] {
-  if (cachedMembers) return cachedMembers;
+  if (cachedMembers) {
+    return cachedMembers;
+  }
 
   const dataPath = join(__dirname, "..", "..", "data", "members.json");
   const raw = readFileSync(dataPath, "utf-8");

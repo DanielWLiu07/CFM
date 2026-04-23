@@ -18,7 +18,7 @@ router.get("/", (req, res) => {
     return res.status(400).json({ error: "direction must be 'next' or 'prev'" });
   }
 
-  const members = loadMembers();
+  const members = loadMembers().filter((m) => m.url && m.url !== "#");
   const member =
     direction === "next" ? getNext(members, url, cohort) : getPrev(members, url, cohort);
 
