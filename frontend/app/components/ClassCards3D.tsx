@@ -311,15 +311,6 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
           url.searchParams.set('member', toSlug(member.name));
           window.history.replaceState({}, '', url.toString());
         }}
-        inkKey={inkKey}
-        onReplay={() => {
-          if (phase !== 'done' || !expandedMember) return;
-          setInkKey(k => k + 1);
-          setPhase('dot');
-          setTimeout(() => setPhase('line'), 80);
-          setTimeout(() => setPhase('expand'), 250);
-          setTimeout(() => setPhase('done'), 600);
-        }}
       />
     </>
   );

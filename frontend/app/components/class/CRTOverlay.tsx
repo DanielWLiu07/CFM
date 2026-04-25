@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
 import type { ClassMember } from './types';
@@ -16,11 +16,13 @@ interface CRTOverlayProps {
   phase: CRTPhase;
   closeExpanded: () => void;
   onNavigate: (member: ClassMember) => void;
-  inkKey: number;
-  onReplay?: () => void;
 }
 
-export default function CRTOverlay({ expandedMember, members, phase, closeExpanded, onNavigate, inkKey, onReplay }: CRTOverlayProps) {
+// Tuned text sizes — previously dev-controlled, now fixed.
+const BLURB_SIZE = 18;
+const LABEL_SIZE = 48;
+
+export default function CRTOverlay({ expandedMember, members, phase, closeExpanded, onNavigate }: CRTOverlayProps) {
   // Responsive — narrow = image inline with header instead of side panel
   const [isNarrow, setIsNarrow] = useState(false);
   useEffect(() => {
@@ -29,45 +31,6 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
   }, []);
-
-  // Image tuning
-  const [imgX, setImgX] = useState(0);
-  const [imgY, setImgY] = useState(0);
-  const [imgScale, setImgScale] = useState(100);
-  // Mask edges — each side independently (% from that edge)
-  const [maskTop, setMaskTop] = useState(5);
-  const [maskBottom, setMaskBottom] = useState(5);
-  const [maskLeft, setMaskLeft] = useState(5);
-  const [maskRight, setMaskRight] = useState(5);
-  // Noise
-  const [noiseScale, setNoiseScale] = useState(600);
-  const [noiseFreq, setNoiseFreq] = useState(10);
-  const [showDebug, setShowDebug] = useState(false);
-  // Text sizing
-  const [blurbSize, setBlurbSize] = useState(18);
-  const [hobbySize, setHobbySize] = useState(13);
-  const [hobbyPadV, setHobbyPadV] = useState(8);
-  const [hobbyPadH, setHobbyPadH] = useState(18);
-  const [expSize, setExpSize] = useState(14);
-  const [expPadV, setExpPadV] = useState(10);
-  const [expPadH, setExpPadH] = useState(16);
-  const [labelSize, setLabelSize] = useState(48);
-
-  // Draggable panel
-  const [panelPos, setPanelPos] = useState({ x: 10, y: 10 });
-  const dragRef = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null);
-  const startDrag = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    const cur = { sx: e.clientX, sy: e.clientY, ox: panelPos.x, oy: panelPos.y };
-    dragRef.current = cur;
-    const onMove = (ev: MouseEvent) => {
-      if (!dragRef.current) return;
-      setPanelPos({ x: dragRef.current.ox + ev.clientX - dragRef.current.sx, y: dragRef.current.oy + ev.clientY - dragRef.current.sy });
-    };
-    const onUp = () => { dragRef.current = null; window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-  }, [panelPos]);
 
   // Pre-warm LightPillar WebGL context even during idle — hidden 1x1 offscreen
   if (phase === 'idle') return (
@@ -644,7 +607,7 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
                       {'>'} cat ~/about.txt
                     </div>
                     <p style={{
-                      fontFamily: 'monospace', fontSize: blurbSize, color: '#22c55e',
+                      fontFamily: 'monospace', fontSize: BLURB_SIZE, color: '#22c55e',
                       lineHeight: 1.8, margin: 0,
                     }}>
                       {expandedMember.blurb}
@@ -657,7 +620,7 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
                     <>
                       <div style={{ animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.36s both' }}>
                         <p style={{
-                          fontFamily: 'var(--font-arcade)', fontSize: labelSize, letterSpacing: '0.18em', margin: '0 0 4px', textTransform: 'uppercase',
+                          fontFamily: 'var(--font-arcade)', fontSize: LABEL_SIZE, letterSpacing: '0.18em', margin: '0 0 4px', textTransform: 'uppercase',
                           color: '#fff',
                           WebkitTextStroke: '1.5px #000',
                           paintOrder: 'stroke fill' as React.CSSProperties['paintOrder'],
@@ -844,51 +807,5 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
     document.body
   );
 
-  const controlsPanel = (phase === 'done' || phase === 'flash') && createPortal(
-    <div onClick={e => e.stopPropagation()} style={{
-      position: 'fixed', top: panelPos.y, left: panelPos.x, zIndex: 999999,
-      background: 'rgba(0,0,0,0.92)', color: '#fff', padding: '12px 16px',
-      borderRadius: 8, width: 280, fontFamily: 'system-ui', fontSize: 11,
-      display: 'flex', flexDirection: 'column', gap: 5,
-    }}>
-      <div
-        onMouseDown={startDrag}
-        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'grab', userSelect: 'none' }}
-      >
-        <strong>Text Controls</strong>
-        <div style={{ display: 'flex', gap: 4 }}>
-          <button onClick={() => {
-            const out = JSON.stringify({ blurbSize, hobbySize, hobbyPadV, hobbyPadH, expSize, expPadV, expPadH, labelSize }, null, 2);
-            navigator.clipboard.writeText(out); alert(out);
-          }} style={{ background: '#333', color: '#fff', border: 'none', padding: '3px 8px', cursor: 'pointer', fontSize: 10, borderRadius: 4 }}>Copy</button>
-          {onReplay && (
-            <button onClick={onReplay} style={{ background: '#06c', color: '#fff', border: 'none', padding: '3px 8px', cursor: 'pointer', fontSize: 10, borderRadius: 4 }}>▶ Replay</button>
-          )}
-        </div>
-      </div>
-      {([
-        ['Blurb Size', blurbSize, setBlurbSize, 10, 32],
-        ['Label Size', labelSize, setLabelSize, 8, 48],
-        ['Hobby Size', hobbySize, setHobbySize, 8, 24],
-        ['Hobby Pad V', hobbyPadV, setHobbyPadV, 2, 20],
-        ['Hobby Pad H', hobbyPadH, setHobbyPadH, 4, 36],
-        ['Exp Size', expSize, setExpSize, 8, 24],
-        ['Exp Pad V', expPadV, setExpPadV, 2, 20],
-        ['Exp Pad H', expPadH, setExpPadH, 4, 36],
-      ] as [string, number, React.Dispatch<React.SetStateAction<number>>, number, number][]).map(([label, val, setter, min, max]) => (
-        <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <label style={{ width: 80, flexShrink: 0 }}>{label}</label>
-          <input type="range" min={min} max={max} step={1}
-            value={val}
-            onChange={e => setter(parseInt(e.target.value))}
-            style={{ flex: 1, height: 14 }}
-          />
-          <span style={{ width: 30, textAlign: 'right', fontFamily: 'monospace' }}>{val}</span>
-        </div>
-      ))}
-    </div>,
-    document.body
-  );
-
-  return <>{overlay}{controlsPanel}</>;
+  return overlay;
 }
