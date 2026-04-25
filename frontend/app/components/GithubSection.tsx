@@ -48,8 +48,8 @@ export default function GithubSection({ onVisibilityChange, audioRef, reducedMot
   const [showControls, setShowControls] = useState(false);
   const [animSettings, setAnimSettings] = useState<AnimSettings>(DEFAULT_SETTINGS);
   const [ghStats, setGhStats] = useState<{ stars: number; forks: number; commits: number } | null>(null);
-  const [catPos, setCatPos] = useState({ left: -415, bottom: -95, size: 435, rotate: 13 });
-  const [gearPos, setGearPos] = useState({ right: -490, bottom: -280, size: 830 });
+  const [catPos, setCatPos] = useState({ left: -91, bottom: -66, size: 508, rotate: 13 });
+  const [gearPos, setGearPos] = useState({ right: -82, bottom: -272, size: 899 });
   const [titlePos] = useState({ height: 715, mt: -50, mb: 20 });
 
   const replay = useCallback(() => {
@@ -289,28 +289,7 @@ export default function GithubSection({ onVisibilityChange, audioRef, reducedMot
         <TitleNoise visible={visible} reducedMotion={reducedMotion} />
       </div>
 
-      <div style={{ position: 'relative', width: '100%', maxWidth: 720, borderRadius: 12, boxShadow: '10px 14px 30px rgba(255,255,255,0.15), 4px 6px 10px rgba(255,255,255,0.1)', overflow: 'visible' }}>
-      {/* Cat — left side, outside terminal clip */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        ref={catRef}
-        src="/images/cat_github.webp"
-        alt=""
-        style={{
-          position: 'absolute',
-          left: catPos.left,
-          bottom: catPos.bottom,
-          width: catPos.size,
-          height: 'auto',
-          opacity: visible ? 1 : 0,
-          transition: 'opacity 0.8s ease 0.3s',
-          pointerEvents: 'none',
-          zIndex: -1,
-          filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.4))',
-        }}
-      />
-
-      {/* Gear — right side, outside terminal clip */}
+      {/* Gear — anchored to right edge of viewport, behind cat */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         ref={gearRef}
@@ -327,10 +306,32 @@ export default function GithubSection({ onVisibilityChange, audioRef, reducedMot
           transformOrigin: '90% 50%',
           transition: 'opacity 0.8s ease 0.4s',
           pointerEvents: 'none',
-          zIndex: -1,
+          zIndex: 1,
           filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.4))',
         }}
       />
+
+      {/* Cat — anchored to left edge of viewport, in front of gear */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        ref={catRef}
+        src="/images/cat_github.webp"
+        alt=""
+        style={{
+          position: 'absolute',
+          left: catPos.left,
+          bottom: catPos.bottom,
+          width: catPos.size,
+          height: 'auto',
+          opacity: visible ? 1 : 0,
+          transition: 'opacity 0.8s ease 0.3s',
+          pointerEvents: 'none',
+          zIndex: 2,
+          filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.4))',
+        }}
+      />
+
+      <div style={{ position: 'relative', width: '100%', maxWidth: 720, borderRadius: 12, boxShadow: '10px 14px 30px rgba(255,255,255,0.15), 4px 6px 10px rgba(255,255,255,0.1)', overflow: 'visible', zIndex: 3 }}>
 
       <div key={`terminal-${replayKey}`} style={{
         width: '100%',
@@ -529,6 +530,104 @@ export default function GithubSection({ onVisibilityChange, audioRef, reducedMot
       }}>
         BUILT BY CFM STUDENTS  //  2026
       </div>
+
+      {/* <CatGearTuner catPos={catPos} setCatPos={setCatPos} gearPos={gearPos} setGearPos={setGearPos} /> */}
     </section>
+  );
+}
+
+// Inline tuner panel for cat + gear positioning
+function CatGearTuner({
+  catPos, setCatPos, gearPos, setGearPos,
+}: {
+  catPos: { left: number; bottom: number; size: number; rotate: number };
+  setCatPos: React.Dispatch<React.SetStateAction<{ left: number; bottom: number; size: number; rotate: number }>>;
+  gearPos: { right: number; bottom: number; size: number };
+  setGearPos: React.Dispatch<React.SetStateAction<{ right: number; bottom: number; size: number }>>;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const panelStyle: React.CSSProperties = {
+    position: 'fixed', top: 50, right: 10, zIndex: 9999,
+    background: 'rgba(0,0,0,0.95)', border: '1px solid #444',
+    padding: '12px 14px', fontFamily: 'monospace', fontSize: 11,
+    color: '#fff', width: 320,
+  };
+
+  const row: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 };
+  const lbl: React.CSSProperties = { width: 60 };
+  const val: React.CSSProperties = { width: 60, textAlign: 'right' };
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        style={{
+          position: 'fixed', top: 50, right: 10, zIndex: 9999,
+          background: '#222', color: '#fff', border: '1px solid #555',
+          padding: '6px 12px', cursor: 'pointer', fontFamily: 'monospace', fontSize: 12,
+        }}
+      >CAT/GEAR</button>
+    );
+  }
+
+  return (
+    <div style={panelStyle}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+        <strong>CAT + GEAR TUNER</strong>
+        <button onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer' }}>X</button>
+      </div>
+
+      <div style={{ borderTop: '1px solid #333', paddingTop: 8, marginBottom: 10 }}>
+        <div style={{ color: '#8ff', marginBottom: 4 }}>CAT (left edge)</div>
+        <label style={row}>
+          <span style={lbl}>left</span>
+          <input type="range" min={-800} max={200} step={1} value={catPos.left}
+            onChange={e => setCatPos(p => ({ ...p, left: +e.target.value }))} style={{ flex: 1 }} />
+          <span style={val}>{catPos.left}px</span>
+        </label>
+        <label style={row}>
+          <span style={lbl}>bottom</span>
+          <input type="range" min={-600} max={400} step={1} value={catPos.bottom}
+            onChange={e => setCatPos(p => ({ ...p, bottom: +e.target.value }))} style={{ flex: 1 }} />
+          <span style={val}>{catPos.bottom}px</span>
+        </label>
+        <label style={row}>
+          <span style={lbl}>size</span>
+          <input type="range" min={100} max={900} step={1} value={catPos.size}
+            onChange={e => setCatPos(p => ({ ...p, size: +e.target.value }))} style={{ flex: 1 }} />
+          <span style={val}>{catPos.size}px</span>
+        </label>
+      </div>
+
+      <div style={{ borderTop: '1px solid #333', paddingTop: 8, marginBottom: 10 }}>
+        <div style={{ color: '#f8f', marginBottom: 4 }}>GEAR (right edge)</div>
+        <label style={row}>
+          <span style={lbl}>right</span>
+          <input type="range" min={-800} max={200} step={1} value={gearPos.right}
+            onChange={e => setGearPos(p => ({ ...p, right: +e.target.value }))} style={{ flex: 1 }} />
+          <span style={val}>{gearPos.right}px</span>
+        </label>
+        <label style={row}>
+          <span style={lbl}>bottom</span>
+          <input type="range" min={-600} max={400} step={1} value={gearPos.bottom}
+            onChange={e => setGearPos(p => ({ ...p, bottom: +e.target.value }))} style={{ flex: 1 }} />
+          <span style={val}>{gearPos.bottom}px</span>
+        </label>
+        <label style={row}>
+          <span style={lbl}>size</span>
+          <input type="range" min={200} max={1400} step={1} value={gearPos.size}
+            onChange={e => setGearPos(p => ({ ...p, size: +e.target.value }))} style={{ flex: 1 }} />
+          <span style={val}>{gearPos.size}px</span>
+        </label>
+      </div>
+
+      <button
+        onClick={() => navigator.clipboard.writeText(
+          `cat: { left: ${catPos.left}, bottom: ${catPos.bottom}, size: ${catPos.size} }\ngear: { right: ${gearPos.right}, bottom: ${gearPos.bottom}, size: ${gearPos.size} }`
+        )}
+        style={{ background: '#333', border: '1px solid #555', color: '#fff', padding: '4px 10px', fontSize: 10, cursor: 'pointer', width: '100%' }}
+      >COPY VALUES</button>
+    </div>
   );
 }
