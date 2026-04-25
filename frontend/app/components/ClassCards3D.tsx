@@ -186,7 +186,7 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
         (obj.element as any)._crtTurnOff?.();
       });
       renderer.render(scene, camera);
-      swapTimeoutRef.current = setTimeout(buildNewCards, 350);
+      swapTimeoutRef.current = setTimeout(buildNewCards, 200);
     } else {
       buildNewCards();
     }
