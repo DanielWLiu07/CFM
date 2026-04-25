@@ -122,7 +122,6 @@ export function createCardElement(member: ClassMember, cardW: number, cardH: num
 
   if (member.avatar) {
     const img = document.createElement('img');
-    img.src = member.avatar;
     img.alt = member.name;
     img.loading = 'eager';
     img.decoding = 'async';
@@ -131,7 +130,26 @@ export function createCardElement(member: ClassMember, cardW: number, cardH: num
       image-rendering: auto;
       filter: saturate(0.8) contrast(1.1) brightness(0.95);
       transition: filter 0.3s ease, image-rendering 0s;
+      opacity: 0;
+      transition: opacity 0.2s ease, filter 0.3s ease, image-rendering 0s;
     `;
+
+    // Show image once loaded
+    img.onload = () => {
+      img.style.opacity = '1';
+    };
+
+    // Handle errors by showing initials instead
+    img.onerror = () => {
+      const initials = document.createElement('span');
+      initials.textContent = getInitials(member.name);
+      initials.style.cssText = `font-family: var(--font-arcade); font-size: 48px; color: #333; letter-spacing: 0.08em;`;
+      avatarRegion.innerHTML = '';
+      avatarRegion.appendChild(initials);
+      avatarRegion.dataset.hasImage = 'false';
+    };
+
+    img.src = member.avatar; // Set src after handlers
     avatarRegion.appendChild(img);
     avatarRegion.dataset.hasImage = 'true';
   } else {
