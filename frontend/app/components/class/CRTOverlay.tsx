@@ -51,7 +51,7 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
   const [expSize, setExpSize] = useState(14);
   const [expPadV, setExpPadV] = useState(10);
   const [expPadH, setExpPadH] = useState(16);
-  const [labelSize, setLabelSize] = useState(32);
+  const [labelSize, setLabelSize] = useState(48);
 
   // Draggable panel
   const [panelPos, setPanelPos] = useState({ x: 10, y: 10 });
@@ -222,24 +222,37 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
                   animation: 'panel-out 0.3s ease forwards',
                 } : {}),
               }}>
-                {/* CRT monitor card — 3D tilted toward right, matches class page exactly */}
-                {/* Perspective container — rotation applied here like Three.js does */}
+                {/* Perspective container holds: rotating/floating card rig, then static nav buttons. */}
                 <div style={{
                   width: 'min(380px, 85%)',
-                  aspectRatio: '3 / 4',
                   position: 'relative',
                   zIndex: 10,
                   transformStyle: 'preserve-3d',
                   perspective: 900,
                   animation: 'content-fade-up 0.6s cubic-bezier(0.16,1,0.3,1) 0.2s both',
                 }}>
-                  {/* 3D rotated wrapper — like CSS3DObject rotation */}
-                  <div className="crt-phone-card" style={{
-                    width: '100%', height: '100%',
+                  {/* 3D rotated rig — holds card AND nav buttons so they share the same tilted,
+                      floating plane. Buttons use pure CSS :hover (no JS), so the rig's animation
+                      no longer interferes with hover state. */}
+                  <div style={{
+                    width: '100%',
                     position: 'relative',
                     transform: 'rotateY(5deg)',
                     transformStyle: 'preserve-3d',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 24,
+                    animation: 'crt-card-float 6s ease-in-out infinite',
+                    transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), filter 0.4s ease',
                   }}>
+                    {/* Card slot — holds depth layers + bezel + screen. Carries `.crt-phone-card`
+                        so :hover styles only apply when hovering the card itself, not the buttons. */}
+                    <div className="crt-phone-card" style={{
+                      width: '100%',
+                      aspectRatio: '3 / 4',
+                      position: 'relative',
+                      transformStyle: 'preserve-3d',
+                    }}>
                     {/* Depth layers — shift left (dx=-1 for left column card) */}
                     {[6,5,4,3,2,1].map(i => {
                       const v = Math.round(140 + (i/6) * 115);
@@ -364,8 +377,9 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
                         </div>
                       </div>
                     </div>
+                    </div>
+                    {/* end card slot */}
                   </div>
-
                 </div>
 
                 {/* ── Background effects ── */}
@@ -437,6 +451,7 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
                   background: 'rgba(34,197,94,0.1)',
                   pointerEvents: 'none', zIndex: 2,
                 }} />
+
               </div>}
 
               {/* Right — name top, socials bottom, middle scrolls */}
@@ -450,6 +465,61 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
                   animation: 'panel-out 0.3s ease forwards',
                 } : {}),
               }}>
+                {/* Corner brackets — terminal frame chrome. Top-right omitted; the close
+                    button visually anchors that corner instead. */}
+                {!isNarrow && [
+                  { top: 36, left: 16, brT: 1, brL: 1 },
+                  { bottom: 36, left: 16, brB: 1, brL: 1 },
+                  { bottom: 36, right: 16, brB: 1, brR: 1 },
+                ].map((p, i) => (
+                  <div key={i} style={{
+                    position: 'absolute',
+                    top: p.top, bottom: p.bottom, left: p.left, right: p.right,
+                    width: 14, height: 14,
+                    borderTop: p.brT ? '1px solid rgba(34,197,94,0.4)' : 'none',
+                    borderBottom: p.brB ? '1px solid rgba(34,197,94,0.4)' : 'none',
+                    borderLeft: p.brL ? '1px solid rgba(34,197,94,0.4)' : 'none',
+                    borderRight: p.brR ? '1px solid rgba(34,197,94,0.4)' : 'none',
+                    pointerEvents: 'none', zIndex: 22,
+                  }} />
+                ))}
+
+                {/* Exit button — top right, closes the overlay */}
+                <button
+                  onClick={e => { e.stopPropagation(); closeExpanded(); }}
+                  aria-label="Close"
+                  style={{
+                    position: 'absolute', top: 40, right: 16, zIndex: 30,
+                    fontFamily: 'var(--font-arcade)', fontSize: 18,
+                    color: '#fff', border: '1px solid #444',
+                    width: 36, height: 36,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: 0,
+                    background: '#1a1a1a', boxShadow: '3px 3px 0px rgba(0,0,0,0.4)',
+                    cursor: 'pointer', transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = '#000'; e.currentTarget.style.borderColor = '#ef4444'; e.currentTarget.style.boxShadow = '0 0 12px rgba(239,68,68,0.5), 3px 3px 0px rgba(0,0,0,0.4)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = '#1a1a1a'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#444'; e.currentTarget.style.boxShadow = '3px 3px 0px rgba(0,0,0,0.4)'; }}
+                >
+                  ×
+                </button>
+
+                {/* Fake code-editor line rail — static decoration, top to bottom on left edge */}
+                {!isNarrow && (
+                  <div style={{
+                    position: 'absolute', left: 16, top: 60, bottom: 60,
+                    width: 22, fontFamily: 'monospace', fontSize: 9,
+                    color: 'rgba(255,255,255,0.18)',
+                    borderRight: '1px solid rgba(255,255,255,0.06)',
+                    display: 'flex', flexDirection: 'column', justifyContent: 'space-around',
+                    paddingRight: 6, textAlign: 'right',
+                    pointerEvents: 'none', zIndex: 19, letterSpacing: '0.05em',
+                  }}>
+                    {Array.from({ length: 18 }, (_, i) => (
+                      <span key={i}>{String(i + 1).padStart(2, '0')}</span>
+                    ))}
+                  </div>
+                )}
                 {/* Scrolling ticker tape */}
                 <div style={{
                   overflow: 'hidden', background: '#000', borderBottom: '2px solid #000',
@@ -587,7 +657,7 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
                     <>
                       <div style={{ animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.36s both' }}>
                         <p style={{
-                          fontFamily: 'var(--font-arcade)', fontSize: labelSize, letterSpacing: '0.18em', margin: '0 0 12px', textTransform: 'uppercase',
+                          fontFamily: 'var(--font-arcade)', fontSize: labelSize, letterSpacing: '0.18em', margin: '0 0 4px', textTransform: 'uppercase',
                           color: '#fff',
                           WebkitTextStroke: '1.5px #000',
                           paintOrder: 'stroke fill' as React.CSSProperties['paintOrder'],
@@ -636,50 +706,52 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
                     </a>
                   ))}
 
-                  {/* Prev / Next arrows — wrap around */}
-                  <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-                    {(() => {
-                      const idx = members.findIndex(m => m.name === expandedMember.name);
-                      const prev = members[(idx - 1 + members.length) % members.length];
-                      const next = members[(idx + 1) % members.length];
-                      return (
-                        <>
-                          <button
-                            onClick={e => { e.stopPropagation(); onNavigate(prev); }}
-                            style={{
-                              fontFamily: 'var(--font-arcade)', fontSize: 20,
-                              color: '#fff', border: '1px solid #444',
-                              width: 44, height: 44,
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              padding: 0,
-                              background: '#1a1a1a', boxShadow: '3px 3px 0px rgba(0,0,0,0.4)',
-                              cursor: 'pointer', transition: 'all 0.2s ease',
-                            }}
-                            onMouseEnter={e => { e.currentTarget.style.background = '#22c55e'; e.currentTarget.style.color = '#000'; e.currentTarget.style.borderColor = '#22c55e'; e.currentTarget.style.boxShadow = '0 0 12px rgba(34,197,94,0.5), 3px 3px 0px rgba(0,0,0,0.4)'; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = '#1a1a1a'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#444'; e.currentTarget.style.boxShadow = '3px 3px 0px rgba(0,0,0,0.4)'; }}
-                          >
-                            &lt;
-                          </button>
-                          <button
-                            onClick={e => { e.stopPropagation(); onNavigate(next); }}
-                            style={{
-                              fontFamily: 'var(--font-arcade)', fontSize: 20,
-                              color: '#fff', border: '1px solid #444',
-                              width: 44, height: 44,
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              padding: 0,
-                              background: '#1a1a1a', boxShadow: '3px 3px 0px rgba(0,0,0,0.4)',
-                              cursor: 'pointer', transition: 'all 0.2s ease',
-                            }}
-                            onMouseEnter={e => { e.currentTarget.style.background = '#22c55e'; e.currentTarget.style.color = '#000'; e.currentTarget.style.borderColor = '#22c55e'; e.currentTarget.style.boxShadow = '0 0 12px rgba(34,197,94,0.5), 3px 3px 0px rgba(0,0,0,0.4)'; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = '#1a1a1a'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#444'; e.currentTarget.style.boxShadow = '3px 3px 0px rgba(0,0,0,0.4)'; }}
-                          >
-                            &gt;
-                          </button>
-                        </>
-                      );
-                    })()}
-                  </div>
+                  {/* Prev / Next arrows — flat 2D, right side of socials row, all viewports */}
+                  {(
+                    <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+                      {(() => {
+                        const idx = members.findIndex(m => m.name === expandedMember.name);
+                        const prev = members[(idx - 1 + members.length) % members.length];
+                        const next = members[(idx + 1) % members.length];
+                        return (
+                          <>
+                            <button
+                              onClick={e => { e.stopPropagation(); onNavigate(prev); }}
+                              style={{
+                                fontFamily: 'var(--font-arcade)', fontSize: 20,
+                                color: '#fff', border: '1px solid #444',
+                                width: 44, height: 44,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                padding: 0,
+                                background: '#1a1a1a', boxShadow: '3px 3px 0px rgba(0,0,0,0.4)',
+                                cursor: 'pointer', transition: 'all 0.2s ease',
+                              }}
+                              onMouseEnter={e => { e.currentTarget.style.background = '#22c55e'; e.currentTarget.style.color = '#000'; e.currentTarget.style.borderColor = '#22c55e'; e.currentTarget.style.boxShadow = '0 0 12px rgba(34,197,94,0.5), 3px 3px 0px rgba(0,0,0,0.4)'; }}
+                              onMouseLeave={e => { e.currentTarget.style.background = '#1a1a1a'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#444'; e.currentTarget.style.boxShadow = '3px 3px 0px rgba(0,0,0,0.4)'; }}
+                            >
+                              &lt;
+                            </button>
+                            <button
+                              onClick={e => { e.stopPropagation(); onNavigate(next); }}
+                              style={{
+                                fontFamily: 'var(--font-arcade)', fontSize: 20,
+                                color: '#fff', border: '1px solid #444',
+                                width: 44, height: 44,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                padding: 0,
+                                background: '#1a1a1a', boxShadow: '3px 3px 0px rgba(0,0,0,0.4)',
+                                cursor: 'pointer', transition: 'all 0.2s ease',
+                              }}
+                              onMouseEnter={e => { e.currentTarget.style.background = '#22c55e'; e.currentTarget.style.color = '#000'; e.currentTarget.style.borderColor = '#22c55e'; e.currentTarget.style.boxShadow = '0 0 12px rgba(34,197,94,0.5), 3px 3px 0px rgba(0,0,0,0.4)'; }}
+                              onMouseLeave={e => { e.currentTarget.style.background = '#1a1a1a'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#444'; e.currentTarget.style.boxShadow = '3px 3px 0px rgba(0,0,0,0.4)'; }}
+                            >
+                              &gt;
+                            </button>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  )}
                 </div>
 
                 {/* Terminal status bar */}
