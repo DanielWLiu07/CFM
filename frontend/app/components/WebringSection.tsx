@@ -11,9 +11,11 @@ import { FOCAL, TAU, LOD_DOT, LOD_SIMPLE, easeInOutCubic, lerp, getCameraEye, ge
 import SearchPanel from './webring/SearchPanel';
 import ProfilePanel from './webring/ProfilePanel';
 import ControlsBar from './webring/ControlsBar';
-import ArrowTuner from './ArrowTuner';
 
 const WebringBackground = dynamic(() => import('./WebringBackground'), { ssr: false });
+
+// Red arrow positioning — tuned values, no longer state-driven
+const ARROW_CONFIG = { top: '-32%', right: '-32%', width: 'min(1100px, 85vw)' };
 
 export default function WebringSection({ onVisibilityChange, audioRef, reducedMotion, sectionRefOut }: WebringSectionProps) {
   const { members: membersData } = useMembers();
@@ -130,9 +132,6 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
   const matchingIndicesRef = useRef<Set<number>>(new Set());
   const simValuesRef = useRef<Record<number, number>>({});
   const [simTick, setSimTick] = useState(0);
-
-  // Red arrow tuner state
-  const [arrowConfig, setArrowConfig] = useState({ top: '-32%', right: '-32%', width: 'min(1100px, 85vw)' });
 
   // Search panel state
   const panelRef = useRef<HTMLDivElement>(null);
@@ -1060,9 +1059,9 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
       <div
         className="absolute pointer-events-none select-none"
         style={{
-          top: arrowConfig.top,
-          right: arrowConfig.right,
-          width: arrowConfig.width,
+          top: ARROW_CONFIG.top,
+          right: ARROW_CONFIG.right,
+          width: ARROW_CONFIG.width,
           zIndex: 2,
           animation: 'webring-arrow-float-red 9s ease-in-out infinite',
         }}
@@ -1149,9 +1148,6 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
         handleZoomUp={handleZoomUp}
         handleResetView={handleResetView}
       />
-
-      {/* Arrow tuner — for development */}
-      {/* <ArrowTuner onConfigChange={setArrowConfig} initialConfig={arrowConfig} /> */}
     </section>
   );
 }
