@@ -38,23 +38,25 @@ function Candle({ bull, totalH, bodyH, bodyTopPx, elevation }: CandleData) {
 // Per-candle margins (LEFT_MARGINS / RIGHT_MARGINS) position each candle so its top
 // aligns with the diagonal, computed as: totalH + marginBot = container_bottom - target_top.
 
+// bull = body-top higher than previous candle's body-top (made a higher high)
+// Bodies are tuned to alternate up/down so red/green counts are balanced.
 const LEFT_CANDLES: CandleData[] = [
-  { bull: true,  totalH: 250, bodyH: 100, bodyTopPx: 90,  elevation: 10 },  // outermost — bottom-left
-  { bull: false, totalH: 280, bodyH: 70,  bodyTopPx: 160, elevation: 3  },  // outer — bottom-left corner
-  { bull: false, totalH: 330, bodyH: 180, bodyTopPx: 40,  elevation: 18 },  // ascending
-  { bull: false, totalH: 290, bodyH: 40,  bodyTopPx: 110, elevation: 4  },  // ascending
-  { bull: true,  totalH: 360, bodyH: 120, bodyTopPx: 20,  elevation: 14 },  // ascending
-  { bull: true,  totalH: 380, bodyH: 160, bodyTopPx: 90,  elevation: 5  },  // inner — aligns with C
+  { bull: true,  totalH: 250, bodyH: 100, bodyTopPx: 30,  elevation: 10 },  // BT 150 — opener (bull)
+  { bull: false, totalH: 280, bodyH: 70,  bodyTopPx: 180, elevation: 3  },  // BT 100 < 150 → down
+  { bull: true,  totalH: 330, bodyH: 180, bodyTopPx: 85,  elevation: 18 },  // BT 250 > 100 → up
+  { bull: false, totalH: 290, bodyH: 40,  bodyTopPx: 190, elevation: 4  },  // BT 200 < 250 → down
+  { bull: true,  totalH: 360, bodyH: 120, bodyTopPx: 65,  elevation: 14 },  // BT 380 > 200 → up
+  { bull: false, totalH: 380, bodyH: 160, bodyTopPx: 180, elevation: 5  },  // BT 320 < 380 → down (aligns with C)
 ];
 const LEFT_MARGINS = [-70, 0, 5, 100, 85, 120];
 
 const RIGHT_CANDLES: CandleData[] = [
-  { bull: true,  totalH: 390, bodyH: 160, bodyTopPx: 100, elevation: 5  },  // inner — aligns with M
-  { bull: true,  totalH: 370, bodyH: 180, bodyTopPx: 60,  elevation: 12 },  // ascending outward
-  { bull: false, totalH: 340, bodyH: 30,  bodyTopPx: 170, elevation: 21 },  // ascending
-  { bull: false, totalH: 310, bodyH: 70,  bodyTopPx: 24,  elevation: 8  },  // ascending
-  { bull: false, totalH: 330, bodyH: 200, bodyTopPx: 40,  elevation: 26 },  // outer — top-right corner
-  { bull: true,  totalH: 270, bodyH: 90,  bodyTopPx: 30,  elevation: 15 },  // outermost — top-right
+  { bull: true,  totalH: 390, bodyH: 160, bodyTopPx: 75,  elevation: 5  },  // BT 480 > 320 → up (aligns with M)
+  { bull: false, totalH: 370, bodyH: 180, bodyTopPx: 160, elevation: 12 },  // BT 450 < 480 → down
+  { bull: true,  totalH: 340, bodyH: 30,  bodyTopPx: 85,  elevation: 21 },  // BT 580 > 450 → up
+  { bull: false, totalH: 310, bodyH: 70,  bodyTopPx: 80,  elevation: 8  },  // BT 500 < 580 → down
+  { bull: true,  totalH: 330, bodyH: 200, bodyTopPx: 75,  elevation: 26 },  // BT 700 > 500 → up
+  { bull: false, totalH: 270, bodyH: 90,  bodyTopPx: 110, elevation: 15 },  // BT 620 < 700 → down
 ];
 const RIGHT_MARGINS = [165, 240, 325, 270, 445, 460];
 
@@ -451,36 +453,182 @@ export default function ReadyOverlay({ onStart, muted, onToggleMute, volume, onV
         style={{ width: 380, height: 380, transform: 'rotate(20deg) scaleX(1.05)' }}
       />
 
-      {/* Effects hint — points down toward the page-level effects toggle button */}
-      <div
-        className="absolute z-[999] pointer-events-none select-none"
-        style={{
-          bottom: 60,
-          right: 56,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: 4,
-          opacity: 1,
-        }}
-      >
-        <span style={{ fontFamily: 'var(--font-arcade)', fontSize: 14, letterSpacing: '0.15em', color: '#fff', whiteSpace: 'nowrap' }}>
-          ENABLE EFFECTS
-        </span>
-        <svg width="50" height="60" viewBox="0 0 50 60" fill="none" style={{ marginTop: 4 }}>
-          <defs>
-            <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-              <polygon points="0 0, 8 3, 0 6" fill="#fff" />
-            </marker>
-          </defs>
-          <path d="M10 4 Q6 30, 20 44 Q30 52, 42 54" stroke="#fff" strokeWidth="2" strokeLinecap="round" fill="none" markerEnd="url(#arrowhead)" />
-        </svg>
-      </div>
+      {/* Effects hint — pixelated arrow pointing toward effects toggle */}
+      <EffectsHint />
 
       {/* Mute button — bottom right */}
       <div className="absolute bottom-4 right-4 z-[999]">
         <MuteButton muted={muted} onToggle={onToggleMute} volume={volume} onVolumeChange={onVolumeChange} disabled={audioDisabled} />
       </div>
     </div>
+  );
+}
+
+// ── Effects Hint with in-place tuner ─────────────────────────────────────────
+interface LabelState {
+  bottom: number;
+  right: number;
+  rotation: number;
+  scale: number;
+}
+
+function EffectsHint() {
+  const [effects, setEffects] = useState<LabelState>({ bottom: 60, right: 69, rotation: -26, scale: 1 });
+  const [vol, setVol] = useState<LabelState>({ bottom: 60, right: 7, rotation: 0, scale: 1 });
+  const [showTuner, setShowTuner] = useState(false);
+
+  const effectsRef = useRef<HTMLDivElement>(null);
+  const volRef     = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const els = [effectsRef.current, volRef.current].filter(Boolean) as HTMLDivElement[];
+    if (els.length === 0) return;
+
+    // Hide at start, then pop up from bottom — early so they're visible during the load screen
+    gsap.set(els, { opacity: 0, scaleY: 0, y: 0, transformOrigin: 'center bottom' });
+
+    // Intro pops in fast, stepped for 8-bit feel
+    const intro = gsap.timeline({ delay: 0.4 });
+    intro.to(effectsRef.current, { opacity: 1, scaleY: 1, duration: 0.4, ease: 'steps(5)' }, 0);
+    intro.to(volRef.current,     { opacity: 1, scaleY: 1, duration: 0.4, ease: 'steps(5)' }, 0.15);
+
+    // Vertical-only bobs
+    const bob1 = gsap.to(effectsRef.current, {
+      y: -10, duration: 1.0, ease: 'steps(4)', repeat: -1, yoyo: true, delay: 0.9,
+    });
+    const bob2 = gsap.to(volRef.current, {
+      y: -8, duration: 1.2, ease: 'steps(4)', repeat: -1, yoyo: true, delay: 1.1,
+    });
+
+    return () => {
+      intro.kill();
+      bob1.kill(); bob2.kill();
+    };
+  }, []);
+
+  const renderLabel = (text: string, s: LabelState, ref: React.RefObject<HTMLDivElement | null>) => (
+    <div
+      ref={ref}
+      className="absolute z-[999] select-none"
+      style={{
+        bottom: s.bottom,
+        right: s.right,
+        pointerEvents: 'none',
+        // GSAP owns transform on this outer div (scaleY + y bob)
+      }}
+    >
+      <div
+        style={{
+          display: 'inline-block',
+          transform: `rotate(${s.rotation}deg) scale(${s.scale})`,
+          transformOrigin: 'center bottom',
+          fontFamily: 'var(--font-arcade)',
+          fontSize: 14,
+          letterSpacing: '0.2em',
+          color: '#fff',
+          lineHeight: 1.25,
+          textAlign: 'center',
+          whiteSpace: 'pre-line',
+          // stacked extrusion mirrors the CFM/candle 3d-shadow technique, scaled small
+          textShadow:
+            '1px 1px 0 #000, 2px 2px 0 #111, 3px 3px 0 rgba(0,0,0,0.6),' +
+            ' 4px 4px 0 rgba(255,255,255,0.25), 0 0 14px rgba(255,255,255,0.35)',
+          WebkitTextStroke: '0.5px rgba(255,255,255,0.6)',
+        }}
+      >
+        {text}
+      </div>
+    </div>
+  );
+
+  const renderSliders = (
+    label: string,
+    s: LabelState,
+    setS: React.Dispatch<React.SetStateAction<LabelState>>,
+  ) => (
+    <div style={{ marginBottom: 12, paddingBottom: 8, borderBottom: '1px solid #333' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+        <strong style={{ color: '#8ff' }}>{label}</strong>
+        <button
+          onClick={() => navigator.clipboard.writeText(`bottom: ${s.bottom}, right: ${s.right}, rotation: ${s.rotation}deg, scale: ${s.scale}`)}
+          style={{ background: '#333', border: '1px solid #555', color: '#fff', padding: '1px 6px', fontSize: 10, cursor: 'pointer' }}
+        >COPY</button>
+      </div>
+
+      <div style={{ marginBottom: 6 }}>
+        <div style={{ marginBottom: 2, color: '#aaa', fontSize: 10 }}>BOTTOM (px)</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <input type="range" min={0} max={600} step={1} value={s.bottom}
+            onChange={e => setS(p => ({ ...p, bottom: parseInt(e.target.value) }))} style={{ flex: 1 }} />
+          <span style={{ width: 50, textAlign: 'right' }}>{s.bottom}px</span>
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 6 }}>
+        <div style={{ marginBottom: 2, color: '#aaa', fontSize: 10 }}>RIGHT (px)</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <input type="range" min={0} max={1200} step={1} value={s.right}
+            onChange={e => setS(p => ({ ...p, right: parseInt(e.target.value) }))} style={{ flex: 1 }} />
+          <span style={{ width: 50, textAlign: 'right' }}>{s.right}px</span>
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 6 }}>
+        <div style={{ marginBottom: 2, color: '#aaa', fontSize: 10 }}>ROTATION (deg)</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <input type="range" min={-180} max={180} step={1} value={s.rotation}
+            onChange={e => setS(p => ({ ...p, rotation: parseInt(e.target.value) }))} style={{ flex: 1 }} />
+          <span style={{ width: 50, textAlign: 'right' }}>{s.rotation}°</span>
+        </div>
+      </div>
+
+      <div>
+        <div style={{ marginBottom: 2, color: '#aaa', fontSize: 10 }}>SCALE</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <input type="range" min={0.3} max={3} step={0.05} value={s.scale}
+            onChange={e => setS(p => ({ ...p, scale: parseFloat(e.target.value) }))} style={{ flex: 1 }} />
+          <span style={{ width: 50, textAlign: 'right' }}>{s.scale.toFixed(2)}</span>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <>
+      {renderLabel('ENABLE\nEFFECTS', effects, effectsRef)}
+      {renderLabel('VOLUME', vol, volRef)}
+
+      {/* Tuner toggle button */}
+      <button
+        onClick={(e) => { e.stopPropagation(); setShowTuner(s => !s); }}
+        style={{
+          position: 'fixed', bottom: 10, left: 10, zIndex: 9999,
+          background: '#222', color: '#fff', border: '1px solid #555',
+          padding: '4px 10px', fontSize: 11, fontFamily: 'monospace', cursor: 'pointer',
+        }}
+      >
+        {showTuner ? 'HIDE' : 'TUNE'} LABELS
+      </button>
+
+      {/* Tuner panel */}
+      {showTuner && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            position: 'fixed', bottom: 40, left: 10, zIndex: 9999,
+            background: '#111', border: '1px solid #555', padding: 12,
+            fontFamily: 'monospace', fontSize: 11, color: '#fff', width: 300,
+            maxHeight: '85vh', overflowY: 'auto',
+          }}
+        >
+          <div style={{ marginBottom: 10 }}>
+            <strong>OVERLAY LABEL TUNER</strong>
+          </div>
+
+          {renderSliders('EFFECTS', effects, setEffects)}
+          {renderSliders('VOLUME', vol, setVol)}
+        </div>
+      )}
+    </>
   );
 }
