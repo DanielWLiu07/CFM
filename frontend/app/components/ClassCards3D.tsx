@@ -92,7 +92,16 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
 
       const containerW = containerWidth || container.clientWidth;
       if (containerW < 100) return; // wait for layout
-      if (members.length === 0) { renderer.setSize(containerW, 0); renderer.domElement.style.overflow = 'visible'; container.style.height = '0px'; renderer.render(scene, camera); return; }
+      if (members.length === 0) {
+        // Empty state: hide via CSS rather than collapsing the renderer to height 0,
+        // which can leave CSS3DRenderer in an invalid state and produce blank frames
+        // when the next non-empty render arrives mid-transition.
+        renderer.domElement.style.display = 'none';
+        container.style.height = '0px';
+        return;
+      }
+      // Restore visibility in case we're returning from an empty filter result.
+      renderer.domElement.style.display = '';
 
       const responsiveCols = containerW >= 1000 ? COLS : containerW >= 700 ? 3 : containerW >= 450 ? 2 : 1;
       const cols = Math.min(responsiveCols, members.length);
@@ -263,6 +272,19 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, [phase]);
+
+  // Hard safety: if this component ever unmounts (route change, hot reload, error
+  // recovery) while we're holding the scroll lock or have pending close timers,
+  // release them. Without this, the page can be left non-scrollable and appear
+  // blank/white even though content is mounted underneath.
+  useEffect(() => {
+    return () => {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+      closeTimersRef.current.forEach(t => clearTimeout(t));
+      closeTimersRef.current = [];
+    };
+  }, []);
 
   // Lock scroll + ESC to close
   useEffect(() => {

@@ -347,6 +347,13 @@ export default function Home() {
   useEffect(() => {
     document.body.classList.toggle('overflow-hidden', !started);
     document.documentElement.classList.toggle('overflow-hidden', !started);
+    // Always release the lock on unmount or before re-running, so a hot reload
+    // / route change while !started doesn't strand the page in a non-scrollable
+    // state (a common cause of "white screen" reports).
+    return () => {
+      document.body.classList.remove('overflow-hidden');
+      document.documentElement.classList.remove('overflow-hidden');
+    };
   }, [started]);
 
   // Always start at top with overlay on load

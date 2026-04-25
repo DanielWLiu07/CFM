@@ -1,6 +1,18 @@
 'use client';
 
+import { useEffect } from 'react';
+
 export default function Error({ error, reset }: { error: Error; reset: () => void }) {
+  // Always release any scroll lock our heavy overlays might have left behind
+  // before the crash — otherwise this recovery UI is also unscrollable and
+  // looks like a "white screen" to the user.
+  useEffect(() => {
+    document.body.style.overflow = '';
+    document.documentElement.style.overflow = '';
+    document.body.classList.remove('overflow-hidden');
+    document.documentElement.classList.remove('overflow-hidden');
+  }, []);
+
   return (
     <div style={{
       minHeight: '100vh',

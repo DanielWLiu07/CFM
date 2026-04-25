@@ -28,12 +28,19 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  // Pre-warm LightPillar WebGL context even during idle — hidden 1x1 offscreen
-  if (phase === 'idle') return (
+  // Pre-warm LightPillar WebGL context even during idle — hidden 1x1 offscreen.
+  // Always rendered (even when overlay is open) so the WebGL context is allocated
+  // exactly once for the lifetime of this component, instead of churning on every
+  // phase transition. WebGL context creation/teardown is expensive and browsers
+  // cap concurrent contexts (~8-16); repeated remounts here can exhaust that
+  // budget and cause downstream canvases to render blank.
+  const prewarm = (
     <div style={{ position: 'fixed', top: -9999, left: -9999, width: 1, height: 1, overflow: 'hidden', pointerEvents: 'none' }}>
       <LightPillar paused quality="low" />
     </div>
   );
+
+  if (phase === 'idle') return prewarm;
 
   const overlay = createPortal(
     <div style={{ position: 'fixed', inset: 0, zIndex: 99999, pointerEvents: phase === 'afterglow' ? 'none' : 'auto' }}>
@@ -487,5 +494,5 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
     document.body
   );
 
-  return overlay;
+  return <>{prewarm}{overlay}</>;
 }
