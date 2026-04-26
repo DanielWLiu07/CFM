@@ -75,7 +75,7 @@ public/images/websites/yourname.png
 
 Landscape orientation, ~1200x630 px works best. This shows up when your node is selected in the 3D webring.
 
-### 4. Add yourself to `data/members.json`
+### 4. Add yourself to `backend/data/members.json`
 
 Open the file and add a new entry to the appropriate year array:
 
@@ -128,7 +128,7 @@ Open [localhost:3000](http://localhost:3000) and verify:
 
 ```bash
 git checkout -b add/yourname
-git add data/members.json public/images/avatars/yourname.png
+git add ../backend/data/members.json frontend/public/images/avatars/yourname.png
 git commit -m "feat: add yourname to webring"
 git push origin add/yourname
 ```
@@ -275,8 +275,6 @@ CFM/
 │   │       ├── WebringBackground.tsx # Three.js star field + dust
 │   │       ├── PixelTrail.tsx        # WebGL mouse trail
 │   │       └── ...                   # MuteButton, ScrollReveal, tuners
-│   ├── data/
-│   │   └── members.json         # All member data -- edit this to join
 │   └── public/
 │       ├── images/              # Avatars, UI assets (webp/svg)
 │       ├── fonts/               # ArcadeClassic, Geist, Three.js typeface
@@ -284,6 +282,8 @@ CFM/
 │       └── videos/              # Hero landing video
 │
 └── cfm-backend/                 # Express API server
+    ├── data/
+    │   └── members.json         # SINGLE SOURCE OF TRUTH -- edit this to join
     └── src/
         ├── index.ts             # Server entry (CORS, routes, error handler)
         ├── lib/
@@ -327,7 +327,7 @@ CFM/
 
 Before submitting, make sure:
 
-- [ ] Added your entry to `data/members.json`
+- [ ] Added your entry to `backend/data/members.json`
 - [ ] Avatar image is in `public/images/avatars/` (square, under 200 KB)
 - [ ] All required fields are filled in
 - [ ] `npm run build` passes with no errors
