@@ -27,7 +27,7 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
       url: m.url,
       tagline: m.tagline,
       description: m.description ?? '',
-      cohort: m.cohort ?? m.year,
+      cohort: m.cohort ?? m.year ?? '',
       avatar: m.avatar,
       websiteImage: m.websiteImage,
       role: m.role,

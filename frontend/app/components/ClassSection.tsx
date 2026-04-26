@@ -18,7 +18,7 @@ interface ClassSectionProps {
 
 export default function ClassSection({ onVisibilityChange, beatRef }: ClassSectionProps) {
   const { members: MEMBERS } = useMembers();
-  const YEARS = useMemo(() => ['ALL', ...Array.from(new Set(MEMBERS.map(m => m.year))).sort()], [MEMBERS]);
+  const YEARS = useMemo(() => ['ALL', ...Array.from(new Set(MEMBERS.map(m => m.year).filter((y): y is string => !!y))).sort()], [MEMBERS]);
 
   const sentinelRef = useRef<HTMLDivElement>(null);
   const [sectionVisible, setSectionVisible] = useState(false);
@@ -96,9 +96,9 @@ export default function ClassSection({ onVisibilityChange, beatRef }: ClassSecti
       const q = search.toLowerCase();
       const matchesSearch = !q
         || m.name.toLowerCase().includes(q)
-        || m.role.toLowerCase().includes(q)
+        || (m.role?.toLowerCase().includes(q) ?? false)
         || m.location.toLowerCase().includes(q)
-        || m.school.toLowerCase().includes(q)
+        || (m.school?.toLowerCase().includes(q) ?? false)
         || m.blurb.toLowerCase().includes(q);
       return matchesYear && matchesSearch;
     });

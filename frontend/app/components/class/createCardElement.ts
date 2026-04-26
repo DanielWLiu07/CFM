@@ -205,16 +205,19 @@ export function createCardElement(member: ClassMember, cardW: number, cardH: num
   nameEl.appendChild(document.createTextNode(member.name));
   nameBar.appendChild(nameEl);
 
-  const termEl = document.createElement('div');
-  termEl.textContent = "'" + member.year;
-  termEl.style.cssText = `
-    font-family: var(--font-arcade); font-size: ${termFontSize}px; letter-spacing: 0.1em;
-    color: #fff; background: rgba(255,255,255,0.08); padding: 2px 8px;
-    border: 1px solid rgba(255,255,255,0.2);
-    flex-shrink: 0; margin-left: 8px;
-    transition: background 0.3s ease, border-color 0.3s ease;
-  `;
-  nameBar.appendChild(termEl);
+  let termEl: HTMLDivElement | null = null;
+  if (member.year) {
+    termEl = document.createElement('div');
+    termEl.textContent = "'" + member.year;
+    termEl.style.cssText = `
+      font-family: var(--font-arcade); font-size: ${termFontSize}px; letter-spacing: 0.1em;
+      color: #fff; background: rgba(255,255,255,0.08); padding: 2px 8px;
+      border: 1px solid rgba(255,255,255,0.2);
+      flex-shrink: 0; margin-left: 8px;
+      transition: background 0.3s ease, border-color 0.3s ease;
+    `;
+    nameBar.appendChild(termEl);
+  }
 
   screenContent.appendChild(nameBar);
 
@@ -270,8 +273,10 @@ export function createCardElement(member: ClassMember, cardW: number, cardH: num
     setDepthTransforms(1, 1, 1.6);
     nameBar.style.borderTopColor = 'rgba(34,197,94,0.3)';
     nameEl.style.textShadow = '2px 2px 0 #000, 0 0 8px rgba(34,197,94,0.15)';
-    termEl.style.background = 'rgba(34,197,94,0.12)';
-    termEl.style.borderColor = 'rgba(34,197,94,0.35)';
+    if (termEl) {
+      termEl.style.background = 'rgba(34,197,94,0.12)';
+      termEl.style.borderColor = 'rgba(34,197,94,0.35)';
+    }
     led.style.boxShadow = '0 0 8px #22c55e, 0 0 20px rgba(34,197,94,0.5)';
 
     if (avatarRegion.dataset.hasImage) {
@@ -288,8 +293,10 @@ export function createCardElement(member: ClassMember, cardW: number, cardH: num
     setDepthTransforms(1, 1, 1);
     nameBar.style.borderTopColor = '#222';
     nameEl.style.textShadow = '2px 2px 0 #000';
-    termEl.style.background = 'rgba(255,255,255,0.08)';
-    termEl.style.borderColor = 'rgba(255,255,255,0.2)';
+    if (termEl) {
+      termEl.style.background = 'rgba(255,255,255,0.08)';
+      termEl.style.borderColor = 'rgba(255,255,255,0.2)';
+    }
     led.style.boxShadow = '0 0 4px rgba(34,197,94,0.6)';
 
     if (avatarRegion.dataset.hasImage) {

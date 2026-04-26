@@ -194,17 +194,19 @@ export default function CRTInfoPanel({ member, members, isNarrow, closeExpanded,
               {member.name}
             </h2>
           </div>
-          <div style={{ animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.22s both', marginTop: isNarrow ? -24 : -43 }}>
-            <p style={{
-              fontFamily: 'var(--font-arcade)', fontSize: isNarrow ? 22 : 32, color: GREEN,
-              letterSpacing: '0.12em', margin: 0, textTransform: 'uppercase',
-              WebkitTextStroke: isNarrow ? '1px #000' : '1.5px #000',
-              paintOrder: 'stroke fill' as React.CSSProperties['paintOrder'],
-              textShadow: '2px 2px 0 #000, 0 0 12px rgba(34,197,94,0.3)',
-            }}>
-              {member.role}
-            </p>
-          </div>
+          {member.role && (
+            <div style={{ animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.22s both', marginTop: isNarrow ? -24 : -43 }}>
+              <p style={{
+                fontFamily: 'var(--font-arcade)', fontSize: isNarrow ? 22 : 32, color: GREEN,
+                letterSpacing: '0.12em', margin: 0, textTransform: 'uppercase',
+                WebkitTextStroke: isNarrow ? '1px #000' : '1.5px #000',
+                paintOrder: 'stroke fill' as React.CSSProperties['paintOrder'],
+                textShadow: '2px 2px 0 #000, 0 0 12px rgba(34,197,94,0.3)',
+              }}>
+                {member.role}
+              </p>
+            </div>
+          )}
           {member.tagline && (
             <div style={{ animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.26s both', marginTop: isNarrow ? -6 : -10 }}>
               <p style={{ fontFamily: 'monospace', fontSize: isNarrow ? 13 : 15, color: GREEN, letterSpacing: '0.04em', margin: 0, fontStyle: 'italic', textShadow: '0 0 8px rgba(34,197,94,0.3)' }}>
@@ -218,11 +220,13 @@ export default function CRTInfoPanel({ member, members, isNarrow, closeExpanded,
             marginTop: isNarrow ? -4 : -6,
           }}>
             <p style={{ fontFamily: 'var(--font-arcade)', fontSize: isNarrow ? 14 : 16, color: '#999', letterSpacing: '0.08em', margin: 0, textShadow: '1px 1px 0 #000' }}>
-              {member.location}  {'//'}  {member.school}
+              {member.school ? `${member.location}  //  ${member.school}` : member.location}
             </p>
-            <p style={{ fontFamily: 'var(--font-arcade)', fontSize: isNarrow ? 14 : 16, color: '#999', letterSpacing: '0.08em', margin: 0, textShadow: '1px 1px 0 #000' }}>
-              CLASS OF &apos;{member.year}
-            </p>
+            {member.year && (
+              <p style={{ fontFamily: 'var(--font-arcade)', fontSize: isNarrow ? 14 : 16, color: '#999', letterSpacing: '0.08em', margin: 0, textShadow: '1px 1px 0 #000' }}>
+                CLASS OF &apos;{member.year}
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -319,7 +323,7 @@ export default function CRTInfoPanel({ member, members, isNarrow, closeExpanded,
         <span>CFM://members/{member.name.toLowerCase().replace(/\s+/g, '-')}</span>
         <span style={{ display: 'flex', gap: 16 }}>
           <span><span style={{ color: GREEN }}>●</span> CONNECTED</span>
-          <span>CLASS &apos;{member.year}</span>
+          {member.year && <span>CLASS &apos;{member.year}</span>}
           <span>{idx + 1}/{members.length}</span>
         </span>
       </div>

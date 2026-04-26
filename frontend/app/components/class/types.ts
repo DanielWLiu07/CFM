@@ -13,11 +13,11 @@ export interface ClassMember {
   url: string;
   tagline?: string;
   description?: string;
-  role: string;
+  role?: string;
   location: string;
-  school: string;
+  school?: string;
   blurb: string;
-  year: string;
+  year?: string;
   cohort?: string;
   avatar?: string;
   websiteImage?: string;
