@@ -8,7 +8,7 @@ Welcome to the CFM Webring! This is a list of current / past CFM cohorts, organi
 
 ## How to Join
 
-1. Open the `cfm-backend/src/data/members.json` file
+1. Open the `backend/data/members.json` file
 2. Add your information to the array following the structure below
 3. Submit a PR!
 
@@ -20,7 +20,8 @@ Add your entry using this structure:
 
 Note
 - if you don't have a website, leave it "#"
-- please put your avatar in the following directory: ./images/avatars/ (file types: png, jpeg, webp, svg)
+- add your avatar to `frontend/public/images/avatars/` (file types: png, jpeg, webp, svg)
+- set `avatar` to the public path, for example: `/images/avatars/fullname.png`
 
 ```json
 {
