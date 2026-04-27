@@ -16,7 +16,7 @@ export interface ClassMember {
   role?: string;
   location: string;
   school?: string;
-  blurb: string;
+  quote: string;
   year?: string;
   cohort?: string;
   avatar?: string;

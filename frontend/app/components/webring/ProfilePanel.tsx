@@ -134,9 +134,9 @@ export default function ProfilePanel({
                 </p>
               )}
 
-              {entry.blurb && (
+              {entry.quote && (
                 <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: '#e0e0e0', margin: 0, marginTop: 10, lineHeight: 1.7 }}>
-                  &ldquo;{entry.blurb}&rdquo;
+                  &ldquo;{entry.quote}&rdquo;
                 </p>
               )}
 

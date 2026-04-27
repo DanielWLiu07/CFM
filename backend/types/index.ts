@@ -8,7 +8,7 @@ export interface Member {
   url: string;
   description: string;
   location: string;
-  blurb: string;
+  quote: string;
   cohort: string;
   avatar?: string;
   hobbies?: string[];

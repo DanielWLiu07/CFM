@@ -99,7 +99,7 @@ export default function ClassSection({ onVisibilityChange, beatRef }: ClassSecti
         || (m.role?.toLowerCase().includes(q) ?? false)
         || m.location.toLowerCase().includes(q)
         || (m.school?.toLowerCase().includes(q) ?? false)
-        || m.blurb.toLowerCase().includes(q);
+        || m.quote.toLowerCase().includes(q);
       return matchesYear && matchesSearch;
     });
     if (shuffleSeed > 0) {

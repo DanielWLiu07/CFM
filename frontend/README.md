@@ -87,7 +87,7 @@ Open the file and add a new entry to the appropriate year array:
   "role": "Your Role",                      // e.g. "Software Engineer", "PM Intern", "Student"
   "location": "City, Province",
   "school": "Your High School",             // pre-university school
-  "blurb": "A one-liner about yourself.",   // ~15 words max, shown on your card
+  "quote": "A one-liner about yourself.",   // ~15 words max, shown on your card
   "year": "26",                             // your CFM entry year (e.g. "25", "26")
   "cohort": "2029",                         // expected graduation year
   "avatar": "/images/avatars/yourname.png",
@@ -107,7 +107,7 @@ Open the file and add a new entry to the appropriate year array:
 }
 ```
 
-**Required fields:** `name`, `url`, `description`, `role`, `location`, `school`, `blurb`, `year`, `cohort`, `avatar`
+**Required fields:** `name`, `url`, `description`, `role`, `location`, `school`, `quote`, `year`, `cohort`, `avatar`
 
 **Optional fields:** `websiteImage`, `hobbies`, `experiences`, `socials`
 

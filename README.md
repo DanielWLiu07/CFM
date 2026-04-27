@@ -1,61 +1,65 @@
 # CFM Webring
 
-Welcome to the CFM Webring! This is a list of current / past CFM cohorts, organized by graduation year.
 
-🚧 **This project is currently a work in progress** 🚧
+<p align="center">
+  <img src="public/images/class_text.webp" alt="CFM Webring" width="500" />
+</p>
 
----
+<h3 align="center">
+  The official webring for UWaterloo Computing & Financial Management.
+  <br/>
+  A 3D, retro-arcade showcase connecting CFM students across cohorts.
+</h3>
 
-## How to Join
+## Quick Start (Fork & Clone)
 
-1. Open the `backend/data/members.json` file
-2. Add your information to the array following the structure below
-3. Submit a PR!
+```bash
+git clone https://github.com/<your-username>/CFM.git
+cd CFM
+```
 
----
+## Joining the webring + class profile
 
-## Member Format
-
-Add your entry using this structure:
-
-Note
-- if you don't have a website, leave it "#"
-- add your avatar to `frontend/public/images/avatars/` (file types: png, jpeg, webp, svg)
-- set `avatar` to the public path, for example: `/images/avatars/fullname.png`
+1. Add your avatar to `frontend/public/images/avatars/` (`png`, `jpeg`, `webp`, or `svg`).
+2. (Optional) Add a site screenshot to `frontend/public/images/websites/yourname.png`.
+3. Add your member entry in `backend/data/members.json`:
 
 ```json
 {
   "name": "Your Name",
-  "url": "https://yourwebsite.com", 
-  "description": "Short tagline / header",
-  "location": "Your City, Province",
-  "blurb": "A longer description about you",
   "cohort": "graduating-year",
-  "avatar": "/images/avatars/fullname.png",
-  "hobbies": ["hobby1", "hobby2", "hobby3"],
-  "experiences": ["Experience 1", "Experience 2"],
+  "year": "26",
+  "url": "https://yourwebsite.com",
+  "location": "Your City, Province",
+  "role": "role",
+  "tagline": "Short tagline / header",
+  "quote": "a little quote",
+  "description": "A longer description about you",
+  "avatar": "/images/avatars/YOUR-IMAGE",
+  "websiteImage": "/images/websites/yourname.png",
   "socials": [
     { "type": "github", "url": "https://github.com/yourusername" },
     { "type": "linkedin", "url": "https://linkedin.com/in/yourprofile" }
   ]
 }
 ```
-
 ---
 
-## Example
+### Example
 
 ```json
 {
   "name": "Aadya Khanna",
-  "url": "https://aadyakhanna.com",
-  "description": "Builder, Creative-Techie, Guitarist",
-  "location": "Toronto, ON",
-  "blurb": "Drawn to the intersection of technology, creativity, and financial markets",
   "cohort": "2030",
+  "year": "30",
+  "url": "https://aadyakhanna.com",
+  "location": "Toronto, ON",
+  "role": "Product Engineer",
+  "tagline": "Mathematically Musical",
+  "quote": "Drawn to the intersection of technology, creativity, and financial markets",
+  "description": "Builder, Creative-Techie, Guitarist",
   "avatar": "/images/avatars/aadyakhanna.jpeg",
-  "hobbies": ["hackathons", "music", "guitar"],
-  "experiences": ["Product Engineer @ Zafin"],
+  "websiteImage": "#",
   "socials": [
     { "type": "github", "url": "https://github.com/aadya-khanna" },
     { "type": "linkedin", "url": "https://linkedin.com/in/aadya-khanna" }
@@ -63,18 +67,31 @@ Note
 }
 ```
 
----
+### Important Notes
 
-## Important Notes
-
-* The `members.json` file is a **flat array** of all members
 * Ensure **all links are valid and working**
 * Make sure your avatar path is correct
 * Use `#` for socials you don't have (or omit them entirely)
 * `cohort` is your graduation year (e.g. "2029")
-* Keep blurbs short and fun
 
----
+
+
+4. Run and verify locally:
+
+```bash
+# Frontend
+cd frontend
+npm install
+npm run dev
+
+# Backend
+cd ../backend
+npm install
+npm run dev
+```
+
+5. Open a PR with your `members.json` + image changes.
+
 
 ## Embedding the Webring on Your Site
 

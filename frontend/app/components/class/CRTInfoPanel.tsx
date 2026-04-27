@@ -252,7 +252,7 @@ export default function CRTInfoPanel({ member, members, isNarrow, closeExpanded,
             fontFamily: 'monospace', fontSize: BLURB_SIZE, color: GREEN,
             lineHeight: 1.8, margin: 0,
           }}>
-            {member.blurb}
+            {member.quote}
             <span style={{ display: 'inline-block', width: 8, height: '1.1em', background: GREEN, marginLeft: 4, animation: 'blink 1s steps(1) infinite', verticalAlign: 'text-bottom' }} />
           </p>
         </div>

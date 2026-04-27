@@ -14,7 +14,7 @@ export interface WebringEntry {
   role?: string;
   location?: string;
   school?: string;
-  blurb?: string;
+  quote?: string;
   year?: string;
   socials?: Social[];
 }
