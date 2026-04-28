@@ -19,10 +19,6 @@
       {
         "type": "linkedin",
         "url": "https://linkedin.com/in/danielwliu"
-      },
-      {
-        "type": "website",
-        "url": "https://danielwliu.com"
       }
     ]
   },
@@ -45,9 +41,9 @@
     "url": "https://aadyakhanna.com",
     "location": "Toronto, ON",
     "role": "Product Engineer",
-    "tagline": "creative-techie",
-    "quote": "Drawn to the intersection of technology, creativity, and financial markets",
-    "description": "Builder, Creative-Techie, Guitarist",
+    "tagline": "mathematically musical",
+    "quote": "Wingstop ON TOP",
+    "description": "Drawn to the intersection of technology, creativity, and financial markets",
     "avatar": "/images/avatars/aadyakhanna.jpeg",
     "socials": [
       {
