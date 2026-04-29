@@ -9,6 +9,7 @@ import MuteButton from './components/MuteButton';
 import ScrollReveal from './components/ScrollReveal';
 import { useAssetPreloader } from './hooks/useAssetPreloader';
 import { BEAT_INTERVAL, BEAT_OFFSET } from './lib/beats';
+import { useMembers } from './hooks/useMembers';
 
 const AboutSection = dynamic(() => import('./components/AboutSection'), { ssr: false });
 const ClassSection = dynamic(() => import('./components/ClassSection'), { ssr: false });
@@ -26,6 +27,7 @@ const STIFFNESS   = 0.35;  // spring pull toward target
 const DAMPING     = 0.72;  // < 1 = underdamped → overshoot/bounce
 
 export default function Home() {
+  const { members } = useMembers();
   const [started, setStarted] = useState(false);
   const [muted, setMuted] = useState(true);
   const [volume, setVolume] = useState(1);
@@ -358,10 +360,50 @@ export default function Home() {
 
   // Always start at top with overlay on load
   useEffect(() => {
+    const normalizeMemberUrl = (raw: string): string | null => {
+      try {
+        const prefixed = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+        const u = new URL(prefixed);
+        const path = u.pathname.replace(/\/+$/, '');
+        return `${u.origin}${path}`.toLowerCase();
+      } catch {
+        return null;
+      }
+    };
+
+    const hash = window.location.hash?.slice(1) ?? '';
+    const [fromRaw, query = ''] = hash.split('?');
+    const params = new URLSearchParams(query);
+    const nav = (params.get('nav') || params.get('direction') || '').toLowerCase();
+    const fromNormalized = normalizeMemberUrl(decodeURIComponent(fromRaw || ''));
+
+    if (fromNormalized && (nav === 'prev' || nav === 'next') && members.length > 0) {
+      // Build a navigable ring of valid URLs only (`#` and invalid URLs are skipped).
+      const navigableMembers = members
+        .map((m) => ({
+          url: m.url,
+          norm: normalizeMemberUrl(m.url),
+        }))
+        .filter((m) => Boolean(m.norm));
+
+      const currentIndex = navigableMembers.findIndex((m) => m.norm === fromNormalized);
+      if (currentIndex >= 0 && navigableMembers.length > 0) {
+        const offset = nav === 'prev' ? -1 : 1;
+        const targetIndex = (currentIndex + offset + navigableMembers.length) % navigableMembers.length;
+        const targetUrl = navigableMembers[targetIndex]?.url;
+        if (targetUrl) {
+          window.location.replace(targetUrl);
+          return;
+        }
+      }
+    }
+
     window.scrollTo(0, 0);
-    window.history.replaceState(null, '', '/');
+    if (!window.location.hash) {
+      window.history.replaceState(null, '', '/');
+    }
     navbarRef.current?.setActiveRoute('/');
-  }, []);
+  }, [members]);
 
   // Re-show overlay when Home is pressed
   useEffect(() => {

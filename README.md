@@ -89,22 +89,27 @@ Once you're in the webring (added to members.json with a valid website URL), you
 
 ### Hub Icon
 
-Canonical asset: `cfm-panther.svg`
+Hosted icon assets (production):
+
+- `https://cfm-webring.vercel.app/webring/cfm-panther-black.svg`
+- `https://cfm-webring.vercel.app/webring/cfm-panther-white.svg`
+- `https://cfm-webring.vercel.app/webring/cfm-panther-green.svg`
 
 Use one of these approaches:
 
-- Quick setup (image file): easiest to copy and keep docs clean.
-- Full control (inline SVG): best when you want custom color, animation, or transforms.
+- Quick setup (hosted image file): easiest to copy and keep docs clean.
+- Starter template: download and edit `https://cfm-webring.vercel.app/webring/custom.tsx`.
+- Full control (inline SVG): copy one asset and edit locally.
 
 Quick setup:
 
 ```html
 <a href="https://uwaterloocfm.com" target="_blank">
-  <img src="/cfm-panther.svg" alt="CFM Webring Hub" style="width: 50px;">
+  <img src="https://cfm-webring.vercel.app/webring/cfm-panther-black.svg" alt="CFM Webring Hub" style="width: 50px;">
 </a>
 ```
 
-For full-control inline customization, copy the SVG from `cfm-panther.svg` into your HTML and style with `fill="currentColor"`.
+Starter template (download + edit): `https://cfm-webring.vercel.app/webring/custom.tsx`
 
 ### Add the Widget to Your Site
 
@@ -115,17 +120,17 @@ Use your own images/SVGs for the arrows to match your site's design:
 ```html
 <div style="display: flex; gap: 8px; align-items: center;">
   <!-- Your custom left arrow -->
-  <a href="https://api.cfm-webring.com/api/navigate?url=YOUR_WEBSITE_URL&direction=prev&redirect=true">
+  <a href="https://cfm-webring.vercel.app/#YOUR_WEBSITE_URL?nav=prev">
     <img src="/your-custom-left-arrow.svg" alt="Previous in CFM Webring" style="width: 50px; cursor: pointer;">
   </a>
 
   <!-- Hub icon -->
   <a href="https://uwaterloocfm.com" target="_blank">
-    <img src="/cfm-panther.svg" alt="CFM Webring Hub" style="width: 50px; cursor: pointer;">
+    <img src="https://cfm-webring.vercel.app/webring/cfm-panther-black.svg" alt="CFM Webring Hub" style="width: 50px; cursor: pointer;">
   </a>
 
   <!-- Your custom right arrow -->
-  <a href="https://api.cfm-webring.com/api/navigate?url=YOUR_WEBSITE_URL&direction=next&redirect=true">
+  <a href="https://cfm-webring.vercel.app/#YOUR_WEBSITE_URL?nav=next">
     <img src="/your-custom-right-arrow.svg" alt="Next in CFM Webring" style="width: 50px; cursor: pointer;">
   </a>
 </div>
@@ -137,17 +142,17 @@ For a minimal approach, use text/emoji arrows:
 
 ```html
 <div style="display: flex; gap: 12px; align-items: center; font-size: 24px;">
-  <a href="https://api.cfm-webring.com/api/navigate?url=YOUR_WEBSITE_URL&direction=prev&redirect=true"
+  <a href="https://cfm-webring.vercel.app/#YOUR_WEBSITE_URL?nav=prev"
      style="text-decoration: none; color: inherit; cursor: pointer;">
     ←
   </a>
 
   <!-- Hub icon -->
   <a href="https://uwaterloocfm.com" target="_blank">
-    <img src="/cfm-panther.svg" alt="CFM Webring Hub" style="width: 40px;">
+    <img src="https://cfm-webring.vercel.app/webring/cfm-panther-black.svg" alt="CFM Webring Hub" style="width: 40px;">
   </a>
 
-  <a href="https://api.cfm-webring.com/api/navigate?url=YOUR_WEBSITE_URL&direction=next&redirect=true"
+  <a href="https://cfm-webring.vercel.app/#YOUR_WEBSITE_URL?nav=next"
      style="text-decoration: none; color: inherit; cursor: pointer;">
     →
   </a>
@@ -159,23 +164,23 @@ For a minimal approach, use text/emoji arrows:
 ```jsx
 export default function WebringWidget() {
   const myUrl = "https://yoursite.com"; // Must match your members.json URL
-  const apiBase = "https://api.cfm-webring.com/api/navigate";
+  const ringBase = "https://cfm-webring.vercel.app";
 
   const HubIcon = ({ size = 50 }) => (
-    <img src="/cfm-panther.svg" alt="CFM Webring Hub" style={{ width: size, cursor: 'pointer' }} />
+    <img src="https://cfm-webring.vercel.app/webring/cfm-panther-black.svg" alt="CFM Webring Hub" style={{ width: size, cursor: 'pointer' }} />
   );
 
   return (
     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-      <a href={`${apiBase}?url=${encodeURIComponent(myUrl)}&direction=prev&redirect=true`}>
+      <a href={`${ringBase}/#${encodeURIComponent(myUrl)}?nav=prev`}>
         <img src="/your-left-arrow.svg" alt="Previous" style={{ width: '50px', cursor: 'pointer' }} />
       </a>
 
       <a href="https://uwaterloocfm.com" target="_blank" rel="noopener noreferrer">
-        <HubIcon color="#991b1b" size={50} />
+        <HubIcon size={50} />
       </a>
 
-      <a href={`${apiBase}?url=${encodeURIComponent(myUrl)}&direction=next&redirect=true`}>
+      <a href={`${ringBase}/#${encodeURIComponent(myUrl)}?nav=next`}>
         <img src="/your-right-arrow.svg" alt="Next" style={{ width: '50px', cursor: 'pointer' }} />
       </a>
     </div>
@@ -187,6 +192,18 @@ export default function WebringWidget() {
 
 - Replace `YOUR_WEBSITE_URL` with your site's URL (must **exactly match** your `url` field in members.json)
 - Your URL must be in members.json with a valid website (not `#`)
+- Webring links now resolve through `https://cfm-webring.vercel.app/#YOUR_WEBSITE_URL?nav=prev|next`
+- Ring navigation skips members with invalid URLs (for example `url: "#"`), and wraps around from last valid site to first valid site
 - Arrows: Use any image/SVG you want for complete creative control
-- Hub icon: use the file-based `<img>` for fastest setup, or inline SVG if you want color/animation control
+- Hub icon variants: use black/white/green files from `/webring/` on production
+- Starter template: download `https://cfm-webring.vercel.app/webring/custom.tsx` and edit `myUrl` + styles
+
+### Test It Quickly
+
+Use your website URL in these links and verify both redirect:
+
+```text
+https://cfm-webring.vercel.app/#YOUR_WEBSITE_URL?nav=prev
+https://cfm-webring.vercel.app/#YOUR_WEBSITE_URL?nav=next
+```
 
