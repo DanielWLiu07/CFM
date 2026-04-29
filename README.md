@@ -28,13 +28,11 @@ cd CFM
 {
   "name": "Your Name",
   "cohort": "graduating-year",
-  "year": "26",
   "url": "https://yourwebsite.com",
   "location": "Your City, Province",
-  "role": "role",
-  "tagline": "Short tagline / header",
-  "quote": "a little quote",
-  "description": "A longer description about you",
+  "header": "Short header",
+  "experiences": ["Role @ Company", "Intern @ Team"],
+  "description": "One-line description",
   "avatar": "/images/avatars/YOUR-IMAGE",
   "websiteImage": "/images/websites/yourname.png",
   "socials": [
@@ -51,15 +49,12 @@ cd CFM
 {
   "name": "Aadya Khanna",
   "cohort": "2030",
-  "year": "30",
   "url": "https://aadyakhanna.com",
   "location": "Toronto, ON",
-  "role": "Product Engineer",
-  "tagline": "Mathematically Musical",
-  "quote": "Drawn to the intersection of technology, creativity, and financial markets",
-  "description": "Builder, Creative-Techie, Guitarist",
+  "header": "Mathematically Musical",
+  "experiences": ["Product Engineer"],
+  "description": "Drawn to the intersection of technology, creativity, and financial markets",
   "avatar": "/images/avatars/aadyakhanna.jpeg",
-  "websiteImage": "#",
   "socials": [
     { "type": "github", "url": "https://github.com/aadya-khanna" },
     { "type": "linkedin", "url": "https://linkedin.com/in/aadya-khanna" }
@@ -72,7 +67,9 @@ cd CFM
 * Ensure **all links are valid and working**
 * Make sure your avatar path is correct
 * Use `#` for socials you don't have (or omit them entirely)
+* `url` can be `#` if your website is not ready yet
 * `cohort` is your graduation year (e.g. "2029")
+* `websiteImage` is optional
 
 
 

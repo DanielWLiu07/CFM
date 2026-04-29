@@ -18,11 +18,11 @@ interface ClassSectionProps {
 
 export default function ClassSection({ onVisibilityChange, beatRef }: ClassSectionProps) {
   const { members: MEMBERS } = useMembers();
-  const YEARS = useMemo(() => ['ALL', ...Array.from(new Set(MEMBERS.map(m => m.year).filter((y): y is string => !!y))).sort()], [MEMBERS]);
+  const COHORTS = useMemo(() => ['ALL', ...Array.from(new Set(MEMBERS.map(m => m.cohort))).sort()], [MEMBERS]);
 
   const sentinelRef = useRef<HTMLDivElement>(null);
   const [sectionVisible, setSectionVisible] = useState(false);
-  const [selectedYear, setSelectedYear] = useState('ALL');
+  const [selectedCohort, setSelectedCohort] = useState('ALL');
   const [search, setSearch] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
   const [shuffleSeed, setShuffleSeed] = useState(0);
@@ -92,15 +92,18 @@ export default function ClassSection({ onVisibilityChange, beatRef }: ClassSecti
 
   const filtered = useMemo(() => {
     const result = MEMBERS.filter(m => {
-      const matchesYear = selectedYear === 'ALL' || m.year === selectedYear;
+      const matchesCohort = selectedCohort === 'ALL' || m.cohort === selectedCohort;
       const q = search.toLowerCase();
+        const experiencesText = (m.experiences ?? []).join(' ').toLowerCase();
       const matchesSearch = !q
         || m.name.toLowerCase().includes(q)
         || (m.role?.toLowerCase().includes(q) ?? false)
         || m.location.toLowerCase().includes(q)
         || (m.school?.toLowerCase().includes(q) ?? false)
-        || m.quote.toLowerCase().includes(q);
-      return matchesYear && matchesSearch;
+        || m.description.toLowerCase().includes(q)
+        || (m.header?.toLowerCase().includes(q) ?? false)
+        || experiencesText.includes(q);
+      return matchesCohort && matchesSearch;
     });
     if (shuffleSeed > 0) {
       const shuffled = [...result];
@@ -111,9 +114,9 @@ export default function ClassSection({ onVisibilityChange, beatRef }: ClassSecti
       return shuffled;
     }
     return result;
-  }, [selectedYear, search, shuffleSeed]);
+  }, [selectedCohort, search, shuffleSeed]);
 
-  const hasFilters = selectedYear !== 'ALL' || search !== '';
+  const hasFilters = selectedCohort !== 'ALL' || search !== '';
 
   return (
     <section
@@ -145,7 +148,7 @@ export default function ClassSection({ onVisibilityChange, beatRef }: ClassSecti
             '  const [selected, setSelected] = useState<Member | null>(null);',
             'if (member.cohort === "2026") return <Card key={member.id} />;',
             'import { useEffect, useState, useRef } from "react";',
-            '  const filtered = members.filter(m => m.year === year);',
+            '  const filtered = members.filter(m => m.cohort === cohort);',
             'async function loadMembers(): Promise<Member[]> {',
             '  return db.query("SELECT * FROM members WHERE active = $1", [true]);',
             'interface Member { name: string; role: string; avatar?: string }',
@@ -199,7 +202,7 @@ export default function ClassSection({ onVisibilityChange, beatRef }: ClassSecti
           transform: `translateY(${titleConfig.titleY}px)`,
         }}
       >
-        <ClassTitle3D year={selectedYear === 'ALL' ? 'CFM' : selectedYear} config={titleConfig} beatRef={beatRef} />
+        <ClassTitle3D year={selectedCohort === 'ALL' ? 'CFM' : selectedCohort.slice(-2)} config={titleConfig} beatRef={beatRef} />
       </div>
 
       {/* ── Filter bar ── */}
@@ -221,7 +224,7 @@ export default function ClassSection({ onVisibilityChange, beatRef }: ClassSecti
           pointerEvents: 'auto',
         }}
       >
-        {/* Custom year dropdown */}
+        {/* Custom cohort dropdown */}
         <div ref={dropdownRef} style={{ position: 'relative' }}>
           <button
             onClick={() => setDropdownOpen(o => !o)}
@@ -238,7 +241,7 @@ export default function ClassSection({ onVisibilityChange, beatRef }: ClassSecti
               position: 'relative',
             }}
           >
-            {selectedYear === 'ALL' ? 'ALL' : `'${selectedYear}`}
+            {selectedCohort === 'ALL' ? 'ALL' : `'${selectedCohort.slice(-2)}`}
             <span style={{
               position: 'absolute',
               right: 10,
@@ -260,10 +263,10 @@ export default function ClassSection({ onVisibilityChange, beatRef }: ClassSecti
               zIndex: 9999,
               minWidth: '100%',
             }}>
-              {['ALL', ...YEARS.filter(y => y !== 'ALL')].map(y => (
+              {['ALL', ...COHORTS.filter(c => c !== 'ALL')].map(c => (
                 <button
-                  key={y}
-                  onClick={() => { setSelectedYear(y); setDropdownOpen(false); }}
+                  key={c}
+                  onClick={() => { setSelectedCohort(c); setDropdownOpen(false); }}
                   style={{
                     display: 'block',
                     width: '100%',
@@ -273,15 +276,15 @@ export default function ClassSection({ onVisibilityChange, beatRef }: ClassSecti
                     letterSpacing: '0.1em',
                     padding: '8px 14px',
                     border: 'none',
-                    background: selectedYear === y ? '#000' : '#fff',
-                    color: selectedYear === y ? '#fff' : '#000',
+                    background: selectedCohort === c ? '#000' : '#fff',
+                    color: selectedCohort === c ? '#fff' : '#000',
                     cursor: 'pointer',
                     borderBottom: '1px solid #ddd',
                   }}
                   onMouseEnter={e => { e.currentTarget.style.background = '#000'; e.currentTarget.style.color = '#fff'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = selectedYear === y ? '#000' : '#fff'; e.currentTarget.style.color = selectedYear === y ? '#fff' : '#000'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = selectedCohort === c ? '#000' : '#fff'; e.currentTarget.style.color = selectedCohort === c ? '#fff' : '#000'; }}
                 >
-                  {y === 'ALL' ? 'ALL' : `'${y}`}
+                  {c === 'ALL' ? 'ALL' : `'${c.slice(-2)}`}
                 </button>
               ))}
             </div>
@@ -366,7 +369,7 @@ export default function ClassSection({ onVisibilityChange, beatRef }: ClassSecti
 
         {/* Clear all — always rendered to prevent layout shift */}
         <button
-          onClick={() => { setSelectedYear('ALL'); setSearch(''); }}
+          onClick={() => { setSelectedCohort('ALL'); setSearch(''); }}
           style={{
             fontFamily: 'var(--font-arcade)',
             fontSize: 'clamp(14px, 1.6vw, 16px)',

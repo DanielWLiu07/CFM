@@ -2,13 +2,15 @@
   {
     "name": "Daniel Liu",
     "cohort": "2029",
-    "year": "26",
     "url": "https://danielwliu.com",
     "location": "Windsor, ON",
     "role": "Software Engineer",
-    "tagline": "SWE @ building things",
-    "quote": "if it compiles, ship it. if it doesn't, ship it louder.",
-    "description": "Currently building interactive web experiences with React and Three.js. Interested in creative coding, generative art, and the intersection of design and engineering. Previously worked on frontend tooling at a stealth startup and freelanced for small businesses around Windsor.",
+    "header": "SWE @ building things",
+    "description": "if it compiles, ship it. if it doesn't, ship it louder.",
+    "experiences": [
+      "Software Engineer", 
+      "Data Scientist"
+    ],
     "avatar": "/images/avatars/daniel_photo.jpeg",
     "websiteImage": "/images/websites/daniel.png",
     "socials": [
@@ -25,13 +27,14 @@
   {
     "name": "Timothy Zheng",
     "cohort": "2026",
-    "year": "26",
     "url": "https://timothyzheng.ca",
     "location": "Waterloo, ON",
     "role": "Alumni",
-    "tagline": "power trading",
-    "quote": "buy low, sell high. how hard can it be?",
-    "description": "Graduated CFM in 2026 and went straight into power trading. Spent co-op terms at Ontario energy firms modeling electricity futures. Now trades real-time power markets and occasionally mentors current CFM students on breaking into commodities.",
+    "header": "power trading",
+    "description": "buy low, sell high. how hard can it be?",
+    "experiences": [
+      "Alumni"
+    ],
     "avatar": "/images/avatars/timothyz.webp",
     "websiteImage": "/images/websites/timothyz.png"
   },
@@ -41,9 +44,11 @@
     "url": "https://aadyakhanna.com",
     "location": "Toronto, ON",
     "role": "Product Engineer",
-    "tagline": "mathematically musical",
-    "quote": "Wingstop ON TOP",
-    "description": "Drawn to the intersection of technology, creativity, and financial markets",
+    "header": "mathematically musical",
+    "description": "Wingstop ON TOP",
+    "experiences": [
+      "Product Engineer"
+    ],
     "avatar": "/images/avatars/aadyakhanna.jpeg",
     "socials": [
       {
@@ -59,13 +64,14 @@
   {
     "name": "Marcus Chen",
     "cohort": "2029",
-    "year": "26",
     "url": "#",
     "location": "Vancouver, BC",
     "role": "Quant Developer",
-    "tagline": "quant dev",
-    "quote": "I mass-apply to Jane Street every 4 months like clockwork.",
-    "description": "Competitive programmer turned quant. Spent a co-op at Citadel Securities working on low-latency execution systems in C++. Interested in statistical arbitrage, market microstructure, and building trading infrastructure that doesn't fall over at market open.",
+    "header": "quant dev",
+    "description": "I mass-apply to Jane Street every 4 months like clockwork.",
+    "experiences": [
+      "Quant Developer"
+    ],
     "avatar": "/images/avatars/marcus.svg",
     "socials": [
       {
@@ -81,13 +87,14 @@
   {
     "name": "Priya Sharma",
     "cohort": "2028",
-    "year": "25",
     "url": "#",
     "location": "Mississauga, ON",
     "role": "ML Engineer",
-    "tagline": "ML engineer",
-    "quote": "my GPU bill is more than my tuition.",
-    "description": "Research-oriented ML engineer focused on NLP and large language models. Worked in the UW NLP Lab on document understanding and retrieval-augmented generation. Kaggle Competitions Master. Wants to bridge the gap between ML research and production systems in fintech.",
+    "header": "ML engineer",
+    "description": "my GPU bill is more than my tuition.",
+    "experiences": [
+      "ML Engineer"
+    ],
     "avatar": "/images/avatars/priya.svg",
     "socials": [
       {
@@ -107,13 +114,14 @@
   {
     "name": "Jordan Park",
     "cohort": "2028",
-    "year": "25",
     "url": "#",
     "location": "Calgary, AB",
     "role": "Systems Engineer",
-    "tagline": "systems engineer",
-    "quote": "I mass-rewrite everything in Rust and regret nothing.",
-    "description": "Systems programmer who thrives close to the metal. Did a co-op at AMD working on GPU driver internals. Contributes to Rust open-source projects and runs a homelab with custom Linux kernels. Exploring how low-latency systems design applies to HFT infrastructure.",
+    "header": "systems engineer",
+    "description": "I mass-rewrite everything in Rust and regret nothing.",
+    "experiences": [
+      "Systems Engineer"
+    ],
     "avatar": "/images/avatars/jordan.svg",
     "socials": [
       {
@@ -125,13 +133,14 @@
   {
     "name": "Sophie Wang",
     "cohort": "2028",
-    "year": "25",
     "url": "#",
     "location": "Toronto, ON",
     "role": "Data Scientist",
-    "tagline": "data scientist",
-    "quote": "correlation is not causation but it's close enough for a demo.",
-    "description": "Data scientist with a love for storytelling through visualization. Co-op at RBC's capital markets team building risk dashboards and anomaly detection pipelines. Enjoys photography and believes good data viz is just photography for numbers.",
+    "header": "data scientist",
+    "description": "correlation is not causation but it's close enough for a demo.",
+    "experiences": [
+      "Data Scientist"
+    ],
     "avatar": "/images/avatars/sophie.svg",
     "socials": [
       {
@@ -147,13 +156,14 @@
   {
     "name": "Ethan Zhao",
     "cohort": "2028",
-    "year": "25",
     "url": "#",
     "location": "Ottawa, ON",
     "role": "Product Designer",
-    "tagline": "product designer",
-    "quote": "moved a button 2px to the left. it changed everything.",
-    "description": "Product designer who codes. Interned at Figma working on component library tooling. Believes design systems are the best investment a team can make. Currently exploring how AI can augment the design process without replacing the human touch.",
+    "header": "product designer",
+    "description": "moved a button 2px to the left. it changed everything.",
+    "experiences": [
+      "Product Designer"
+    ],
     "avatar": "/images/avatars/ethan.svg",
     "socials": [
       {
@@ -169,13 +179,14 @@
   {
     "name": "Nina Patel",
     "cohort": "2029",
-    "year": "26",
     "url": "#",
     "location": "Brampton, ON",
     "role": "DevOps / Infra",
-    "tagline": "devops / infra",
-    "quote": "it works on my machine. so I containerized my machine.",
-    "description": "Infrastructure engineer who automates everything. Co-op at AWS on the EKS team, building internal deployment pipelines. Runs a 6-node homelab and has strong opinions about GitOps. Interested in platform engineering and making developer experience less painful.",
+    "header": "devops / infra",
+    "description": "it works on my machine. so I containerized my machine.",
+    "experiences": [
+      "DevOps / Infra"
+    ],
     "avatar": "/images/avatars/nina.svg",
     "socials": [
       {

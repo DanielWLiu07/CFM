@@ -77,26 +77,25 @@ Landscape orientation, ~1200x630 px works best. This shows up when your node is 
 
 ### 4. Add yourself to `backend/data/members.json`
 
-Open the file and add a new entry to the appropriate year array:
+Open the file and add a new entry:
 
 ```jsonc
 {
   "name": "Your Name",
-  "url": "https://yoursite.com",           // personal site (use "#" if you don't have one yet)
-  "description": "short tagline",           // 2-3 words, shown on hover
-  "role": "Your Role",                      // e.g. "Software Engineer", "PM Intern", "Student"
-  "location": "City, Province",
-  "school": "Your High School",             // pre-university school
-  "quote": "A one-liner about yourself.",   // ~15 words max, shown on your card
-  "year": "26",                             // your CFM entry year (e.g. "25", "26")
   "cohort": "2029",                         // expected graduation year
+  "url": "https://yoursite.com",            // personal site (use "#" if you don't have one yet)
+  "location": "City, Province",
+  "header": "short header",                 // shown in the class card header line
+  "experiences": [                          // shown as chips/boxes
+    "Role @ Company",
+    "Intern @ Team"
+  ],
+  "description": "A one-liner about yourself.", // shown in quote-style description box
   "avatar": "/images/avatars/yourname.png",
   "websiteImage": "/images/websites/yourname.png", // optional
-  "hobbies": ["hobby1", "hobby2", "hobby3"],       // optional
-  "experiences": [                                   // optional, string or {title, logo}
-    "Role @ Company",
-    { "title": "SWE Intern @ Google", "logo": "/images/logos/google.png" }
-  ],
+  "role": "Your Role",                       // optional
+  "school": "Your High School",              // optional
+  "hobbies": ["hobby1", "hobby2", "hobby3"], // optional
   "socials": [                                      // optional, include any/all
     { "type": "github", "url": "https://github.com/you" },
     { "type": "linkedin", "url": "https://linkedin.com/in/you" },
@@ -107,9 +106,9 @@ Open the file and add a new entry to the appropriate year array:
 }
 ```
 
-**Required fields:** `name`, `url`, `description`, `role`, `location`, `school`, `quote`, `year`, `cohort`, `avatar`
+**Required fields:** `name`, `cohort`, `url`, `location`, `header`, `experiences`, `description`, `avatar`
 
-**Optional fields:** `websiteImage`, `hobbies`, `experiences`, `socials`
+**Optional fields:** `websiteImage`, `socials`, `role`, `school`, `hobbies`
 
 ### 5. Test locally
 

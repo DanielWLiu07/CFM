@@ -123,9 +123,14 @@ export default function ProfilePanel({
                   {entry.role}
                 </p>
               )}
+              {entry.header && (
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: '#777', margin: 0, marginTop: 6, fontStyle: 'italic' }}>
+                  {entry.header}
+                </p>
+              )}
 
               <p style={{ fontFamily: 'var(--font-arcade)', fontSize: 9, color: '#555', margin: 0, marginTop: 4, letterSpacing: '0.1em' }}>
-                // CLASS OF &apos;{entry.year || entry.cohort}
+                // CLASS OF &apos;{entry.cohort.slice(-2)}
               </p>
 
               {(entry.location || entry.school) && (
@@ -134,21 +139,10 @@ export default function ProfilePanel({
                 </p>
               )}
 
-              {entry.quote && (
-                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: '#e0e0e0', margin: 0, marginTop: 10, lineHeight: 1.7 }}>
-                  &ldquo;{entry.quote}&rdquo;
-                </p>
-              )}
-
               {entry.description && (
-                <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #222' }}>
-                  <p style={{ fontFamily: 'var(--font-arcade)', fontSize: 8, color: '#555', letterSpacing: '0.1em', margin: 0, marginBottom: 4, textTransform: 'uppercase' }}>
-                    // ABOUT
-                  </p>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: '#aaa', margin: 0, lineHeight: 1.6 }}>
-                    {entry.description}
-                  </p>
-                </div>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: '#e0e0e0', margin: 0, marginTop: 10, lineHeight: 1.7 }}>
+                  &ldquo;{entry.description}&rdquo;
+                </p>
               )}
 
               {/* Socials (website filtered out — shown as VISIT button) */}

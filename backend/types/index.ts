@@ -7,10 +7,13 @@ export interface Member {
   name: string;
   url: string;
   description: string;
+  header?: string;
   location: string;
-  quote: string;
   cohort: string;
   avatar?: string;
+  websiteImage?: string;
+  role?: string;
+  school?: string;
   hobbies?: string[];
   experiences?: string[];
   socials?: Social[];

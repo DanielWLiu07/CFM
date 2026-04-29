@@ -206,9 +206,9 @@ export function createCardElement(member: ClassMember, cardW: number, cardH: num
   nameBar.appendChild(nameEl);
 
   let termEl: HTMLDivElement | null = null;
-  if (member.year) {
+  if (member.cohort) {
     termEl = document.createElement('div');
-    termEl.textContent = "'" + member.year;
+    termEl.textContent = "'" + member.cohort.slice(-2);
     termEl.style.cssText = `
       font-family: var(--font-arcade); font-size: ${termFontSize}px; letter-spacing: 0.1em;
       color: #fff; background: rgba(255,255,255,0.08); padding: 2px 8px;

@@ -25,16 +25,14 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
     .map(m => ({
       name: m.name,
       url: m.url,
-      tagline: m.tagline,
-      description: m.description ?? '',
-      cohort: m.cohort ?? m.year ?? '',
+      header: m.header,
+      description: m.description,
+      cohort: m.cohort,
       avatar: m.avatar,
       websiteImage: m.websiteImage,
       role: m.role,
       location: m.location,
       school: m.school,
-      quote: m.quote,
-      year: m.year,
       socials: m.socials as Social[] | undefined,
     })), [membersData]);
 

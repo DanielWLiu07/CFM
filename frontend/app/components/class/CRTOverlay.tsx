@@ -332,14 +332,14 @@ export default function CRTOverlay({ expandedMember, members, phase, closeExpand
                             <span style={{ color: '#22c55e', textShadow: '0 0 6px rgba(34,197,94,0.5)' }}>&gt; </span>
                             {expandedMember.name}
                           </div>
-                          {expandedMember.year && (
+                          {expandedMember.cohort && (
                             <div style={{
                               fontFamily: 'var(--font-arcade)', fontSize: 12, letterSpacing: '0.1em',
                               color: '#fff', background: 'rgba(255,255,255,0.08)', padding: '2px 8px',
                               border: '1px solid rgba(255,255,255,0.2)',
                               flexShrink: 0, marginLeft: 8,
                             }}>
-                              &apos;{expandedMember.year}
+                              &apos;{expandedMember.cohort.slice(-2)}
                             </div>
                           )}
                         </div>

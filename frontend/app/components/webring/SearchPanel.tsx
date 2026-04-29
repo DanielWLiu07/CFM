@@ -178,7 +178,7 @@ export default function SearchPanel({
                       <span style={{ fontFamily: 'var(--font-arcade)', fontSize: 9, color: '#444', letterSpacing: '0.08em' }}>{entry.cohort}</span>
                     </div>
                   </div>
-                  {entry.tagline && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#666', margin: 0, marginTop: 2 }}>{entry.tagline}</p>}
+                  {entry.header && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#666', margin: 0, marginTop: 2 }}>{entry.header}</p>}
                 </div>
               );
             })}

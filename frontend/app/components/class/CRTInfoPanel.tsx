@@ -15,7 +15,6 @@ const BTN_SHADOW = '3px 3px 0px rgba(0,0,0,0.4)';
 
 // Tuned text sizes — previously dev-controlled.
 const BLURB_SIZE = 18;
-const LABEL_SIZE = 48;
 
 // Stock-style ticker entries — purely decorative.
 const TICKER_ITEMS = [
@@ -89,6 +88,7 @@ export default function CRTInfoPanel({ member, members, isNarrow, closeExpanded,
   const idx = members.findIndex(m => m.name === member.name);
   const prev = members[(idx - 1 + members.length) % members.length];
   const next = members[(idx + 1) % members.length];
+  const classYear = member.cohort.slice(-2);
 
   return (
     <div style={{
@@ -207,10 +207,10 @@ export default function CRTInfoPanel({ member, members, isNarrow, closeExpanded,
               </p>
             </div>
           )}
-          {member.tagline && (
+          {member.header && (
             <div style={{ animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.26s both', marginTop: isNarrow ? -6 : -10 }}>
               <p style={{ fontFamily: 'monospace', fontSize: isNarrow ? 13 : 15, color: GREEN, letterSpacing: '0.04em', margin: 0, fontStyle: 'italic', textShadow: '0 0 8px rgba(34,197,94,0.3)' }}>
-                {member.tagline}
+                {member.header}
               </p>
             </div>
           )}
@@ -222,9 +222,9 @@ export default function CRTInfoPanel({ member, members, isNarrow, closeExpanded,
             <p style={{ fontFamily: 'var(--font-arcade)', fontSize: isNarrow ? 14 : 16, color: '#999', letterSpacing: '0.08em', margin: 0, textShadow: '1px 1px 0 #000' }}>
               {member.school ? `${member.location}  //  ${member.school}` : member.location}
             </p>
-            {member.year && (
+            {classYear && (
               <p style={{ fontFamily: 'var(--font-arcade)', fontSize: isNarrow ? 14 : 16, color: '#999', letterSpacing: '0.08em', margin: 0, textShadow: '1px 1px 0 #000' }}>
-                CLASS OF &apos;{member.year}
+                CLASS OF &apos;{classYear}
               </p>
             )}
           </div>
@@ -239,7 +239,7 @@ export default function CRTInfoPanel({ member, members, isNarrow, closeExpanded,
         }}
         onClick={e => e.stopPropagation()}
       >
-        {/* Blurb terminal box */}
+        {/* Description terminal box */}
         <div style={{
           background: '#0a0a0a', border: '2px solid #333', padding: '16px 20px',
           boxShadow: '4px 4px 0px #000, inset 0 0 30px rgba(0,255,100,0.03)',
@@ -252,39 +252,52 @@ export default function CRTInfoPanel({ member, members, isNarrow, closeExpanded,
             fontFamily: 'monospace', fontSize: BLURB_SIZE, color: GREEN,
             lineHeight: 1.8, margin: 0,
           }}>
-            {member.quote}
+            {member.description}
             <span style={{ display: 'inline-block', width: 8, height: '1.1em', background: GREEN, marginLeft: 4, animation: 'blink 1s steps(1) infinite', verticalAlign: 'text-bottom' }} />
           </p>
         </div>
 
-        {/* About Me */}
-        {member.description && (
-          <>
-            <div style={{ animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.36s both' }}>
-              <p style={{
-                fontFamily: 'var(--font-arcade)', fontSize: LABEL_SIZE, letterSpacing: '0.18em', margin: '0 0 4px', textTransform: 'uppercase',
-                color: '#fff',
-                WebkitTextStroke: '1.5px #000',
-                paintOrder: 'stroke fill' as React.CSSProperties['paintOrder'],
-                textShadow: '1px 1px 0 #000, 2px 2px 0 #000, 3px 3px 0 #111, 4px 4px 0 rgba(0,0,0,0.4), 5px 5px 0 rgba(255,255,255,0.35), 0 0 15px rgba(255,255,255,0.1)',
-              }}>
-                <span style={{ color: GREEN, WebkitTextStroke: '0px', textShadow: '1px 1px 0 #000, 2px 2px 0 #000, 3px 3px 0 rgba(0,0,0,0.4), 4px 4px 0 rgba(34,197,94,0.35), 0 0 12px rgba(34,197,94,0.6)', marginRight: 10 }}>$</span>ABOUT ME
-              </p>
+        <div style={{ animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.36s both', marginTop: -8 }}>
+          <p style={{
+            fontFamily: 'var(--font-arcade)', fontSize: 48, letterSpacing: '0.18em', margin: '0 0 4px', textTransform: 'uppercase',
+            color: '#fff',
+            WebkitTextStroke: '1.5px #000',
+            paintOrder: 'stroke fill' as React.CSSProperties['paintOrder'],
+            textShadow: '1px 1px 0 #000, 2px 2px 0 #000, 3px 3px 0 #111, 4px 4px 0 rgba(0,0,0,0.4), 5px 5px 0 rgba(255,255,255,0.35), 0 0 15px rgba(255,255,255,0.1)',
+          }}>
+            <span style={{ color: GREEN, WebkitTextStroke: '0px', textShadow: '1px 1px 0 #000, 2px 2px 0 #000, 3px 3px 0 rgba(0,0,0,0.4), 4px 4px 0 rgba(34,197,94,0.35), 0 0 12px rgba(34,197,94,0.6)', marginRight: 10 }}>$</span>ABOUT ME
+          </p>
+        </div>
+
+        {!!member.experiences?.length && (
+          <div style={{
+            background: '#0a0a0a', border: '2px solid #333', padding: '14px 16px',
+            boxShadow: '4px 4px 0px #000, inset 0 0 30px rgba(0,255,100,0.03)',
+            animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.36s both',
+            marginTop: -10,
+          }}>
+            <p style={{ fontFamily: 'var(--font-arcade)', fontSize: 14, color: '#aaa', margin: '0 0 10px', letterSpacing: '0.08em' }}>
+              EXPERIENCES
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {member.experiences.map((experience, i) => (
+                <span
+                  key={`${member.name}-exp-${i}`}
+                  style={{
+                    border: '1px solid #2f2f2f',
+                    background: '#111',
+                    color: '#b7b7b7',
+                    fontFamily: 'monospace',
+                    fontSize: 12,
+                    letterSpacing: '0.04em',
+                    padding: '6px 10px',
+                  }}
+                >
+                  {experience}
+                </span>
+              ))}
             </div>
-            <div style={{
-              background: '#0a0a0a', border: '2px solid #333', padding: '16px 20px',
-              boxShadow: '4px 4px 0px #000, inset 0 0 30px rgba(0,255,100,0.03)',
-              animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.38s both',
-              marginTop: -16,
-            }}>
-              <p style={{
-                fontFamily: 'monospace', fontSize: 14, color: '#aaa',
-                lineHeight: 1.7, margin: 0,
-              }}>
-                {member.description}
-              </p>
-            </div>
-          </>
+          </div>
         )}
       </div>
 
@@ -323,7 +336,7 @@ export default function CRTInfoPanel({ member, members, isNarrow, closeExpanded,
         <span>CFM://members/{member.name.toLowerCase().replace(/\s+/g, '-')}</span>
         <span style={{ display: 'flex', gap: 16 }}>
           <span><span style={{ color: GREEN }}>●</span> CONNECTED</span>
-          {member.year && <span>CLASS &apos;{member.year}</span>}
+          {classYear && <span>CLASS &apos;{classYear}</span>}
           <span>{idx + 1}/{members.length}</span>
         </span>
       </div>

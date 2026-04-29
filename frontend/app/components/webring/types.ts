@@ -6,7 +6,7 @@ export interface Social {
 export interface WebringEntry {
   name: string;
   url: string;
-  tagline?: string;
+  header?: string;
   description: string;
   cohort: string;
   avatar?: string;
@@ -14,8 +14,6 @@ export interface WebringEntry {
   role?: string;
   location?: string;
   school?: string;
-  quote?: string;
-  year?: string;
   socials?: Social[];
 }
 
