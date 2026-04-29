@@ -42,9 +42,10 @@
       height: 50px;
       cursor: pointer;
       transition: all 0.2s;
+      transform: scaleX(-1);
     }
     .hub-icon:hover {
-      transform: scale(1.1);
+      transform: scaleX(-1) scale(1.1);
     }
     .dark-bg {
       background: #1a1a1a;
@@ -58,6 +59,13 @@
   </style>
 </head>
 <body>
+  <svg width="0" height="0" style="position: absolute; opacity: 0; pointer-events: none;" aria-hidden="true" focusable="false">
+    <defs>
+      <symbol id="cfm-panther-icon" viewBox="0 0 256 115">
+        <path fill="currentColor" d="M252.358,44.991l-6.622,5.943c-1.104,0.991-2.516,1.511-3.946,1.511c-0.786,0-1.578-0.157-2.328-0.479l-16.975-7.283 l-18.702-1.969l-18.702,22.721v35.354h4.922c3.262,0,5.906,2.644,5.906,5.906c0,3.262-2.644,5.906-5.906,5.906h-14.765 l-10.335-47.247h-32.975c-6.546,0-12.698-1.408-18.259-4.833l-17.314-9.666L74.315,74.189c-1.133,1.2-2.375,2.293-3.709,3.264 l-21.358,15.56l2.796,7.805l5.497,0.019c3.24,0.012,5.862,2.642,5.862,5.882c0,3.249-2.634,5.882-5.882,5.882H43.717l-9.44-26.567 c-0.679-1.988-0.335-4.183,0.925-5.876l17.462-21.36l-3.402-22.994L32.753,49.602c-3.501,2.927-7.765,4.365-12.011,4.365 c-5.048,0-10.071-2.033-13.757-6.016c-3.528-3.813-5.283-8.767-4.943-13.949c0.34-5.183,2.727-9.865,6.722-13.184 c2.089-1.737,5.193-1.451,6.931,0.64c1.737,2.09,1.451,5.193-0.64,6.931c-1.896,1.575-3.029,3.797-3.19,6.257 c-0.161,2.46,0.672,4.812,2.346,6.621c3.22,3.479,8.593,3.826,12.23,0.784c0,0,19.471-16.309,25.984-21.718 c8.49-7.051,19.586-10.218,30.301-10.218h66.942c4.683,0,9.285-1.225,13.348-3.553c3.997-2.283,8.02-4.162,12.492-4.162 c5.27,0,28.52,5.077,40.735,7.399c0.9-2.91,2.772-5.132,4.404-6.605c1.383-1.249,3.571-0.838,4.405,0.829l4.201,8.402l15.383,10.919 c1.299,0.915,2.057,2.402,2.057,3.987v2.038l6.406,9.099C254.541,40.514,254.223,43.318,252.358,44.991z M228.965,75.996 L228.965,75.996l-26.09-22.882L191.03,67.505l28.074,15.046l8.282,11.656c1.81,2.724,5.486,3.463,8.208,1.653 c2.723-1.81,3.463-5.485,1.653-8.208L228.965,75.996z M114.875,67.8c-1.441-0.643-2.843-1.36-4.187-2.182l-13.194-7.366 L77.799,79.063l10.822,33.538h13.78c3.262,0,5.906-2.644,5.906-5.906c0-3.262-2.644-5.906-5.906-5.906h-4.82l-4.277-13.168 L114.875,67.8z"/>
+      </symbol>
+    </defs>
+  </svg>
   <h1>CFM Webring Widget Test</h1>
   
   <div class="test-section">
@@ -68,11 +76,8 @@
       </a>
       
       <a href="https://uwaterloocfm.com" target="_blank">
-        <svg class="hub-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" style="color: #991b1b;">
-          <circle cx="50" cy="50" r="42" stroke="currentColor" stroke-width="3" fill="none" opacity="0.9"/>
-          <text x="50" y="58" text-anchor="middle" dominant-baseline="middle"
-                fill="currentColor" font-family="system-ui, -apple-system, sans-serif"
-                font-weight="700" font-size="22" letter-spacing="-0.5">CFM</text>
+        <svg class="hub-icon" viewBox="0 0 256 115" style="color: #991b1b;">
+          <use href="#cfm-panther-icon"></use>
         </svg>
       </a>
       
@@ -91,11 +96,8 @@
       </a>
       
       <a href="https://uwaterloocfm.com" target="_blank">
-        <svg class="hub-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" style="color: #fca5a5;">
-          <circle cx="50" cy="50" r="42" stroke="currentColor" stroke-width="3" fill="none" opacity="0.9"/>
-          <text x="50" y="58" text-anchor="middle" dominant-baseline="middle"
-                fill="currentColor" font-family="system-ui, -apple-system, sans-serif"
-                font-weight="700" font-size="22" letter-spacing="-0.5">CFM</text>
+        <svg class="hub-icon" viewBox="0 0 256 115" style="color: #fca5a5;">
+          <use href="#cfm-panther-icon"></use>
         </svg>
       </a>
       
@@ -116,11 +118,8 @@
       </a>
       
       <a href="https://uwaterloocfm.com" target="_blank">
-        <svg class="hub-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" style="color: #2563eb;">
-          <circle cx="50" cy="50" r="42" stroke="currentColor" stroke-width="3" fill="none" opacity="0.9"/>
-          <text x="50" y="58" text-anchor="middle" dominant-baseline="middle"
-                fill="currentColor" font-family="system-ui, -apple-system, sans-serif"
-                font-weight="700" font-size="22" letter-spacing="-0.5">CFM</text>
+        <svg class="hub-icon" viewBox="0 0 256 115" style="color: #2563eb;">
+          <use href="#cfm-panther-icon"></use>
         </svg>
       </a>
       

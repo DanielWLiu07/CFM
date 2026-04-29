@@ -455,7 +455,7 @@ export default function GithubSection({ onVisibilityChange, audioRef, reducedMot
             <div style={{ display: 'flex', gap: 20 }}>
               {[
                 { name: 'Daniel W. Liu', role: 'Frontend · Design · 3D', stat: 'CFM 2030' },
-                { name: 'Aadya Khanna', role: 'Backend · API · Marketing', stat: 'CFM 2030' },
+                { name: 'Aadya Khanna', role: 'Backend · Data · Webring', stat: 'CFM 2030' },
               ].map((c, i) => (
                 <div key={i}>
                   <div style={{ fontFamily: mono, fontSize: 12, color: bright, marginBottom: 2 }}>{c.name}</div>

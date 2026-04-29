@@ -1,8 +1,7 @@
 # CFM Webring
 
+### The official webring for UWaterloo Computing & Financial Management.
 
-
-### The official webring for UWaterloo Computing & Financial Management.   
 A 3D, retro-arcade showcase connecting CFM students across cohorts.
 
 ## Quick Start (Fork & Clone)
@@ -90,20 +89,22 @@ Once you're in the webring (added to members.json with a valid website URL), you
 
 ### Hub Icon
 
-The hub icon is a small inline SVG — paste it directly into your HTML. Because it uses `currentColor` throughout, a single `color` CSS value controls the entire icon:
+Canonical asset: `cfm-panther.svg`
+
+Use one of these approaches:
+
+- Quick setup (image file): easiest to copy and keep docs clean.
+- Full control (inline SVG): best when you want custom color, animation, or transforms.
+
+Quick setup:
 
 ```html
 <a href="https://uwaterloocfm.com" target="_blank">
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" style="width: 50px; color: #991b1b;">
-    <circle cx="50" cy="50" r="42" stroke="currentColor" stroke-width="3" fill="none" opacity="0.9"/>
-    <text x="50" y="58" text-anchor="middle" dominant-baseline="middle"
-          fill="currentColor" font-family="system-ui, -apple-system, sans-serif"
-          font-weight="700" font-size="22" letter-spacing="-0.5">CFM</text>
-  </svg>
+  <img src="/cfm-panther.svg" alt="CFM Webring Hub" style="width: 50px;">
 </a>
 ```
 
-Change `color: #991b1b` to any CSS color to match your site.
+For full-control inline customization, copy the SVG from `cfm-panther.svg` into your HTML and style with `fill="currentColor"`.
 
 ### Add the Widget to Your Site
 
@@ -118,14 +119,9 @@ Use your own images/SVGs for the arrows to match your site's design:
     <img src="/your-custom-left-arrow.svg" alt="Previous in CFM Webring" style="width: 50px; cursor: pointer;">
   </a>
 
-  <!-- Hub icon (inline SVG — change color to match your site) -->
+  <!-- Hub icon -->
   <a href="https://uwaterloocfm.com" target="_blank">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" style="width: 50px; color: #991b1b; cursor: pointer;">
-      <circle cx="50" cy="50" r="42" stroke="currentColor" stroke-width="3" fill="none" opacity="0.9"/>
-      <text x="50" y="58" text-anchor="middle" dominant-baseline="middle"
-            fill="currentColor" font-family="system-ui, -apple-system, sans-serif"
-            font-weight="700" font-size="22" letter-spacing="-0.5">CFM</text>
-    </svg>
+    <img src="/cfm-panther.svg" alt="CFM Webring Hub" style="width: 50px; cursor: pointer;">
   </a>
 
   <!-- Your custom right arrow -->
@@ -146,14 +142,9 @@ For a minimal approach, use text/emoji arrows:
     ←
   </a>
 
-  <!-- Hub icon (inline SVG — change color to match your site) -->
+  <!-- Hub icon -->
   <a href="https://uwaterloocfm.com" target="_blank">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" style="width: 40px; color: #991b1b;">
-      <circle cx="50" cy="50" r="42" stroke="currentColor" stroke-width="3" fill="none" opacity="0.9"/>
-      <text x="50" y="58" text-anchor="middle" dominant-baseline="middle"
-            fill="currentColor" font-family="system-ui, -apple-system, sans-serif"
-            font-weight="700" font-size="22" letter-spacing="-0.5">CFM</text>
-    </svg>
+    <img src="/cfm-panther.svg" alt="CFM Webring Hub" style="width: 40px;">
   </a>
 
   <a href="https://api.cfm-webring.com/api/navigate?url=YOUR_WEBSITE_URL&direction=next&redirect=true"
@@ -170,13 +161,8 @@ export default function WebringWidget() {
   const myUrl = "https://yoursite.com"; // Must match your members.json URL
   const apiBase = "https://api.cfm-webring.com/api/navigate";
 
-  const HubIcon = ({ color = "#991b1b", size = 50 }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" style={{ width: size, color, cursor: 'pointer' }}>
-      <circle cx="50" cy="50" r="42" stroke="currentColor" strokeWidth="3" fill="none" opacity="0.9"/>
-      <text x="50" y="58" textAnchor="middle" dominantBaseline="middle"
-            fill="currentColor" fontFamily="system-ui, -apple-system, sans-serif"
-            fontWeight="700" fontSize="22" letterSpacing="-0.5">CFM</text>
-    </svg>
+  const HubIcon = ({ size = 50 }) => (
+    <img src="/cfm-panther.svg" alt="CFM Webring Hub" style={{ width: size, cursor: 'pointer' }} />
   );
 
   return (
@@ -202,5 +188,5 @@ export default function WebringWidget() {
 - Replace `YOUR_WEBSITE_URL` with your site's URL (must **exactly match** your `url` field in members.json)
 - Your URL must be in members.json with a valid website (not `#`)
 - Arrows: Use any image/SVG you want for complete creative control
-- Hub icon: Change the `color` value to match your site's theme
+- Hub icon: use the file-based `<img>` for fastest setup, or inline SVG if you want color/animation control
 
