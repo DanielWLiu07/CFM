@@ -1,15 +1,9 @@
 # CFM Webring
 
 
-<p align="center">
-  <img src="public/images/class_text.webp" alt="CFM Webring" width="500" />
-</p>
 
-<h3 align="center">
-  The official webring for UWaterloo Computing & Financial Management.
-  <br/>
-  A 3D, retro-arcade showcase connecting CFM students across cohorts.
-</h3>
+### The official webring for UWaterloo Computing & Financial Management.   
+A 3D, retro-arcade showcase connecting CFM students across cohorts.
 
 ## Quick Start (Fork & Clone)
 
@@ -30,8 +24,9 @@ cd CFM
   "cohort": "graduating-year",
   "url": "https://yourwebsite.com",
   "location": "Your City, Province",
+  "role": "Most Recent/Relevent Role",
   "header": "Short header",
-  "experiences": ["Role @ Company", "Intern @ Team"],
+  "experiences": ["Role @ Company", "Field/Sector"],
   "description": "One-line description",
   "avatar": "/images/avatars/YOUR-IMAGE",
   "websiteImage": "/images/websites/yourname.png",
@@ -41,6 +36,7 @@ cd CFM
   ]
 }
 ```
+
 ---
 
 ### Example
@@ -51,6 +47,7 @@ cd CFM
   "cohort": "2030",
   "url": "https://aadyakhanna.com",
   "location": "Toronto, ON",
+  "role": "Product Engineer",
   "header": "Mathematically Musical",
   "experiences": ["Product Engineer"],
   "description": "Drawn to the intersection of technology, creativity, and financial markets",
@@ -64,16 +61,14 @@ cd CFM
 
 ### Important Notes
 
-* Ensure **all links are valid and working**
-* Make sure your avatar path is correct
-* Use `#` for socials you don't have (or omit them entirely)
-* `url` can be `#` if your website is not ready yet
-* `cohort` is your graduation year (e.g. "2029")
-* `websiteImage` is optional
+- Ensure **all links are valid and working**
+- Make sure your avatar path is correct
+- Use `#` for socials you don't have (or omit them entirely)
+- `url` can be `#` if your website is not ready yet
+- `cohort` is your graduation year (e.g. "2029")
+- `websiteImage` is optional
 
-
-
-4. Run and verify locally:
+1. Run and verify locally:
 
 ```bash
 # Frontend
@@ -87,8 +82,7 @@ npm install
 npm run dev
 ```
 
-5. Open a PR with your `members.json` + image changes.
-
+1. Open a PR with your `members.json` + image changes.
 
 ## Embedding the Webring on Your Site
 
@@ -209,3 +203,4 @@ export default function WebringWidget() {
 - Your URL must be in members.json with a valid website (not `#`)
 - Arrows: Use any image/SVG you want for complete creative control
 - Hub icon: Change the `color` value to match your site's theme
+

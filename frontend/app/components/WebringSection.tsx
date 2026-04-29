@@ -32,7 +32,6 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
       websiteImage: m.websiteImage,
       role: m.role,
       location: m.location,
-      school: m.school,
       socials: m.socials as Social[] | undefined,
     })), [membersData]);
 

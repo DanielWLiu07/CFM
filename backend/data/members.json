@@ -8,8 +8,12 @@
     "header": "SWE @ building things",
     "description": "if it compiles, ship it. if it doesn't, ship it louder.",
     "experiences": [
-      "Software Engineer", 
-      "Data Scientist"
+      "SWE @ PlayStation", 
+      "SWE @ HOSA Canada"
+    ],
+    "interests": [
+      "Blender",
+      "3D Web Development"
     ],
     "avatar": "/images/avatars/daniel_photo.jpeg",
     "websiteImage": "/images/websites/daniel.png",
@@ -29,11 +33,16 @@
     "cohort": "2026",
     "url": "https://timothyzheng.ca",
     "location": "Waterloo, ON",
-    "role": "Alumni",
-    "header": "power trading",
-    "description": "buy low, sell high. how hard can it be?",
+    "role": "Power Trader",
+    "header": "buy low, sell high",
+    "description": "Best TA in the world",
     "experiences": [
-      "Alumni"
+      "RBC Capital Markets", "RBC Amplify", "AMD"
+    ],
+    "interests": [
+      "TA-ing",
+      "Securities",
+      "Investing"
     ],
     "avatar": "/images/avatars/timothyz.webp",
     "websiteImage": "/images/websites/timothyz.png"
@@ -43,11 +52,18 @@
     "cohort": "2030",
     "url": "https://aadyakhanna.com",
     "location": "Toronto, ON",
-    "role": "Product Engineer",
+    "role": "Software Engineer",
     "header": "mathematically musical",
-    "description": "Wingstop ON TOP",
+    "description": "lorem ipsum dolor sit amet",
     "experiences": [
-      "Product Engineer"
+      "Product Engineer @ Zafin",
+      "Developer @ STaBL Foundation"
+    ],
+    "interests": [
+      "Guitar",
+      "Hackathons",
+      "IKEA/LEGO",
+      "Investing"
     ],
     "avatar": "/images/avatars/aadyakhanna.jpeg",
     "socials": [
@@ -72,6 +88,10 @@
     "experiences": [
       "Quant Developer"
     ],
+    "interests": [
+      "Competitive Programming",
+      "Chess"
+    ],
     "avatar": "/images/avatars/marcus.svg",
     "socials": [
       {
@@ -94,6 +114,10 @@
     "description": "my GPU bill is more than my tuition.",
     "experiences": [
       "ML Engineer"
+    ],
+    "interests": [
+      "Kaggle",
+      "Reading"
     ],
     "avatar": "/images/avatars/priya.svg",
     "socials": [
@@ -122,6 +146,10 @@
     "experiences": [
       "Systems Engineer"
     ],
+    "interests": [
+      "Homelab",
+      "Open Source"
+    ],
     "avatar": "/images/avatars/jordan.svg",
     "socials": [
       {
@@ -140,6 +168,10 @@
     "description": "correlation is not causation but it's close enough for a demo.",
     "experiences": [
       "Data Scientist"
+    ],
+    "interests": [
+      "Photography",
+      "Data Viz"
     ],
     "avatar": "/images/avatars/sophie.svg",
     "socials": [
@@ -164,6 +196,10 @@
     "experiences": [
       "Product Designer"
     ],
+    "interests": [
+      "UI Design",
+      "Prototyping"
+    ],
     "avatar": "/images/avatars/ethan.svg",
     "socials": [
       {
@@ -186,6 +222,10 @@
     "description": "it works on my machine. so I containerized my machine.",
     "experiences": [
       "DevOps / Infra"
+    ],
+    "interests": [
+      "Automation",
+      "Linux"
     ],
     "avatar": "/images/avatars/nina.svg",
     "socials": [

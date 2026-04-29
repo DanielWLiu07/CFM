@@ -94,15 +94,16 @@ export default function ClassSection({ onVisibilityChange, beatRef }: ClassSecti
     const result = MEMBERS.filter(m => {
       const matchesCohort = selectedCohort === 'ALL' || m.cohort === selectedCohort;
       const q = search.toLowerCase();
-        const experiencesText = (m.experiences ?? []).join(' ').toLowerCase();
+      const experiencesText = (m.experiences ?? []).join(' ').toLowerCase();
+      const interestsText = (m.interests ?? []).join(' ').toLowerCase();
       const matchesSearch = !q
         || m.name.toLowerCase().includes(q)
         || (m.role?.toLowerCase().includes(q) ?? false)
         || m.location.toLowerCase().includes(q)
-        || (m.school?.toLowerCase().includes(q) ?? false)
         || m.description.toLowerCase().includes(q)
         || (m.header?.toLowerCase().includes(q) ?? false)
-        || experiencesText.includes(q);
+        || experiencesText.includes(q)
+        || interestsText.includes(q);
       return matchesCohort && matchesSearch;
     });
     if (shuffleSeed > 0) {

@@ -133,9 +133,9 @@ export default function ProfilePanel({
                 // CLASS OF &apos;{entry.cohort.slice(-2)}
               </p>
 
-              {(entry.location || entry.school) && (
+              {entry.location && (
                 <p style={{ fontFamily: 'var(--font-arcade)', fontSize: 9, color: '#555', margin: 0, marginTop: 2, letterSpacing: '0.06em' }}>
-                  {entry.location}{entry.location && entry.school ? '  //  ' : ''}{entry.school}
+                  {entry.location}
                 </p>
               )}
 

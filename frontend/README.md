@@ -94,8 +94,7 @@ Open the file and add a new entry:
   "avatar": "/images/avatars/yourname.png",
   "websiteImage": "/images/websites/yourname.png", // optional
   "role": "Your Role",                       // optional
-  "school": "Your High School",              // optional
-  "hobbies": ["hobby1", "hobby2", "hobby3"], // optional
+  "interests": ["interest1", "interest2", "interest3"], // optional
   "socials": [                                      // optional, include any/all
     { "type": "github", "url": "https://github.com/you" },
     { "type": "linkedin", "url": "https://linkedin.com/in/you" },
@@ -108,7 +107,7 @@ Open the file and add a new entry:
 
 **Required fields:** `name`, `cohort`, `url`, `location`, `header`, `experiences`, `description`, `avatar`
 
-**Optional fields:** `websiteImage`, `socials`, `role`, `school`, `hobbies`
+**Optional fields:** `websiteImage`, `socials`, `role`, `interests`
 
 ### 5. Test locally
 

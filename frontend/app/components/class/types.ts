@@ -10,12 +10,11 @@ export interface ClassMember {
   description: string;
   role?: string;
   location: string;
-  school?: string;
   cohort: string;
   avatar?: string;
   websiteImage?: string;
   socials?: Social[];
-  hobbies?: string[];
+  interests?: string[];
   experiences?: string[];
 }
 

@@ -13,7 +13,6 @@ export interface WebringEntry {
   websiteImage?: string;
   role?: string;
   location?: string;
-  school?: string;
   socials?: Social[];
 }
 

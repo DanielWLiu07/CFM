@@ -13,8 +13,7 @@ export interface Member {
   avatar?: string;
   websiteImage?: string;
   role?: string;
-  school?: string;
-  hobbies?: string[];
+  interests?: string[];
   experiences?: string[];
   socials?: Social[];
 }

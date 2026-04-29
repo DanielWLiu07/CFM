@@ -220,13 +220,8 @@ export default function CRTInfoPanel({ member, members, isNarrow, closeExpanded,
             marginTop: isNarrow ? -4 : -6,
           }}>
             <p style={{ fontFamily: 'var(--font-arcade)', fontSize: isNarrow ? 14 : 16, color: '#999', letterSpacing: '0.08em', margin: 0, textShadow: '1px 1px 0 #000' }}>
-              {member.school ? `${member.location}  //  ${member.school}` : member.location}
+              {`CLASS OF '${classYear}  //  ${member.location}`}
             </p>
-            {classYear && (
-              <p style={{ fontFamily: 'var(--font-arcade)', fontSize: isNarrow ? 14 : 16, color: '#999', letterSpacing: '0.08em', margin: 0, textShadow: '1px 1px 0 #000' }}>
-                CLASS OF &apos;{classYear}
-              </p>
-            )}
           </div>
         </div>
       </div>
@@ -277,7 +272,7 @@ export default function CRTInfoPanel({ member, members, isNarrow, closeExpanded,
             marginTop: -10,
           }}>
             <p style={{ fontFamily: 'var(--font-arcade)', fontSize: 14, color: '#aaa', margin: '0 0 10px', letterSpacing: '0.08em' }}>
-              EXPERIENCES
+              // EXPERIENCES
             </p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {member.experiences.map((experience, i) => (
@@ -294,6 +289,37 @@ export default function CRTInfoPanel({ member, members, isNarrow, closeExpanded,
                   }}
                 >
                   {experience}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!!member.interests?.length && (
+          <div style={{
+            background: '#0a0a0a', border: '2px solid #333', padding: '14px 16px',
+            boxShadow: '4px 4px 0px #000, inset 0 0 30px rgba(0,255,100,0.03)',
+            animation: 'content-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.36s both',
+            marginTop: -10,
+          }}>
+            <p style={{ fontFamily: 'var(--font-arcade)', fontSize: 14, color: '#aaa', margin: '0 0 10px', letterSpacing: '0.08em' }}>
+              // INTERESTS
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {member.interests.map((interest, i) => (
+                <span
+                  key={`${member.name}-interest-${i}`}
+                  style={{
+                    border: '1px solid #2f2f2f',
+                    background: '#111',
+                    color: '#b7b7b7',
+                    fontFamily: 'monospace',
+                    fontSize: 12,
+                    letterSpacing: '0.04em',
+                    padding: '6px 10px',
+                  }}
+                >
+                  {interest}
                 </span>
               ))}
             </div>
