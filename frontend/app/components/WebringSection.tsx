@@ -309,6 +309,42 @@ export default function WebringSection({ onVisibilityChange, audioRef, reducedMo
     setSelectedNode(nodeIndex);
   }, []);
 
+  // Keyboard navigation across currently visible (filtered) members.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!sectionVisible) return;
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      const visibleIndices = WEBRING_ENTRIES
+        .map((_, i) => i)
+        .filter(i => matchingIndices.has(i));
+      if (visibleIndices.length === 0) return;
+
+      e.preventDefault();
+
+      const current = selectedNodeRef.current;
+      const currentPos = visibleIndices.indexOf(current);
+      const step = e.key === 'ArrowRight' ? 1 : -1;
+      const startPos = currentPos === -1 ? (step > 0 ? -1 : 0) : currentPos;
+      const nextPos = (startPos + step + visibleIndices.length) % visibleIndices.length;
+      triggerFlyTo(visibleIndices[nextPos]);
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [WEBRING_ENTRIES, matchingIndices, triggerFlyTo, sectionVisible]);
+
   // ── Canvas render loop ────────────────────────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current;

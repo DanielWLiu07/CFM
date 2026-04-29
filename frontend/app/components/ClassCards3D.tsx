@@ -236,6 +236,15 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
     );
   };
 
+  const navigateExpandedMember = (member: ClassMember) => {
+    if (phase !== 'done') return;
+    setExpandedMember(member);
+    setInkKey(k => k + 1);
+    const url = new URL(window.location.href);
+    url.searchParams.set('member', toSlug(member.name));
+    window.history.replaceState({}, '', url.toString());
+  };
+
   // Open from URL on mount (e.g. ?member=daniel-liu)
   useEffect(() => {
     const slug = new URLSearchParams(window.location.search).get('member');
@@ -301,7 +310,30 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
     document.body.style.overflow = 'hidden';
     document.documentElement.style.overflow = 'hidden';
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') closeExpanded();
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      if (e.key === 'Escape') {
+        closeExpanded();
+        return;
+      }
+      if ((e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') || !expandedMember || members.length === 0) return;
+
+      const idx = members.findIndex(m => m.name === expandedMember.name);
+      if (idx < 0) return;
+      e.preventDefault();
+      const nextIdx = e.key === 'ArrowRight'
+        ? (idx + 1) % members.length
+        : (idx - 1 + members.length) % members.length;
+      navigateExpandedMember(members[nextIdx]);
     };
     window.addEventListener('keydown', onKey);
     return () => {
@@ -309,7 +341,7 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
       document.documentElement.style.overflow = '';
       window.removeEventListener('keydown', onKey);
     };
-  }, [phase]);
+  }, [phase, expandedMember, members]);
 
 
   return (
@@ -325,14 +357,7 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
         members={members}
         phase={phase}
         closeExpanded={closeExpanded}
-        onNavigate={(member) => {
-          if (phase !== 'done') return;
-          setExpandedMember(member);
-          setInkKey(k => k + 1);
-          const url = new URL(window.location.href);
-          url.searchParams.set('member', toSlug(member.name));
-          window.history.replaceState({}, '', url.toString());
-        }}
+        onNavigate={navigateExpandedMember}
       />
     </>
   );
