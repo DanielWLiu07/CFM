@@ -177,7 +177,7 @@ export default function WebringWidget() {
       </a>
 
       <a href="https://uwaterloocfm.com" target="_blank" rel="noopener noreferrer">
-        <HubIcon size={50} />
+        <HubIcon />
       </a>
 
       <a href={`${ringBase}/#${encodeURIComponent(myUrl)}?nav=next`}>
