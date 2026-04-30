@@ -37,6 +37,7 @@ const CARDS = [
         <p><Dim>{'>'} </Dim>Faculties: <G>Mathematics (David R. Cheriton School of Computer Science)</G> + <G>Accounting and Finance</G></p>
         <p style={{ color: '#333' }}>{'─'.repeat(50)}</p>
         <p><Dim>{'>'} </Dim><G>86%</G> graduation rate. <G>90%+</G> employed within 6 months of graduating.</p>
+        <p><Dim>{'>'} </Dim><G>86%</G> 2 years of work experience before graduating.</p>
       </div>
     ),
   },
