@@ -2,12 +2,12 @@
 
 ### The official webring for UWaterloo Computing & Financial Management.
 
-A 3D, retro-arcade showcase connecting CFM students across cohorts.
+A 3D, retro-arcade showcase connecting current/incoming/interested CFM students across cohorts.
 
 ## Quick Start (Fork & Clone)
 
 ```bash
-git clone https://github.com/<your-username>/CFM.git
+git clone https://github.com/your-username/CFM.git
 cd CFM
 ```
 
@@ -20,40 +20,21 @@ cd CFM
 ```json
 {
   "name": "Your Name",
-  "cohort": "graduating-year",
-  "url": "https://yourwebsite.com",
-  "location": "Your City, Province",
+  "cohort": "graduating-year", // 2030
+  "url": "your-website", // MUST be valid or '#'
+  "location": "City, Province, Country",
   "role": "Most Recent/Relevent Role",
-  "header": "Short header",
-  "experiences": ["Role @ Company", "Field/Sector"],
+  "header": "Short header", // tagline or header
   "description": "One-line description",
-  "avatar": "/images/avatars/YOUR-IMAGE",
-  "websiteImage": "/images/websites/yourname.png",
+  "experiences": ["Role @ Company", "Field/Sector"],
+  "interests": ["Interest1","Interest2","Interest3"],
+  "avatar": "/images/avatars/your-image", // MUST match avatar path
+  "websiteImage": "/images/websites/your-website-image", // OPTIONAL, MUST match website image path
   "socials": [
-    { "type": "github", "url": "https://github.com/yourusername" },
-    { "type": "linkedin", "url": "https://linkedin.com/in/yourprofile" }
-  ]
-}
-```
-
----
-
-### Example
-
-```json
-{
-  "name": "Aadya Khanna",
-  "cohort": "2030",
-  "url": "https://aadyakhanna.com",
-  "location": "Toronto, ON",
-  "role": "Product Engineer",
-  "header": "Mathematically Musical",
-  "experiences": ["Product Engineer"],
-  "description": "Drawn to the intersection of technology, creativity, and financial markets",
-  "avatar": "/images/avatars/aadyakhanna.jpeg",
-  "socials": [
-    { "type": "github", "url": "https://github.com/aadya-khanna" },
-    { "type": "linkedin", "url": "https://linkedin.com/in/aadya-khanna" }
+    { "type": "github", "url": "#" }, // pick and choose display socials 
+    { "type": "linkedin", "url": "#" }, // replace '#' with your links 
+    { "type": "twitter", "url": "#" },
+    { "type": "instagram", "url": "#" }
   ]
 }
 ```
@@ -61,84 +42,34 @@ cd CFM
 ### Important Notes
 
 - Ensure **all links are valid and working**
-- Make sure your avatar path is correct
+- Make sure your avatar and website image paths are correct
 - Use `#` for socials you don't have (or omit them entirely)
-- `url` can be `#` if your website is not ready yet
-- `cohort` is your graduation year (e.g. "2029")
-- `websiteImage` is optional
+- `url` can be `#` if your website if there is no website
 
-1. Run and verify locally:
 
-```bash
-# Frontend
-cd frontend
-npm install
-npm run dev
+Open a PR with your `members.json` + your image added!
 
-# Backend
-cd ../backend
-npm install
-npm run dev
-```
+---
 
-1. Open a PR with your `members.json` + image changes.
-
-## Embedding the Webring on Your Site
+## Embedding the Webring on Your Personal Site
 
 Once you're in the webring (added to members.json with a valid website URL), you can add webring navigation to your personal website!
 
+### Important Notes
+
+- Replace `YOUR_WEBSITE_URL` with your site's URL (must **exactly match** your `url` field in members.json)
+- Your URL must be in members.json with a valid website (not `#`)
+
 ### Hub Icon
 
-Hosted icon assets (production):
+Default hub-icon assets:
 
 - `https://cfm-webring.vercel.app/webring/cfm-panther-black.svg`
 - `https://cfm-webring.vercel.app/webring/cfm-panther-white.svg`
 - `https://cfm-webring.vercel.app/webring/cfm-panther-green.svg`
 
-Use one of these approaches:
 
-- Quick setup (hosted image file): easiest to copy and keep docs clean.
-- Starter template: download and edit `https://cfm-webring.vercel.app/webring/custom.tsx`.
-- Full control (inline SVG): copy one asset and edit locally.
-
-Quick setup:
-
-```html
-<a href="https://uwaterloocfm.com" target="_blank">
-  <img src="https://cfm-webring.vercel.app/webring/cfm-panther-black.svg" alt="CFM Webring Hub" style="width: 50px;">
-</a>
-```
-
-Starter template (download + edit): `https://cfm-webring.vercel.app/webring/custom.tsx`
-
-### Add the Widget to Your Site
-
-### Option 1: Custom Arrow Images (Maximum Creativity)
-
-Use your own images/SVGs for the arrows to match your site's design:
-
-```html
-<div style="display: flex; gap: 8px; align-items: center;">
-  <!-- Your custom left arrow -->
-  <a href="https://cfm-webring.vercel.app/#YOUR_WEBSITE_URL?nav=prev">
-    <img src="/your-custom-left-arrow.svg" alt="Previous in CFM Webring" style="width: 50px; cursor: pointer;">
-  </a>
-
-  <!-- Hub icon -->
-  <a href="https://uwaterloocfm.com" target="_blank">
-    <img src="https://cfm-webring.vercel.app/webring/cfm-panther-black.svg" alt="CFM Webring Hub" style="width: 50px; cursor: pointer;">
-  </a>
-
-  <!-- Your custom right arrow -->
-  <a href="https://cfm-webring.vercel.app/#YOUR_WEBSITE_URL?nav=next">
-    <img src="/your-custom-right-arrow.svg" alt="Next in CFM Webring" style="width: 50px; cursor: pointer;">
-  </a>
-</div>
-```
-
-### Option 2: Simple Text Arrows (Quick Setup)
-
-For a minimal approach, use text/emoji arrows:
+HTML setup (minimal setup + arrows):
 
 ```html
 <div style="display: flex; gap: 12px; align-items: center; font-size: 24px;">
@@ -158,8 +89,18 @@ For a minimal approach, use text/emoji arrows:
   </a>
 </div>
 ```
+For customisation of the hub-icon (custom colours, dark-light mode, animations), starter template is available at `https://cfm-webring.vercel.app/webring/custom.tsx`
 
-### For React/Next.js Sites
+You are also able to use your own images/SVGs for arrows to match your sites design:
+
+```
+Using left navigation (nav=prev) as an example: 
+<a href="https://cfm-webring.vercel.app/#YOUR_WEBSITE_URL?nav=prev">
+    <img src="/your-custom-left-arrow.svg" alt="Previous in CFM Webring" style="width: 50px; cursor: pointer;">
+</a>
+```
+
+### Component for React/Next.js Sites (with custom arrows)
 
 ```jsx
 export default function WebringWidget() {
@@ -186,24 +127,5 @@ export default function WebringWidget() {
     </div>
   );
 }
-```
-
-### Important Notes
-
-- Replace `YOUR_WEBSITE_URL` with your site's URL (must **exactly match** your `url` field in members.json)
-- Your URL must be in members.json with a valid website (not `#`)
-- Webring links now resolve through `https://cfm-webring.vercel.app/#YOUR_WEBSITE_URL?nav=prev|next`
-- Ring navigation skips members with invalid URLs (for example `url: "#"`), and wraps around from last valid site to first valid site
-- Arrows: Use any image/SVG you want for complete creative control
-- Hub icon variants: use black/white/green files from `/webring/` on production
-- Starter template: download `https://cfm-webring.vercel.app/webring/custom.tsx` and edit `myUrl` + styles
-
-### Test It Quickly
-
-Use your website URL in these links and verify both redirect:
-
-```text
-https://cfm-webring.vercel.app/#YOUR_WEBSITE_URL?nav=prev
-https://cfm-webring.vercel.app/#YOUR_WEBSITE_URL?nav=next
 ```
 

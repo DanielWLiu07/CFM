@@ -68,11 +68,11 @@ const CARDS = [
         <p><Dim>{'>'} </Dim>Co-op is a mandatory part of the CFM program. Students alternate between <G>4-month academic terms</G> and <G>4-month paid work terms</G> beginning after first year. By the time they graduate, students have completed <G>6 separate work placements</G>, totaling 2 full years of professional experience.</p>
         <p><Dim>{'>'} </Dim>Waterloo&apos;s co-op system is the largest of its kind in the world, with connections to over 7,000 employers. CFM students in particular are recruited across both the technology and financial services industries.</p>
         <p><Dim>{'// '}where CFM students have worked</Dim></p>
-        <p><Dim>{'>'} </Dim>[<G> Tech      </G>] Google, Meta, Amazon, Apple, Microsoft, Shopify, Uber, Databricks, Palantir</p>
+        <p><Dim>{'>'} </Dim>[<G> Tech      </G>] Google, Meta, Amazon, Apple, Microsoft, Shopify, Uber, Databricks, Hubspot</p>
         <p><Dim>{'>'} </Dim>[<G> Finance   </G>] RBC, TD, BMO, CIBC, Scotiabank, Manulife, Sun Life, CPP Investments, OTPP</p>
-        <p><Dim>{'>'} </Dim>[<G> Fintech   </G>] Stripe, Plaid, Wealthsimple, Block, Coinbase, Robinhood</p>
+        <p><Dim>{'>'} </Dim>[<G> Fintech   </G>] Bloomberg, Stripe, Plaid, Wealthsimple, Block, Coinbase, Robinhood</p>
         <p><Dim>{'>'} </Dim>[<G> Quant     </G>] Citadel, Jane Street, HRT, Two Sigma, DE Shaw, DRW, IMC, Optiver, Jump Trading</p>
-        <p><Dim>{'>'} </Dim>[<G> Consulting</G>] Deloitte, PwC, EY, KPMG, McKinsey, Accenture</p>
+        <p><Dim>{'>'} </Dim>[<G> Consulting</G>] Bain, Deloitte, PwC, EY, KPMG, McKinsey, Accenture</p>
       </div>
     ),
   },
