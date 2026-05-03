@@ -109,16 +109,15 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
 
       const fillPct = cols === 1 ? 0.85 : 0.95;
       const normalCardW = Math.floor((containerW * 0.95 - (COLS - 1) * COL_GAP) / COLS);
-      // Keep a single filtered result from stretching to near full width.
-      // Use a "normal" multi-card baseline width as the cap.
-      const singleResultBaselineCols = Math.min(COLS, Math.max(2, responsiveCols));
-      const singleResultMaxW = Math.floor((containerW * 0.95 - (singleResultBaselineCols - 1) * COL_GAP) / singleResultBaselineCols);
+      // Keep low-card-count results (1-3 cards) visually aligned with the
+      // active responsive grid so cards do not over-expand.
+      const minBaselineCols = responsiveCols === 1 ? 2 : responsiveCols;
+      const lowCountBaselineCols = Math.min(COLS, Math.max(minBaselineCols, cols));
+      const lowCountMaxW = Math.floor((containerW * 0.95 - (lowCountBaselineCols - 1) * COL_GAP) / lowCountBaselineCols);
       const rawCardW = Math.floor((containerW * fillPct - (cols - 1) * COL_GAP) / cols);
-      const cardW = cols === 1
-        ? Math.min(rawCardW, singleResultMaxW)
-        : cols >= COLS
-          ? Math.min(rawCardW, normalCardW)
-          : rawCardW;
+      const cardW = cols < COLS
+        ? Math.min(rawCardW, lowCountMaxW)
+        : Math.min(rawCardW, normalCardW);
       const effectiveAspect = cols === 1 ? Math.max(ASPECT, 0.6) : ASPECT;
       const cardH = Math.floor(cardW / effectiveAspect);
       const gridH = rows * cardH + (rows - 1) * ROW_GAP;
