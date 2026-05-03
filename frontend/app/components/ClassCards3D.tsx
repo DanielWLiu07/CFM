@@ -109,8 +109,16 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
 
       const fillPct = cols === 1 ? 0.85 : 0.95;
       const normalCardW = Math.floor((containerW * 0.95 - (COLS - 1) * COL_GAP) / COLS);
+      // Keep a single filtered result from stretching to near full width.
+      // Use a "normal" multi-card baseline width as the cap.
+      const singleResultBaselineCols = Math.min(COLS, Math.max(2, responsiveCols));
+      const singleResultMaxW = Math.floor((containerW * 0.95 - (singleResultBaselineCols - 1) * COL_GAP) / singleResultBaselineCols);
       const rawCardW = Math.floor((containerW * fillPct - (cols - 1) * COL_GAP) / cols);
-      const cardW = cols >= COLS ? Math.min(rawCardW, normalCardW) : rawCardW;
+      const cardW = cols === 1
+        ? Math.min(rawCardW, singleResultMaxW)
+        : cols >= COLS
+          ? Math.min(rawCardW, normalCardW)
+          : rawCardW;
       const effectiveAspect = cols === 1 ? Math.max(ASPECT, 0.6) : ASPECT;
       const cardH = Math.floor(cardW / effectiveAspect);
       const gridH = rows * cardH + (rows - 1) * ROW_GAP;
