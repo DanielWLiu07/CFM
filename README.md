@@ -24,7 +24,7 @@ cd CFM
   "url": "your-website", // MUST be valid or '#'
   "location": "City, Province, Country",
   "role": "Most Recent/Relevent Role",
-  "header": "Short header", // tagline or header
+  "header": "Short header",
   "description": "One-line description",
   "experiences": ["Role @ Company", "Field/Sector"],
   "interests": ["Interest1","Interest2","Interest3"],
@@ -41,11 +41,9 @@ cd CFM
 
 ### Important Notes
 
+- `url` can be `#` if there is no website
 - Ensure **all links are valid and working**
 - Make sure your avatar and website image paths are correct
-- Use `#` for socials you don't have (or omit them entirely)
-- `url` can be `#` if your website if there is no website
-
 
 Open a PR with your `members.json` + your image added!
 
@@ -53,7 +51,7 @@ Open a PR with your `members.json` + your image added!
 
 ## Embedding the Webring on Your Personal Site
 
-Once you're in the webring (added to members.json with a valid website URL), you can add webring navigation to your personal website!
+Once you're in the class profile & webring (with a valid url), you can add webring navigation on your personal website!
 
 ### Important Notes
 
@@ -73,6 +71,7 @@ HTML setup (minimal setup + arrows):
 
 ```html
 <div style="display: flex; gap: 12px; align-items: center; font-size: 24px;">
+  <!-- Left Nav -->
   <a href="https://cfm-webring.vercel.app/#YOUR_WEBSITE_URL?nav=prev"
      style="text-decoration: none; color: inherit; cursor: pointer;">
     ←
@@ -83,6 +82,7 @@ HTML setup (minimal setup + arrows):
     <img src="https://cfm-webring.vercel.app/webring/cfm-panther-black.svg" alt="CFM Webring Hub" style="width: 40px;">
   </a>
 
+  <!-- Right Nav -->
   <a href="https://cfm-webring.vercel.app/#YOUR_WEBSITE_URL?nav=next"
      style="text-decoration: none; color: inherit; cursor: pointer;">
     →
@@ -93,8 +93,8 @@ For customisation of the hub-icon (custom colours, dark-light mode, animations),
 
 You are also able to use your own images/SVGs for arrows to match your sites design:
 
-```
-Using left navigation (nav=prev) as an example: 
+```html
+<!-- Left Nav -->
 <a href="https://cfm-webring.vercel.app/#YOUR_WEBSITE_URL?nav=prev">
     <img src="/your-custom-left-arrow.svg" alt="Previous in CFM Webring" style="width: 50px; cursor: pointer;">
 </a>
