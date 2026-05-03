@@ -239,5 +239,290 @@
         "url": "#"
       }
     ]
+  },
+  {
+    "name": "Avery Singh",
+    "cohort": "2027",
+    "url": "#",
+    "location": "Hamilton, ON",
+    "role": "Frontend Engineer",
+    "header": "frontend engineer",
+    "description": "ships pixel-perfect UI and too many micro-interactions.",
+    "experiences": [
+      "Frontend Engineer Intern"
+    ],
+    "interests": [
+      "Design Systems",
+      "React"
+    ],
+    "avatar": "/images/avatars/priya.svg",
+    "socials": [
+      {
+        "type": "github",
+        "url": "#"
+      },
+      {
+        "type": "linkedin",
+        "url": "#"
+      }
+    ]
+  },
+  {
+    "name": "Leo Martinez",
+    "cohort": "2027",
+    "url": "#",
+    "location": "London, ON",
+    "role": "Backend Engineer",
+    "header": "backend engineer",
+    "description": "loves clean APIs, observability, and boring reliability.",
+    "experiences": [
+      "Backend Engineer Intern"
+    ],
+    "interests": [
+      "Distributed Systems",
+      "PostgreSQL"
+    ],
+    "avatar": "/images/avatars/jordan.svg",
+    "socials": [
+      {
+        "type": "github",
+        "url": "#"
+      }
+    ]
+  },
+  {
+    "name": "Maya Roy",
+    "cohort": "2029",
+    "url": "#",
+    "location": "Waterloo, ON",
+    "role": "Product Analyst",
+    "header": "product analyst",
+    "description": "turns product hunches into measurable experiments.",
+    "experiences": [
+      "Product Analyst Intern"
+    ],
+    "interests": [
+      "A/B Testing",
+      "Figma"
+    ],
+    "avatar": "/images/avatars/sophie.svg",
+    "socials": [
+      {
+        "type": "linkedin",
+        "url": "#"
+      },
+      {
+        "type": "website",
+        "url": "#"
+      }
+    ]
+  },
+  {
+    "name": "Noah Kim",
+    "cohort": "2030",
+    "url": "#",
+    "location": "Markham, ON",
+    "role": "Mobile Developer",
+    "header": "mobile developer",
+    "description": "builds fast apps and complains about battery drain.",
+    "experiences": [
+      "Mobile Developer"
+    ],
+    "interests": [
+      "Swift",
+      "Kotlin"
+    ],
+    "avatar": "/images/avatars/ethan.svg",
+    "socials": [
+      {
+        "type": "github",
+        "url": "#"
+      },
+      {
+        "type": "twitter",
+        "url": "#"
+      }
+    ]
+  },
+  {
+    "name": "Zara Ahmed",
+    "cohort": "2026",
+    "url": "#",
+    "location": "Milton, ON",
+    "role": "Security Engineer",
+    "header": "security engineer",
+    "description": "breaks things responsibly and writes postmortems kindly.",
+    "experiences": [
+      "Security Analyst"
+    ],
+    "interests": [
+      "AppSec",
+      "CTFs"
+    ],
+    "avatar": "/images/avatars/marcus.svg",
+    "socials": [
+      {
+        "type": "github",
+        "url": "#"
+      },
+      {
+        "type": "linkedin",
+        "url": "#"
+      }
+    ]
+  },
+  {
+    "name": "Owen Li",
+    "cohort": "2028",
+    "url": "#",
+    "location": "Kitchener, ON",
+    "role": "ML Engineer",
+    "header": "ml engineer",
+    "description": "fine-tunes models and overfits only in hackathons.",
+    "experiences": [
+      "ML Research Intern"
+    ],
+    "interests": [
+      "NLP",
+      "MLOps"
+    ],
+    "avatar": "/images/avatars/priya.svg",
+    "socials": [
+      {
+        "type": "github",
+        "url": "#"
+      }
+    ]
+  },
+  {
+    "name": "Chloe Nguyen",
+    "cohort": "2027",
+    "url": "#",
+    "location": "Toronto, ON",
+    "role": "Data Engineer",
+    "header": "data engineer",
+    "description": "builds pipelines that fail loudly and recover quietly.",
+    "experiences": [
+      "Data Engineer Intern"
+    ],
+    "interests": [
+      "ETL",
+      "Airflow"
+    ],
+    "avatar": "/images/avatars/sophie.svg",
+    "socials": [
+      {
+        "type": "linkedin",
+        "url": "#"
+      }
+    ]
+  },
+  {
+    "name": "Rohan Mehta",
+    "cohort": "2029",
+    "url": "#",
+    "location": "Burlington, ON",
+    "role": "Full Stack Developer",
+    "header": "full stack developer",
+    "description": "codes end-to-end features before coffee gets cold.",
+    "experiences": [
+      "Full Stack Developer"
+    ],
+    "interests": [
+      "TypeScript",
+      "Databases"
+    ],
+    "avatar": "/images/avatars/jordan.svg",
+    "socials": [
+      {
+        "type": "github",
+        "url": "#"
+      },
+      {
+        "type": "website",
+        "url": "#"
+      }
+    ]
+  },
+  {
+    "name": "Elena Petrova",
+    "cohort": "2026",
+    "url": "#",
+    "location": "Ottawa, ON",
+    "role": "Cloud Engineer",
+    "header": "cloud engineer",
+    "description": "automates deployments and keeps pager duty polite.",
+    "experiences": [
+      "Cloud Engineer Intern"
+    ],
+    "interests": [
+      "Kubernetes",
+      "Terraform"
+    ],
+    "avatar": "/images/avatars/nina.svg",
+    "socials": [
+      {
+        "type": "github",
+        "url": "#"
+      },
+      {
+        "type": "linkedin",
+        "url": "#"
+      }
+    ]
+  },
+  {
+    "name": "Jayden Brooks",
+    "cohort": "2030",
+    "url": "#",
+    "location": "Mississauga, ON",
+    "role": "Product Engineer",
+    "header": "product engineer",
+    "description": "prototypes quickly, measures impact, then iterates.",
+    "experiences": [
+      "Product Engineer Intern"
+    ],
+    "interests": [
+      "Startups",
+      "UX"
+    ],
+    "avatar": "/images/avatars/ethan.svg",
+    "socials": [
+      {
+        "type": "github",
+        "url": "#"
+      },
+      {
+        "type": "twitter",
+        "url": "#"
+      }
+    ]
+  },
+  {
+    "name": "Iris Zhou",
+    "cohort": "2028",
+    "url": "#",
+    "location": "Richmond Hill, ON",
+    "role": "Software Developer",
+    "header": "software developer",
+    "description": "writes tests first and still forgets semicolons.",
+    "experiences": [
+      "Software Developer Intern"
+    ],
+    "interests": [
+      "Algorithms",
+      "Open Source"
+    ],
+    "avatar": "/images/avatars/marcus.svg",
+    "socials": [
+      {
+        "type": "github",
+        "url": "#"
+      },
+      {
+        "type": "linkedin",
+        "url": "#"
+      }
+    ]
   }
 ]

@@ -12,6 +12,7 @@ import { createCardElement } from './class/createCardElement';
 import CRTOverlay from './class/CRTOverlay';
 
 export default function ClassCards3D({ members }: ClassCards3DProps) {
+  const viewportRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
@@ -20,7 +21,12 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
   const decoRef = useRef<CSS3DObject[]>([]);
   const rafRef = useRef<number>(0);
   const baseYRef = useRef<number[]>([]);
+  const viewportCleanupRef = useRef<(() => void) | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
+  const [sceneHeight, setSceneHeight] = useState(0);
+  const [viewportHeight, setViewportHeight] = useState(0);
+  const [hasOverflow, setHasOverflow] = useState(false);
+  const [showScrollHint, setShowScrollHint] = useState(false);
   const [expandedMember, setExpandedMember] = useState<ClassMember | null>(null);
   // CRT phases — on: dot → line → expand → done | off: flash → shrink → dotout → afterglow → idle
   const [phase, setPhase] = useState<'idle' | 'dot' | 'line' | 'expand' | 'done' | 'flash' | 'shrink' | 'dotout' | 'afterglow'>('idle');
@@ -73,6 +79,10 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
 
     // Clear any pending swap
     if (swapTimeoutRef.current) { clearTimeout(swapTimeoutRef.current); swapTimeoutRef.current = null; }
+    if (viewportCleanupRef.current) {
+      viewportCleanupRef.current();
+      viewportCleanupRef.current = null;
+    }
 
     const buildNewCards = () => {
       // Remove old cards
@@ -98,6 +108,10 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
         // when the next non-empty render arrives mid-transition.
         renderer.domElement.style.display = 'none';
         container.style.height = '0px';
+        setSceneHeight(0);
+        setViewportHeight(0);
+        setHasOverflow(false);
+        setShowScrollHint(false);
         return;
       }
       // Restore visibility in case we're returning from an empty filter result.
@@ -123,6 +137,16 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
       const gridH = rows * cardH + (rows - 1) * ROW_GAP;
       const PAD = 40;
       const totalH = gridH + PAD * 2;
+      const visibleRows = containerW < 640 ? 1 : 2;
+      const viewportRows = Math.min(rows, visibleRows);
+      const viewportH = viewportRows * cardH + Math.max(0, viewportRows - 1) * ROW_GAP + PAD * 2;
+      const rowStride = cardH + ROW_GAP;
+      const overflows = rows > visibleRows;
+
+      setSceneHeight(totalH);
+      setViewportHeight(viewportH);
+      setHasOverflow(overflows);
+      setShowScrollHint(overflows);
 
       renderer.setSize(containerW, totalH);
       // CSS3DRenderer.setSize() forces overflow:hidden — override on all layers
@@ -134,6 +158,10 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
       camera.position.z = (totalH / 2) / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
       camera.updateProjectionMatrix();
       container.style.height = `${totalH}px`;
+      const viewport = viewportRef.current;
+      if (viewport) {
+        viewport.scrollTop = 0;
+      }
 
       members.forEach((member, i) => {
         const col = i % cols;
@@ -175,7 +203,8 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
 
       renderer.render(scene, camera);
 
-      // Single shared IntersectionObserver for all cards — instant on/off
+      // Observe only rows near the viewport so large cohorts avoid
+      // unnecessary intersection/animation churn.
       const obs = new IntersectionObserver(
         (entries) => {
           for (const entry of entries) {
@@ -187,16 +216,47 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
             }
           }
         },
-        { threshold: 0.1 }
+        { root: viewportRef.current, threshold: 0.1 }
       );
-      objectsRef.current.forEach(obj => obs.observe(obj.element));
-      (container as any)._crtObserver = obs;
+      const observed = new Set<HTMLElement>();
+      const syncVisibleRows = () => {
+        const vp = viewportRef.current;
+        if (!vp) return;
+        const top = vp.scrollTop;
+        const firstVisibleRow = Math.max(0, Math.floor((top - PAD) / rowStride));
+        const lastVisibleRow = Math.min(rows - 1, Math.ceil((top + vp.clientHeight - PAD) / rowStride));
+        const firstObservedRow = Math.max(0, firstVisibleRow - 1);
+        const lastObservedRow = Math.min(rows - 1, lastVisibleRow + 1);
+
+        objectsRef.current.forEach((obj, i) => {
+          const row = Math.floor(i / cols);
+          const el = obj.element as HTMLElement;
+          const shouldObserve = row >= firstObservedRow && row <= lastObservedRow;
+          if (shouldObserve) {
+            if (!observed.has(el)) {
+              obs.observe(el);
+              observed.add(el);
+            }
+          } else if (observed.has(el)) {
+            obs.unobserve(el);
+            observed.delete(el);
+            (el as any)._crtTurnOff?.();
+          }
+        });
+        setShowScrollHint(vp.scrollTop + vp.clientHeight < vp.scrollHeight - 8);
+      };
+      syncVisibleRows();
+
+      const onViewportScroll = () => syncVisibleRows();
+      viewportRef.current?.addEventListener('scroll', onViewportScroll, { passive: true });
+      viewportCleanupRef.current = () => {
+        viewportRef.current?.removeEventListener('scroll', onViewportScroll);
+        obs.disconnect();
+        observed.clear();
+      };
     };
 
     // If there are existing cards, turn off then swap
-    const prevObs = (container as any)._crtObserver as IntersectionObserver | undefined;
-    if (prevObs) prevObs.disconnect();
-
     if (objectsRef.current.length > 0) {
       objectsRef.current.forEach(obj => {
         (obj.element as any)._crtTurnOff?.();
@@ -209,6 +269,10 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
 
     return () => {
       if (swapTimeoutRef.current) clearTimeout(swapTimeoutRef.current);
+      if (viewportCleanupRef.current) {
+        viewportCleanupRef.current();
+        viewportCleanupRef.current = null;
+      }
     };
   }, [members, containerWidth]);
 
@@ -353,10 +417,48 @@ export default function ClassCards3D({ members }: ClassCards3DProps) {
 
   return (
     <>
-      <div
-        ref={containerRef}
-        style={{ position: 'relative', width: '100%', height: members.length > 0 ? 600 : 0, zIndex: 100, overflow: 'visible' }}
-      />
+      <div style={{ position: 'relative', width: '100%', zIndex: 100 }}>
+        <div
+          ref={viewportRef}
+          style={{
+            position: 'relative',
+            width: '100%',
+            height: members.length > 0 ? viewportHeight : 0,
+            overflowY: hasOverflow ? 'auto' : 'hidden',
+            overflowX: 'hidden',
+          }}
+        >
+          <div
+            ref={containerRef}
+            style={{ position: 'relative', width: '100%', height: members.length > 0 ? sceneHeight : 0, zIndex: 100, overflow: 'visible' }}
+          />
+          {hasOverflow && showScrollHint && (
+            <div
+              style={{
+                position: 'sticky',
+                bottom: 0,
+                pointerEvents: 'none',
+                height: 26,
+                background: 'linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.28))',
+              }}
+            />
+          )}
+        </div>
+        {hasOverflow && showScrollHint && (
+          <p
+            style={{
+              margin: '6px 0 0',
+              textAlign: 'center',
+              fontFamily: 'var(--font-arcade)',
+              fontSize: 9,
+              color: '#666',
+              letterSpacing: '0.12em',
+            }}
+          >
+            SCROLL FOR MORE
+          </p>
+        )}
+      </div>
 
       {/* CRT TV overlay — portaled to body */}
       <CRTOverlay
