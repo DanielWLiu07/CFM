@@ -5,7 +5,7 @@
 export default function CFMWebringWidget() {
   // Must exactly match your `url` value in CFM `members.json`.
   const myUrl = "https://yoursite.com";
-  const ringBase = "https://cfm-webring.vercel.app";
+  const ringBase = "https://www.uwaterloocfm.com";
 
   return (
     <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
