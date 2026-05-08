@@ -1,13 +1,13 @@
 [
   {
-    "name": "Daniel Liu",
+    "name": "Daniel W Liu",
     "cohort": "2030",
     "url": "https://danielwliu.com",
-    "location": "Windsor, ON",
+    "location": "Vaughan, ON",
     "role": "Software Engineer",
     "header": "SWE @ building things",
     "description": "if it compiles, ship it. if it doesn't, ship it louder.",
-    "experiences": [ "SWE @ PlayStation", "SWE @ HOSA Canada" ],
+    "experiences": [ "SWE @ PlayStation", "SWE @ HOSA Canada", "St. Robert CHS, Thornhill" ],
     "interests": [ "Blender", "3D Web Development" ],
     "avatar": "/images/avatars/daniel_photo.jpeg",
     "websiteImage": "/images/websites/daniel.png",
