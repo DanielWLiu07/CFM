@@ -4,7 +4,7 @@
  */
 export default function CFMWebringWidget() {
   // Must exactly match your `url` value in CFM `members.json`.
-  const myUrl = "https://yoursite.com";
+  const myUrl = "https://yoursite.com"; // MUST Change
   const ringBase = "https://www.uwaterloocfm.com";
 
   return (
