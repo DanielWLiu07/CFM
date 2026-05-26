@@ -1,4 +1,67 @@
-export type RingMember = { url: string };
+export type RingMember = { url: string; cohort?: string };
+
+function normalizeUrl(url: string): string {
+  return url.replace(/\/+$/, '').trim();
+}
+
+function hasNavigableUrl(member: RingMember): boolean {
+  return Boolean(member.url && member.url !== '#');
+}
+
+function getSlice(members: RingMember[], cohort?: string): RingMember[] {
+  const navigableMembers = members.filter(hasNavigableUrl);
+  if (!cohort) return navigableMembers;
+  return navigableMembers.filter((m) => m.cohort === cohort);
+}
+
+function findByUrl(members: RingMember[], normalizedUrl: string): number {
+  return members.findIndex((m) => m.url && normalizeUrl(m.url) === normalizedUrl);
+}
+
+export function getNext(
+  members: RingMember[],
+  currentUrl: string,
+  cohort?: string,
+): RingMember | null {
+  const slice = getSlice(members, cohort);
+  if (slice.length === 0) return null;
+
+  const index = findByUrl(slice, normalizeUrl(currentUrl));
+  if (index === -1) return null;
+
+  return slice[(index + 1) % slice.length] ?? null;
+}
+
+export function getPrev(
+  members: RingMember[],
+  currentUrl: string,
+  cohort?: string,
+): RingMember | null {
+  const slice = getSlice(members, cohort);
+  if (slice.length === 0) return null;
+
+  const index = findByUrl(slice, normalizeUrl(currentUrl));
+  if (index === -1) return null;
+
+  return slice[(index - 1 + slice.length) % slice.length] ?? null;
+}
+
+/** Server-side prev/next link — no hub flash (unlike hash URLs). */
+export function buildRingNavHref(
+  ringBase: string,
+  memberUrl: string,
+  direction: 'prev' | 'next',
+): string {
+  const base = ringBase.replace(/\/+$/, '');
+  const params = new URLSearchParams({
+    url: memberUrl,
+    direction,
+    redirect: 'true',
+  });
+  return `${base}/api/navigate?${params}`;
+}
+
+// --- Legacy hash-based links (client-only; may flash the hub) ---
 
 export function normalizeMemberUrl(raw: string): string | null {
   try {
@@ -59,7 +122,7 @@ export function getRingNavTargetFromLocationHash(
   return resolveRingNavTarget(members, parsed.fromRaw, parsed.nav);
 }
 
-/** Inline script for layout: redirects before React paints on hash-based widget links. */
+/** Legacy hash links: redirect ASAP in <head> before paint. */
 export function buildRingNavBootScript(members: RingMember[]): string {
   const navigable = members
     .filter((m) => m.url && m.url !== '#')

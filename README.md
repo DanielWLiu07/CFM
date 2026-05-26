@@ -58,6 +58,36 @@ Once you're in the class profile & webring (with a valid url), you can add webri
 - Replace `YOUR_WEBSITE_URL` with your site's URL (must **exactly match** your `url` field in members.json)
 - Your URL must be in members.json with a valid website (not `#`)
 
+### Prev / next navigation (`/api/navigate`)
+
+Use the **navigate API** for prev/next links. The server responds with a `302` redirect straight to the next member site — no hub flash.
+
+**Endpoint:**
+
+```
+GET {ringBase}/api/navigate?url={YOUR_WEBSITE_URL}&direction={prev|next}&redirect=true
+```
+
+| Query param   | Value                                      |
+|---------------|--------------------------------------------|
+| `url`         | Your site URL (must match `members.json`)  |
+| `direction`   | `prev` or `next`                           |
+| `redirect`    | `true` (required for instant redirect)     |
+
+**Examples (production):**
+
+- Previous: `https://www.uwaterloocfm.com/api/navigate?url=https%3A%2F%2Faadyakhanna.com&direction=prev&redirect=true`
+- Next: `https://www.uwaterloocfm.com/api/navigate?url=https%3A%2F%2Faadyakhanna.com&direction=next&redirect=true`
+
+**Local testing** (with `npm run dev` in `frontend/`):
+
+- Previous: `http://localhost:3000/api/navigate?url=https%3A%2F%2Faadyakhanna.com&direction=prev&redirect=true`
+- Next: `http://localhost:3000/api/navigate?url=https%3A%2F%2Faadyakhanna.com&direction=next&redirect=true`
+
+Set `ringBase` to `http://localhost:3000` while developing; use `https://www.uwaterloocfm.com` in production.
+
+Do **not** use hash links (`/#your-site?nav=prev`) — the hash is never sent to the server, so the full hub page loads before redirecting.
+
 ### Hub Icon
 
 Default hub-icon assets:
@@ -72,7 +102,7 @@ HTML setup (minimal setup + arrows):
 ```html
 <div style="display: flex; gap: 12px; align-items: center; font-size: 24px;">
   <!-- Left Nav -->
-  <a href="https://www.uwaterloocfm.com/#YOUR_WEBSITE_URL?nav=prev"
+  <a href="https://www.uwaterloocfm.com/api/navigate?url=YOUR_WEBSITE_URL&direction=prev&redirect=true"
      style="text-decoration: none; color: inherit; cursor: pointer;">
     ←
   </a>
@@ -83,49 +113,63 @@ HTML setup (minimal setup + arrows):
   </a>
 
   <!-- Right Nav -->
-  <a href="https://www.uwaterloocfm.com/#YOUR_WEBSITE_URL?nav=next"
+  <a href="https://www.uwaterloocfm.com/api/navigate?url=YOUR_WEBSITE_URL&direction=next&redirect=true"
      style="text-decoration: none; color: inherit; cursor: pointer;">
     →
   </a>
 </div>
 ```
+
+Replace `YOUR_WEBSITE_URL` with your URL, URL-encoded (e.g. `https%3A%2F%2Fyoursite.com`).
+
 For customisation of the hub-icon (custom colours, dark-light mode, animations), starter template is available at `https://www.uwaterloocfm.com/webring/custom.tsx`
 
 You are also able to use your own images/SVGs for arrows to match your sites design:
 
 ```html
 <!-- Left Nav -->
-<a href="https://www.uwaterloocfm.com/#YOUR_WEBSITE_URL?nav=prev">
+<a href="https://www.uwaterloocfm.com/api/navigate?url=YOUR_WEBSITE_URL&direction=prev&redirect=true">
     <img src="/your-custom-left-arrow.svg" alt="Previous in CFM Webring" style="width: 50px; cursor: pointer;">
 </a>
 ```
 
-### Component for React/Next.js Sites (with custom arrows)
+### Component for React/Next.js Sites
 
 ```jsx
 export default function WebringWidget() {
   const myUrl = "https://yoursite.com"; // Must match your members.json URL
-  const ringBase = "https://www.uwaterloocfm.com";
+  const ringBase = "https://www.uwaterloocfm.com"; // local dev: "http://localhost:3000"
 
-  const HubIcon = ({ size = 50 }) => (
-    <img src="https://www.uwaterloocfm.com/webring/cfm-panther-black.svg" alt="CFM Webring Hub" style={{ width: size, cursor: 'pointer' }} />
-  );
+  const navHref = (direction: "prev" | "next") => {
+    const params = new URLSearchParams({
+      url: myUrl,
+      direction,
+      redirect: "true",
+    });
+    return `${ringBase}/api/navigate?${params}`;
+  };
 
   return (
-    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-      <a href={`${ringBase}/#${encodeURIComponent(myUrl)}?nav=prev`}>
-        <img src="/your-left-arrow.svg" alt="Previous" style={{ width: '50px', cursor: 'pointer' }} />
+    <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+      <a href={navHref("prev")} aria-label="Previous site in CFM webring">
+        ←
       </a>
 
-      <a href="https://uwaterloocfm.com" target="_blank" rel="noopener noreferrer">
-        <HubIcon />
+      <a href={ringBase} target="_blank" rel="noopener noreferrer" aria-label="CFM Webring Hub">
+        <img
+          src={`${ringBase}/webring/cfm-panther-black.svg`}
+          alt="CFM Webring Hub"
+          style={{ width: 40, display: "block" }}
+        />
       </a>
 
-      <a href={`${ringBase}/#${encodeURIComponent(myUrl)}?nav=next`}>
-        <img src="/your-right-arrow.svg" alt="Next" style={{ width: '50px', cursor: 'pointer' }} />
+      <a href={navHref("next")} aria-label="Next site in CFM webring">
+        →
       </a>
     </div>
   );
 }
 ```
+
+Use your own arrow markup or SVGs in place of `←` / `→` if you prefer — keep `href={navHref("prev")}` and `href={navHref("next")}`.
 

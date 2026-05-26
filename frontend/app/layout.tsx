@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import localFont from "next/font/local";
-import Script from "next/script";
 import members from "../../backend/data/members.json";
 import { buildRingNavBootScript } from "./lib/ringNavigate";
 import "./globals.css";
@@ -53,14 +52,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        {/* Legacy #url?nav= links only — prefer /api/navigate?url=...&redirect=true */}
+        <script dangerouslySetInnerHTML={{ __html: ringNavBootScript }} />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${arcadeClassic.variable} antialiased bg-black`}
       >
-        <Script
-          id="cfm-ring-nav"
-          strategy="beforeInteractive"
-          dangerouslySetInnerHTML={{ __html: ringNavBootScript }}
-        />
         {children}
       </body>
     </html>

@@ -10,7 +10,7 @@ export default function CFMWebringWidget() {
   return (
     <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
       <a
-        href={`${ringBase}/#${encodeURIComponent(myUrl)}?nav=prev`}
+        href={`${ringBase}/api/navigate?url=${encodeURIComponent(myUrl)}&direction=prev&redirect=true`}
         aria-label="Previous in CFM Webring"
         style={{ textDecoration: "none", color: "inherit", fontSize: "24px" }}
       >
@@ -18,7 +18,7 @@ export default function CFMWebringWidget() {
       </a>
 
       <a
-        href="https://uwaterloocfm.com"
+        href={ringBase}
         target="_blank"
         rel="noopener noreferrer"
         aria-label="CFM Webring Hub"
@@ -30,7 +30,7 @@ export default function CFMWebringWidget() {
       </a>
 
       <a
-        href={`${ringBase}/#${encodeURIComponent(myUrl)}?nav=next`}
+        href={`${ringBase}/api/navigate?url=${encodeURIComponent(myUrl)}&direction=next&redirect=true`}
         aria-label="Next in CFM Webring"
         style={{ textDecoration: "none", color: "inherit", fontSize: "24px" }}
       >
