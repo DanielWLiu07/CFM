@@ -49,5 +49,22 @@
       { "type": "github", "url": "#" },
       { "type": "linkedin", "url": "#" }
     ]
+  },
+
+  {
+    "name": "Diya Saxena",
+    "cohort": "2030", 
+    "location": "Toronto, Ontario, Canada",
+    "role": "Software Engineer",
+    "header": "Short header",
+    "description": "Turning 'someone should do that' into a calendar invite since Grade 9.",
+    "experiences": ["Pension Analyst @ FSRA", "Sponsorship Coordinator @ Hack The North"],
+    "interests": ["F1","Muisc","Financial Markets"],
+    "avatar": "/images/avatars/diyasaxenaDice.jpg", 
+    "socials": [
+      { "type": "github", "url": "https://github.com/diyasaxena17" },
+      { "type": "linkedin", "url": "https://www.linkedin.com/in/diya-saxena/" }
+    ]
   }
+
 ]
