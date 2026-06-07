@@ -2,10 +2,12 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import localFont from "next/font/local";
 import members from "../../backend/data/members.json";
-import { buildRingNavBootScript } from "./lib/ringNavigate";
+import { buildRingNavBootScript, type RingMember } from "./lib/ringNavigate";
 import "./globals.css";
 
-const ringNavBootScript = buildRingNavBootScript(members);
+const ringNavBootScript = buildRingNavBootScript(
+  members.filter((m): m is typeof m & RingMember => Boolean(m.url) && m.url !== "#"),
+);
 
 
 const geistSans = Geist({

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import members from '../../../../backend/data/members.json';
-import { getNext, getPrev } from '../../lib/ringNavigate';
+import { getNext, getPrev, type RingMember } from '../../lib/ringNavigate';
 
 export function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
@@ -20,7 +20,9 @@ export function GET(request: NextRequest) {
     );
   }
 
-  const navigable = members.filter((m) => m.url && m.url !== '#');
+  const navigable = members.filter(
+    (m): m is typeof m & RingMember => Boolean(m.url) && m.url !== '#',
+  );
   const member =
     direction === 'next'
       ? getNext(navigable, url, cohort)
