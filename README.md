@@ -13,6 +13,8 @@ cd CFM
 
 ## Joining the webring + class profile
 
+**Using Cursor, Claude Code, Codex, or another coding agent?** Invoke `/add-member` — it prompts for your details and handles `members.json` + image assets for you.
+
 1. Add your avatar to `frontend/public/images/avatars/` (`png`, `jpeg`, `webp`, or `svg`).
 2. (Optional) Add a site screenshot to `frontend/public/images/websites/yourname.png`.
 3. Add your member entry in `backend/data/members.json`:
