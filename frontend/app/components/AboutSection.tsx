@@ -84,9 +84,13 @@ const CARDS = [
         <p style={{ color: '#fff', fontFamily: 'var(--font-arcade)', fontSize: 'clamp(11px, 1.8vw, 15px)', letterSpacing: '0.05em', borderBottom: '1px solid #333', paddingBottom: 6, marginBottom: 2 }}>
           Career Paths
         </p>
-        <p><Dim>{'>'} </Dim>CFM graduates enter a wide range of roles that span technology and finance. Common career paths include <G>software engineering</G>, <G>quantitative development</G>, <G>investment banking</G>, <G>trading</G>, <G>data science</G>, <G>product management</G>, and <G>fintech engineering</G>. The combination of technical and financial skills makes graduates especially well-suited for roles that sit at the intersection of the two industries.</p>
+        <p><Dim>{'>'} </Dim>CFM graduates enter a wide range of roles that span technology and finance — <G>software engineering</G>, <G>quantitative development</G>, <G>investment banking</G>, <G>trading</G>, <G>data science</G>, <G>product management</G>, and <G>fintech engineering</G>.</p>
+        <p><Dim>{'>'} </Dim>The combination of technical and financial skills makes graduates especially well-suited for roles at the intersection of both industries.</p>
         <p><Dim>{'>'} </Dim>The program satisfies the educational requirements for the <G>CFA (Chartered Financial Analyst)</G> designation, and covers material relevant to the <G>CPA</G> pathway as well. Graduates who want to pursue further credentials in finance or accounting are well-positioned to do so.</p>
-        <p><Dim>{'>'} </Dim>Because co-op is built into the program, every CFM graduate leaves with <G>2 years of professional work experience</G> on their resume before they even start their full-time career.</p>
+        <p style={{ color: '#333' }}>{'─'.repeat(50)}</p>
+        <p><Dim>{'// '} Statistics taken from Linkedin, Nov 2024</Dim></p>
+        <p><Dim>{'>'} </Dim><G>62.3%</G> in <G>Canada</G>, <G>31.4%</G> in the <G>US</G>. Smaller shares in <G>HK</G>, <G>UK</G>, <G>China</G>, and <G>Japan</G>.</p>
+        <p><Dim>{'>'} </Dim><G>46.9%</G> in <G>CS / SWE</G>, <G>23.4%</G> in <G>finance</G>, <G>8.6%</G> in <G>quant</G>. The rest in product, design, PM, fintech, or grad school.</p>
       </div>
     ),
   },
